@@ -35,16 +35,11 @@ VAULT_PASSWORD_HINT := ERROR: Ansible Vault cannot decrypt this file - the passw
 SSHPASS_BIN   := $(HOME)/.local/bin/sshpass
 
 .PHONY: help
-help: ## Show targets and overridable variables
+help: ## Show targets (variables are overridable per target, e.g. make deploy TAGS=...)
 	@printf '\nUsage: make <target> [VAR=value ...]\n'
 	@awk 'BEGIN {FS = ":.*?## "} \
 		/^[a-zA-Z0-9_-]+:.*?## / { printf "  \033[36m%-23s\033[0m %s\n", $$1, $$2 }' \
 		$(MAKEFILE_LIST)
-	@printf '\n\033[1mVariables (override on the command line)\033[0m\n'
-	@printf '  \033[36m%-23s\033[0m %s\n' \
-		'HOST' 'target host (host-init, print, vault-view/edit); optional if single-host' \
-		'TAGS' 'focused tags for dry-run/deploy, e.g. TAGS=netbird; on deploy, skips the tenant apply' \
-		'FROM' 'backup directory for restore, e.g. FROM=backup/<host>/<stamp>'
 	@printf '\n'
 
 .PHONY: install
@@ -80,6 +75,25 @@ ensure-sshpass:
 		echo "sshpass installed: $(SSHPASS_BIN)"; \
 	fi
 
+.PHONY: host-init
+host-init: vault-init ## Scaffold host_vars/<HOST> from the example/ template
+	@if [ -z "$(HOST)" ]; then echo "Usage: make host-init HOST=<hostname>" >&2; exit 1; fi
+	@if [ -e "$(INVENTORY)" ]; then :; else cp inventory/hosts.yml.example $(INVENTORY); echo "Created $(INVENTORY) from example"; fi
+	install -d -m 0700 $(INVENTORY_DIR)/host_vars/$(HOST)
+	if [ ! -e $(INVENTORY_DIR)/host_vars/$(HOST)/main.yml ]; then cp $(INVENTORY_DIR)/host_vars/example/main.yml $(INVENTORY_DIR)/host_vars/$(HOST)/main.yml; fi
+	chmod 0644 $(INVENTORY_DIR)/host_vars/$(HOST)/main.yml
+	if [ ! -e $(INVENTORY_DIR)/host_vars/$(HOST)/vault.yml ]; then cp $(INVENTORY_DIR)/host_vars/example/vault.yml.example $(INVENTORY_DIR)/host_vars/$(HOST)/vault.yml; fi
+	@if grep -q 'ANSIBLE_VAULT' $(INVENTORY_DIR)/host_vars/$(HOST)/vault.yml; then :; else \
+		echo "Encrypting $(INVENTORY_DIR)/host_vars/$(HOST)/vault.yml..."; \
+		ansible-vault encrypt $(INVENTORY_DIR)/host_vars/$(HOST)/vault.yml; \
+	fi
+	chmod 0600 $(INVENTORY_DIR)/host_vars/$(HOST)/vault.yml
+	@echo "Scaffolded $(INVENTORY_DIR)/host_vars/$(HOST)/ (edit main.yml; use 'make vault-edit HOST=$(HOST)' for the encrypted vault.yml)"
+
+.PHONY: host-bootstrap
+host-bootstrap: vault-init ## Host init only: service account, Docker, mirrors (bootstrap.yml)
+	ansible-playbook -i $(INVENTORY) playbooks/bootstrap.yml
+
 .PHONY: vault-init
 vault-init: ## Create the Ansible Vault password file (if missing) and preflight it
 	@mkdir -p $(dir $(ANSIBLE_VAULT_PASSWORD_FILE))
@@ -97,6 +111,24 @@ vault-init: ## Create the Ansible Vault password file (if missing) and preflight
 		ansible-vault view "$$f" >/dev/null 2>&1 \
 			|| { printf '%s\n' "$(VAULT_PASSWORD_HINT)" >&2; exit 1; }; \
 	fi
+
+.PHONY: vault-edit
+vault-edit: vault-init ## Edit vault.yml; HOST optional if single-host
+	@host="$(HOST)"; \
+	if [ -z "$$host" ]; then \
+		host="$$(ansible-inventory -i $(INVENTORY) --list 2>/dev/null \
+			| python3 -c 'import json,sys; h=list(json.load(sys.stdin).get("_meta",{}).get("hostvars",{})); print(h[0] if len(h)==1 else "")')"; \
+	fi; \
+	if [ -z "$$host" ]; then \
+		echo "Usage: make vault-edit HOST=<hostname>" >&2; exit 1; \
+	fi; \
+	p="$(INVENTORY_DIR)/host_vars/$$host/vault.yml"; \
+	if [ ! -f "$$p" ]; then echo "No such vault file: $$p" >&2; exit 1; fi; \
+	if grep -q 'ANSIBLE_VAULT' "$$p"; then :; else \
+		echo "Encrypting plaintext $$p before editing..."; \
+		ansible-vault encrypt "$$p"; \
+	fi; \
+	ansible-vault edit "$$p"
 
 .PHONY: vault-view
 vault-view: vault-init ## Print vault.yml + vault_managed.yml (decrypted); HOST optional if single-host
@@ -117,43 +149,6 @@ vault-view: vault-init ## Print vault.yml + vault_managed.yml (decrypted); HOST 
 				|| { printf '%s\n' "$(VAULT_PASSWORD_HINT)" >&2; exit 1; }; \
 		else cat "$$p"; fi; \
 	done
-
-.PHONY: vault-edit
-vault-edit: vault-init ## Edit vault.yml; HOST optional if single-host
-	@host="$(HOST)"; \
-	if [ -z "$$host" ]; then \
-		host="$$(ansible-inventory -i $(INVENTORY) --list 2>/dev/null \
-			| python3 -c 'import json,sys; h=list(json.load(sys.stdin).get("_meta",{}).get("hostvars",{})); print(h[0] if len(h)==1 else "")')"; \
-	fi; \
-	if [ -z "$$host" ]; then \
-		echo "Usage: make vault-edit HOST=<hostname>" >&2; exit 1; \
-	fi; \
-	p="$(INVENTORY_DIR)/host_vars/$$host/vault.yml"; \
-	if [ ! -f "$$p" ]; then echo "No such vault file: $$p" >&2; exit 1; fi; \
-	if grep -q 'ANSIBLE_VAULT' "$$p"; then :; else \
-		echo "Encrypting plaintext $$p before editing..."; \
-		ansible-vault encrypt "$$p"; \
-	fi; \
-	ansible-vault edit "$$p"
-
-.PHONY: host-init
-host-init: vault-init ## Scaffold host_vars/<HOST> from the example/ template
-	@if [ -z "$(HOST)" ]; then echo "Usage: make host-init HOST=<hostname>" >&2; exit 1; fi
-	@if [ -e "$(INVENTORY)" ]; then :; else cp inventory/hosts.yml.example $(INVENTORY); echo "Created $(INVENTORY) from example"; fi
-	install -d -m 0700 $(INVENTORY_DIR)/host_vars/$(HOST)
-	if [ ! -e $(INVENTORY_DIR)/host_vars/$(HOST)/main.yml ]; then cp $(INVENTORY_DIR)/host_vars/example/main.yml $(INVENTORY_DIR)/host_vars/$(HOST)/main.yml; fi
-	chmod 0644 $(INVENTORY_DIR)/host_vars/$(HOST)/main.yml
-	if [ ! -e $(INVENTORY_DIR)/host_vars/$(HOST)/vault.yml ]; then cp $(INVENTORY_DIR)/host_vars/example/vault.yml.example $(INVENTORY_DIR)/host_vars/$(HOST)/vault.yml; fi
-	@if grep -q 'ANSIBLE_VAULT' $(INVENTORY_DIR)/host_vars/$(HOST)/vault.yml; then :; else \
-		echo "Encrypting $(INVENTORY_DIR)/host_vars/$(HOST)/vault.yml..."; \
-		ansible-vault encrypt $(INVENTORY_DIR)/host_vars/$(HOST)/vault.yml; \
-	fi
-	chmod 0600 $(INVENTORY_DIR)/host_vars/$(HOST)/vault.yml
-	@echo "Scaffolded $(INVENTORY_DIR)/host_vars/$(HOST)/ (edit main.yml; use 'make vault-edit HOST=$(HOST)' for the encrypted vault.yml)"
-
-.PHONY: host-bootstrap
-host-bootstrap: vault-init ## Host init only: service account, Docker, mirrors (bootstrap.yml)
-	ansible-playbook -i $(INVENTORY) playbooks/bootstrap.yml
 
 .PHONY: lint
 lint: vault-init ## Playbook syntax check + ansible-lint
