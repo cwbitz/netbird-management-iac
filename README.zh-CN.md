@@ -45,8 +45,11 @@ make host-init HOST=netbird-1
 #   vault.yml 已自动加密；用它编辑（IP、SSH 凭据、owner）：
 make vault-edit HOST=netbird-1
 
-make lint && make dry-run && make deploy   # deploy 同时应用租户状态
+make dry-run && make deploy   # deploy 同时应用租户状态
 ```
+
+`make lint`（语法检查 + `ansible-lint`）是 CI 运行的内部检查；不在 `make help`
+中展示，开发者仍可在本地执行。
 
 部署以**非 root 服务账号**执行（`site.yml` 默认拒绝 root，除非
 `host_allow_root_login=true`）。首次以 root 创建一次：

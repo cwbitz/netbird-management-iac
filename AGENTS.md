@@ -110,7 +110,8 @@ is Debian-only.
   to init a host without deploying; `make deploy` runs it automatically first
   (so a fresh/rebuilt host gets its service account before `site.yml` connects).
   The mirror parts are no-ops unless their vars are set.
-- `make lint` — `--syntax-check` + `ansible-lint`.
+- The internal `make lint` (`--syntax-check` + `ansible-lint`) is run by CI and
+  hidden from `make help` (developers can still invoke it).
 - `make dry-run` / `make deploy` — dry-run / deploy. `deploy` is the one-shot
   entry point: it runs `bootstrap.yml` (host init), then the server playbook,
   then applies the tenant state (`tenant.yml -e tenant_commit=true`); add

@@ -27,11 +27,13 @@ the overview and `AGENTS.md` for design notes and gotchas.
 ## 1. Deploy
 
 ```bash
-make lint      # syntax check + ansible-lint
 make dry-run     # dry run (--check --diff)
 make deploy      # deploy the server, then apply the tenant state
                    # (TAGS=... keeps it server-only)
 ```
+
+`make lint` (syntax check + `ansible-lint`) is an internal CI check; it is hidden
+from `make help`, but developers can still run it locally.
 
 Focused tags: `netbird`, `netbird_preflight`, `netbird_config`,
 `netbird_deploy`, `netbird_owner` (`make deploy TAGS=<tag>`).

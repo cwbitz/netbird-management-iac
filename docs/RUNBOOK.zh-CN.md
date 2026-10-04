@@ -25,10 +25,12 @@
 ## 1. 部署
 
 ```bash
-make lint      # 语法检查 + ansible-lint
 make dry-run     # 干跑（--check --diff）
 make deploy      # 部署服务器，随后应用租户状态（TAGS=... 则仅做服务器）
 ```
+
+`make lint`（语法检查 + `ansible-lint`）是 CI 的内部检查；不在 `make help` 中展示，
+开发者仍可在本地执行。
 
 定向 tag：`netbird`、`netbird_preflight`、`netbird_config`、`netbird_deploy`、
 `netbird_owner`（`make deploy TAGS=<tag>`）。

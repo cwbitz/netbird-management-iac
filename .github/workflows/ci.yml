@@ -27,14 +27,5 @@ jobs:
         run: python -m pip install -r ci/requirements.txt
       - name: Show the running ansible-core version
         run: ansible --version
-      - name: ansible-lint
-        run: >-
-          ansible-lint playbooks/site.yml playbooks/tenant.yml
-          playbooks/bootstrap.yml playbooks/backup.yml playbooks/restore.yml
-      - name: Playbook syntax check
-        run: |
-          ansible-playbook --syntax-check playbooks/site.yml
-          ansible-playbook --syntax-check playbooks/tenant.yml
-          ansible-playbook --syntax-check playbooks/bootstrap.yml
-          ansible-playbook --syntax-check playbooks/backup.yml
-          ansible-playbook --syntax-check playbooks/restore.yml
+      - name: Lint (syntax check + ansible-lint)
+        run: make lint

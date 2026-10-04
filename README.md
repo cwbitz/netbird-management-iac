@@ -53,11 +53,13 @@ make host-init HOST=netbird-1
 make vault-edit HOST=netbird-1
 #      (IP, SSH creds, owner)
 
-# 3. Validate, dry-run, deploy (deploy also applies the tenant state)
-make lint
+# 3. Dry-run, deploy (deploy also applies the tenant state)
 make dry-run
 make deploy
 ```
+
+`make lint` (syntax check + `ansible-lint`) is an internal check run by CI; it is
+hidden from `make help` but developers can still run it locally.
 
 `make deploy` is the one-shot entry point: it bootstraps the host, deploys the
 server, then applies the tenant state. On a fresh/rebuilt host the `ansible`

@@ -59,10 +59,12 @@ KEYCHAIN_ASSET   := $(KEYCHAIN_CACHE)/keychain-$(KEYCHAIN_VERSION).pyz
 KEYCHAIN_AGENT   := eval "$$($(KEYCHAIN_BIN) agent start --eval --quiet 2>/dev/null)"
 
 .PHONY: help
-help: ## Show targets (variables are overridable per target, e.g. make deploy TAGS=...)
-	@printf '\nUsage: make <target> [VAR=value ...]\n'
+help: ## Show this help
+	@printf '\nUsage: make <target> [VAR=value ...]\n\n'
 	@awk 'BEGIN {FS = ":.*?## "} \
-		/^[a-zA-Z0-9_-]+:.*?## / { printf "  \033[36m%-23s\033[0m %s\n", $$1, $$2 }' \
+		/^[a-zA-Z0-9_-]+:.*?## / { if ($$1 == "help") { hd = $$2; next } \
+			printf "  \033[36m%-25s\033[0m %s\n", $$1, $$2 } \
+		END { printf "  \033[36m%-25s\033[0m %s\n", "help", hd }' \
 		$(MAKEFILE_LIST)
 	@printf '\n'
 
@@ -234,12 +236,13 @@ vault-view: vault-init ## View a per-host vault (read-only)
 	done
 
 .PHONY: lint
-lint: vault-init ## Syntax check + ansible-lint
-	$(ANS_PLAY) -i $(INVENTORY) --syntax-check playbooks/site.yml
-	$(ANS_PLAY) -i $(INVENTORY) --syntax-check playbooks/tenant.yml
-	$(ANS_PLAY) -i $(INVENTORY) --syntax-check playbooks/bootstrap.yml
-	$(ANS_PLAY) -i $(INVENTORY) --syntax-check playbooks/backup.yml
-	$(ANS_PLAY) -i $(INVENTORY) --syntax-check playbooks/restore.yml
+# (internal) Syntax check + ansible-lint (invoked by CI).
+lint: vault-init
+	$(ANS_PLAY) --syntax-check playbooks/site.yml
+	$(ANS_PLAY) --syntax-check playbooks/tenant.yml
+	$(ANS_PLAY) --syntax-check playbooks/bootstrap.yml
+	$(ANS_PLAY) --syntax-check playbooks/backup.yml
+	$(ANS_PLAY) --syntax-check playbooks/restore.yml
 	ansible-lint playbooks/site.yml playbooks/tenant.yml playbooks/bootstrap.yml playbooks/backup.yml playbooks/restore.yml
 
 .PHONY: dry-run
