@@ -18,6 +18,12 @@ INVENTORY_DIR := inventory
 TAGS ?=
 HOST ?=
 FROM ?=
+# Refresh SSH host keys before connecting (HOST_KEY=1). Useful after a managed
+# host is rebuilt: its new host key would otherwise fail the "host key changed"
+# check. hostkey-init scans every inventory host and (re)writes its key into the
+# control node's known_hosts; deploy/dry-run/host-bootstrap call it when set.
+HOST_KEY ?=
+KNOWN_HOSTS ?= $(HOME)/.ssh/known_hosts
 
 # Ansible Vault password file (outside the repo), exported under Ansible's own
 # env-var name so every ansible-* invocation picks it up.
@@ -147,8 +153,29 @@ host-init: vault-init ## Scaffold host_vars/<HOST> from the example
 	@echo "Scaffolded $(INVENTORY_DIR)/host_vars/$(HOST)/ (edit main.yml; use 'make vault-edit HOST=$(HOST)' for the encrypted vault.yml)"
 
 .PHONY: host-bootstrap
-host-bootstrap: vault-init ## Create the ansible service account (bootstrap.yml)
+host-bootstrap: vault-init ## Create the ansible service account (bootstrap.yml); HOST_KEY=1 refreshes host keys first
+	@if [ -n "$(HOST_KEY)" ]; then $(MAKE) --no-print-directory hostkey-init; fi; \
 	$(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml
+
+# (internal) Scan every inventory host and (re)write its SSH host key into the
+# control node's known_hosts (removing any stale entry first). Invoked by
+# deploy/dry-run/host-bootstrap when HOST_KEY=1, and usable standalone.
+.PHONY: hostkey-init
+hostkey-init: vault-init
+	@set -e; \
+	nh="$(KNOWN_HOSTS)"; mkdir -p "$$(dirname "$$nh")"; tmp=$$(mktemp); \
+	$(ANS_PLAY) -i $(INVENTORY) playbooks/host_keys.yml -e host_keys_out="$$tmp" >/dev/null; \
+	mapfile -t lines < <(python3 -c "import json; [print(f\"{t['name']}\t{t['host']}\t{t['port']}\") for t in json.load(open('$$tmp'))]"); \
+	rm -f "$$tmp"; \
+	if [ "$${#lines[@]}" -eq 0 ]; then echo "ERROR: no hosts resolved from the inventory."; exit 1; fi; \
+	for line in "$${lines[@]}"; do \
+		name=$$(printf '%s' "$$line" | cut -f1); host=$$(printf '%s' "$$line" | cut -f2); port=$$(printf '%s' "$$line" | cut -f3); \
+		echo "host key: $$name ($$host:$$port)"; \
+		ssh-keygen -R "$$host" -f "$$nh" >/dev/null 2>&1 || true; \
+		if [ "$$port" != "22" ]; then ssh-keygen -R "[$$host]:$$port" -f "$$nh" >/dev/null 2>&1 || true; fi; \
+		ssh-keyscan -T 5 -p "$$port" -t rsa,ecdsa,ed25519 "$$host" >> "$$nh" 2>/dev/null || { echo "ERROR: ssh-keyscan failed for $$host:$$port"; exit 1; }; \
+	done; \
+	echo "host keys refreshed in $$nh"
 
 .PHONY: vault-init
 vault-init: ## One-time: generate the vault password (idempotent)
@@ -216,11 +243,13 @@ lint: vault-init ## Syntax check + ansible-lint
 	ansible-lint playbooks/site.yml playbooks/tenant.yml playbooks/bootstrap.yml playbooks/backup.yml playbooks/restore.yml
 
 .PHONY: dry-run
-dry-run: vault-init ## Dry-run (--check --diff)
+dry-run: vault-init ## Dry-run (--check --diff); HOST_KEY=1 refreshes host keys first
+	@if [ -n "$(HOST_KEY)" ]; then $(MAKE) --no-print-directory hostkey-init; fi; \
 	$(ANS_PLAY) -i $(INVENTORY) $(PLAYBOOK) --check --diff $(if $(TAGS),--tags $(TAGS),)
 
 .PHONY: deploy
-deploy: vault-init ## One-shot: bootstrap the host, deploy the server, then apply the tenant state; TAGS=... runs only the server
+deploy: vault-init ## One-shot: bootstrap the host, deploy the server, then apply the tenant state; TAGS=... runs only the server; HOST_KEY=1 refreshes host keys first
+	@if [ -n "$(HOST_KEY)" ]; then $(MAKE) --no-print-directory hostkey-init; fi
 	@echo "==> Bootstrapping the host (playbooks/bootstrap.yml: service account, Docker)..."
 	$(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml
 	@echo "==> Deploying the NetBird server (playbooks/site.yml)..."
