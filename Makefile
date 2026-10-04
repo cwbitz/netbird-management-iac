@@ -9,6 +9,7 @@ SHELL := /bin/bash
 
 # Fixed paths (not operator knobs): the playbooks and inventory are part of the
 # repo layout. Non-mainstream cases can call ansible directly.
+ANS_PLAY      := ansible-playbook
 PLAYBOOK      := playbooks/site.yml
 INVENTORY     := inventory/hosts.yml
 INVENTORY_DIR := inventory
@@ -32,7 +33,24 @@ VAULT_PASSWORD_HINT := ERROR: Ansible Vault cannot decrypt this file - the passw
 # ~/.local/bin/sshpass; a failure is fatal (install it manually and re-run).
 # Key-only bootstrap does not need it, and steady-state Ansible password auth
 # uses ssh_askpass, not sshpass.
-SSHPASS_BIN   := $(HOME)/.local/bin/sshpass
+SSHPASS_BIN   ?= $(HOME)/.local/bin/sshpass
+
+# Keychain 3 (pinned single-file zipapp) is an OPTIONAL fallback ssh-agent: it is
+# only started when OpenSSH refuses a private key whose permissions cannot be
+# fixed (e.g. the WSL /mnt/c mount, mode 0777). It is ensured by the internal
+# `ensure-keychain` target (invoked by `install`); all `keychain-*` targets are
+# internal and never exposed as public make commands. The download URL is fixed;
+# a failure aborts so the operator can place the asset manually and re-run.
+KEYCHAIN_PIN     := $(CURDIR)/keychain.pin
+KEYCHAIN_VERSION := $(shell awk '!/^#/ && NF {print $$1; exit}' $(KEYCHAIN_PIN))
+KEYCHAIN_SHA256  := $(shell awk '!/^#/ && NF {print $$2; exit}' $(KEYCHAIN_PIN) | sed 's/^sha256://')
+KEYCHAIN_URL     ?= https://github.com/danielrobbins/keychain/releases/download/$(KEYCHAIN_VERSION)/keychain-$(KEYCHAIN_VERSION).pyz
+KEYCHAIN_BIN     ?= $(HOME)/.local/bin/keychain
+KEYCHAIN_CACHE   ?= $(HOME)/.cache/netbird-iac
+KEYCHAIN_ASSET   := $(KEYCHAIN_CACHE)/keychain-$(KEYCHAIN_VERSION).pyz
+# Start (or reuse) the Keychain agent in the CURRENT shell; --eval prints the
+# SSH_AUTH_SOCK / SSH_AGENT_PID exports on stdout (banner goes to stderr).
+KEYCHAIN_AGENT   := eval "$$($(KEYCHAIN_BIN) agent start --eval --quiet 2>/dev/null)"
 
 .PHONY: help
 help: ## Show targets (variables are overridable per target, e.g. make deploy TAGS=...)
@@ -43,12 +61,14 @@ help: ## Show targets (variables are overridable per target, e.g. make deploy TA
 	@printf '\n'
 
 .PHONY: install
-install: ensure-sshpass ## Install the pinned toolchain, Galaxy collections, and sshpass
+install: ensure-sshpass ensure-keychain ## Install the pinned toolchain, collections, and control-node dependencies
 	@if command -v mise >/dev/null 2>&1; then mise install; \
 	elif command -v asdf >/dev/null 2>&1; then asdf install; \
 	else echo "Neither mise nor asdf found; install one, or ensure ansible-core 2.19.x is on PATH." >&2; exit 1; fi
 	ansible-galaxy install -r requirements.yml
 
+# Internal helpers (not listed in `make help`; not part of the public interface).
+.PHONY: ensure-sshpass ensure-keychain keychain-fetch verify-keychain-pin
 # (internal) ensure sshpass: passwordless apt-get when available, otherwise a
 # rootless install into ~/.local/bin. A failure is fatal — no silent fallback.
 ensure-sshpass:
@@ -75,8 +95,44 @@ ensure-sshpass:
 		echo "sshpass installed: $(SSHPASS_BIN)"; \
 	fi
 
+# (internal) download the pinned Keychain asset into the fixed cache path.
+keychain-fetch:
+	@set -e; \
+	mkdir -p "$(KEYCHAIN_CACHE)"; \
+	if [ -f "$(KEYCHAIN_ASSET)" ] \
+	   && printf '%s  %s\n' "$(KEYCHAIN_SHA256)" "$(KEYCHAIN_ASSET)" | sha256sum -c - >/dev/null 2>&1; then \
+		exit 0; \
+	fi; \
+	echo "downloading keychain v$(KEYCHAIN_VERSION)..."; \
+	if ! curl -fsSL -o "$(KEYCHAIN_ASSET).tmp" "$(KEYCHAIN_URL)"; then \
+		echo "ERROR: failed to download Keychain v$(KEYCHAIN_VERSION)." >&2; \
+		echo "  URL: $(KEYCHAIN_URL)" >&2; \
+		echo "  Download it manually to: $(KEYCHAIN_ASSET)" >&2; \
+		echo "  then re-run 'make install'." >&2; \
+		rm -f "$(KEYCHAIN_ASSET).tmp"; \
+		exit 1; \
+	fi; \
+	mv "$(KEYCHAIN_ASSET).tmp" "$(KEYCHAIN_ASSET)"
+
+# (internal) verify the cached asset against keychain.pin (used by CI).
+verify-keychain-pin: keychain-fetch
+	@set -e; \
+	printf '%s  %s\n' "$(KEYCHAIN_SHA256)" "$(KEYCHAIN_ASSET)" | sha256sum -c -; \
+	echo "keychain pin OK: v$(KEYCHAIN_VERSION)"
+
+# (internal) ensure the pinned asset is installed (and unmodified) in ~/.local/bin.
+ensure-keychain: verify-keychain-pin
+	@set -e; \
+	if [ -f "$(KEYCHAIN_BIN)" ] \
+	   && printf '%s  %s\n' "$(KEYCHAIN_SHA256)" "$(KEYCHAIN_BIN)" | sha256sum -c - >/dev/null 2>&1; then \
+		echo "keychain:  present (v$(KEYCHAIN_VERSION), $(KEYCHAIN_BIN))"; exit 0; \
+	fi; \
+	mkdir -p "$$(dirname "$(KEYCHAIN_BIN)")"; \
+	install -m 0755 "$(KEYCHAIN_ASSET)" "$(KEYCHAIN_BIN)"; \
+	echo "keychain installed: $(KEYCHAIN_BIN) (v$(KEYCHAIN_VERSION))"
+
 .PHONY: host-init
-host-init: vault-init ## Scaffold host_vars/<HOST> from the example/ template
+host-init: vault-init ## Scaffold host_vars/<HOST> from the example
 	@if [ -z "$(HOST)" ]; then echo "Usage: make host-init HOST=<hostname>" >&2; exit 1; fi
 	@if [ -e "$(INVENTORY)" ]; then :; else cp inventory/hosts.yml.example $(INVENTORY); echo "Created $(INVENTORY) from example"; fi
 	install -d -m 0700 $(INVENTORY_DIR)/host_vars/$(HOST)
@@ -91,11 +147,11 @@ host-init: vault-init ## Scaffold host_vars/<HOST> from the example/ template
 	@echo "Scaffolded $(INVENTORY_DIR)/host_vars/$(HOST)/ (edit main.yml; use 'make vault-edit HOST=$(HOST)' for the encrypted vault.yml)"
 
 .PHONY: host-bootstrap
-host-bootstrap: vault-init ## Host init only: service account, Docker, mirrors (bootstrap.yml)
-	ansible-playbook -i $(INVENTORY) playbooks/bootstrap.yml
+host-bootstrap: vault-init ## Create the ansible service account (bootstrap.yml)
+	$(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml
 
 .PHONY: vault-init
-vault-init: ## Create the Ansible Vault password file (if missing) and preflight it
+vault-init: ## One-time: generate the vault password (idempotent)
 	@mkdir -p $(dir $(ANSIBLE_VAULT_PASSWORD_FILE))
 	@if [ ! -s "$(ANSIBLE_VAULT_PASSWORD_FILE)" ]; then \
 		openssl rand -base64 32 > "$(ANSIBLE_VAULT_PASSWORD_FILE)"; \
@@ -113,7 +169,7 @@ vault-init: ## Create the Ansible Vault password file (if missing) and preflight
 	fi
 
 .PHONY: vault-edit
-vault-edit: vault-init ## Edit vault.yml; HOST optional if single-host
+vault-edit: vault-init ## Edit a per-host vault (plaintext auto-encrypted first)
 	@host="$(HOST)"; \
 	if [ -z "$$host" ]; then \
 		host="$$(ansible-inventory -i $(INVENTORY) --list 2>/dev/null \
@@ -131,7 +187,7 @@ vault-edit: vault-init ## Edit vault.yml; HOST optional if single-host
 	ansible-vault edit "$$p"
 
 .PHONY: vault-view
-vault-view: vault-init ## Print vault.yml + vault_managed.yml (decrypted); HOST optional if single-host
+vault-view: vault-init ## View a per-host vault (read-only)
 	@host="$(HOST)"; \
 	if [ -z "$$host" ]; then \
 		host="$$(ansible-inventory -i $(INVENTORY) --list 2>/dev/null \
@@ -151,50 +207,50 @@ vault-view: vault-init ## Print vault.yml + vault_managed.yml (decrypted); HOST 
 	done
 
 .PHONY: lint
-lint: vault-init ## Playbook syntax check + ansible-lint
-	ansible-playbook -i $(INVENTORY) --syntax-check playbooks/site.yml
-	ansible-playbook -i $(INVENTORY) --syntax-check playbooks/tenant.yml
-	ansible-playbook -i $(INVENTORY) --syntax-check playbooks/bootstrap.yml
-	ansible-playbook -i $(INVENTORY) --syntax-check playbooks/backup.yml
-	ansible-playbook -i $(INVENTORY) --syntax-check playbooks/restore.yml
+lint: vault-init ## Syntax check + ansible-lint
+	$(ANS_PLAY) -i $(INVENTORY) --syntax-check playbooks/site.yml
+	$(ANS_PLAY) -i $(INVENTORY) --syntax-check playbooks/tenant.yml
+	$(ANS_PLAY) -i $(INVENTORY) --syntax-check playbooks/bootstrap.yml
+	$(ANS_PLAY) -i $(INVENTORY) --syntax-check playbooks/backup.yml
+	$(ANS_PLAY) -i $(INVENTORY) --syntax-check playbooks/restore.yml
 	ansible-lint playbooks/site.yml playbooks/tenant.yml playbooks/bootstrap.yml playbooks/backup.yml playbooks/restore.yml
 
 .PHONY: dry-run
-dry-run: vault-init ## Dry-run (--check --diff); add TAGS=...
-	ansible-playbook -i $(INVENTORY) $(PLAYBOOK) --check --diff $(if $(TAGS),--tags $(TAGS),)
+dry-run: vault-init ## Dry-run (--check --diff)
+	$(ANS_PLAY) -i $(INVENTORY) $(PLAYBOOK) --check --diff $(if $(TAGS),--tags $(TAGS),)
 
 .PHONY: deploy
 deploy: vault-init ## One-shot: bootstrap the host, deploy the server, then apply the tenant state; TAGS=... runs only the server
 	@echo "==> Bootstrapping the host (playbooks/bootstrap.yml: service account, Docker)..."
-	ansible-playbook -i $(INVENTORY) playbooks/bootstrap.yml
+	$(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml
 	@echo "==> Deploying the NetBird server (playbooks/site.yml)..."
-	ansible-playbook -i $(INVENTORY) $(PLAYBOOK) $(if $(TAGS),--tags $(TAGS),)
+	$(ANS_PLAY) -i $(INVENTORY) $(PLAYBOOK) $(if $(TAGS),--tags $(TAGS),)
 	@if [ -z "$(TAGS)" ]; then \
 		echo "==> Applying the tenant config-as-code state (playbooks/tenant.yml)..."; \
-		ansible-playbook -i $(INVENTORY) playbooks/tenant.yml -e tenant_commit=true; \
+		$(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml -e tenant_commit=true; \
 	fi
 
 .PHONY: plan
 plan: vault-init ## Tenant config-as-code: read-only diff (safe)
-	ansible-playbook -i $(INVENTORY) playbooks/tenant.yml
+	$(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml
 
 .PHONY: apply
 apply: vault-init ## Tenant config-as-code: apply desired state (strict via tenant_strict in host_vars)
-	ansible-playbook -i $(INVENTORY) playbooks/tenant.yml -e tenant_commit=true
+	$(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml -e tenant_commit=true
 
 .PHONY: backup
 backup: vault-init ## Back up the netbird_data volume (key stays in vault_managed.yml)
-	ansible-playbook -i $(INVENTORY) playbooks/backup.yml
+	$(ANS_PLAY) -i $(INVENTORY) playbooks/backup.yml
 
 .PHONY: restore
 restore: vault-init ## Restore FROM=backup/<host>/<stamp>
 	@if [ -z "$(FROM)" ]; then echo "Usage: make restore FROM=backup/<host>/<timestamp>" >&2; exit 1; fi
 	@restore_dir="$(abspath $(FROM))"; \
 	if [ ! -d "$$restore_dir" ]; then echo "No such backup directory: $$restore_dir" >&2; exit 1; fi; \
-	ansible-playbook -i $(INVENTORY) playbooks/restore.yml -e restore_from="$$restore_dir"
+	$(ANS_PLAY) -i $(INVENTORY) playbooks/restore.yml -e restore_from="$$restore_dir"
 
 .PHONY: print
-print: vault-init ## Print resolved host vars (incl. decrypted vault); HOST optional if single-host
+print: vault-init ## Print resolved host vars (incl. decrypted vault)
 	@host="$(HOST)"; \
 	if [ -z "$$host" ]; then \
 		host="$$(ansible-inventory -i $(INVENTORY) --list 2>/dev/null \

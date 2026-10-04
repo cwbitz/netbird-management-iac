@@ -35,7 +35,9 @@ issues Let's Encrypt certificates automatically.
   set `install_docker: false` to require a preinstalled Docker instead.
 - On the control node: `mise` or `asdf`, `openssl`, and SSH access to the host.
   `sshpass` is only needed for the `make host-bootstrap` password probe and is
-  auto-installed by `make install`.
+  auto-installed by `make install`; `make install` also installs the pinned
+  Keychain 3 (an optional ssh-agent fallback for private keys whose permissions
+  OpenSSH rejects, e.g. under WSL).
 
 ## Quickstart
 

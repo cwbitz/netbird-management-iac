@@ -81,12 +81,18 @@ is Debian-only.
   preflight), Python 3, `openssl`, and the Galaxy collections from
   `requirements.yml`.
 - `make install` — install the pinned toolchain (mise/asdf), the Galaxy
-  collections, and `sshpass`. sshpass is ensured by the internal `ensure-sshpass`
-  target: passwordless `apt-get` when available, otherwise rootless into
-  `~/.local/bin/sshpass`; a failure is fatal (install it manually and re-run).
-  Only the `make host-bootstrap` password probe needs sshpass; steady-state
-  Ansible password auth uses ssh_askpass, so the server/tenant/backup targets do
-  not need it.
+  collections, `sshpass`, and Keychain 3. sshpass is ensured by the internal
+  `ensure-sshpass` target: passwordless `apt-get` when available, otherwise
+  rootless into `~/.local/bin/sshpass`; a failure is fatal (install it manually
+  and re-run). Only the `make host-bootstrap` password probe needs sshpass;
+  steady-state Ansible password auth uses ssh_askpass, so the server/tenant/backup
+  targets do not need it. Keychain is ensured by the internal `ensure-keychain`
+  target: it downloads the pinned single-file zipapp (version + SHA256 in
+  `keychain.pin`, Renovate-tracked) into `~/.cache/netbird-iac/` and installs it
+  to `~/.local/bin/keychain`. It is an OPTIONAL fallback ssh-agent for private
+  keys whose permissions OpenSSH rejects (e.g. WSL `/mnt/c`); the `keychain-*` /
+  `ensure-keychain` / `verify-keychain-pin` targets are internal and are never
+  exposed as public `make` commands.
 - `make vault-init` — create the vault password file if missing (runs before
   every deploy/lint target).
 - `make vault-view` — print the decrypted `vault.yml` + `vault_managed.yml` for a
