@@ -127,6 +127,10 @@ make restore FROM=backup/<host>/<stamp>
 - `restore` replaces the data volume, then redeploys. `config.yaml` is
   re-rendered from the control node's current `vault.yml`, so that file
   must hold the **same** datastore key as when the data was archived.
+- Only `vault_datastore_encryption_key` is restore-critical.
+  `vault_session_cookie_encryption_key` and `vault_relay_auth_secret` are
+  auto-generated internals and can be ignored (regenerating them only drops
+  sessions / re-auths the relay).
 
 Verify after restore: the OIDC discovery URL answers and users can log in.
 

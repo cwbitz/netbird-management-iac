@@ -89,13 +89,23 @@ vault_owner_password: ""
 #
 # Also managed automatically when left empty here, but kept IN THIS FILE (they are
 # control-generated inputs passed to the host):
-#   vault_datastore_encryption_key          at-rest data encryption key
-#   vault_session_cookie_encryption_key     session cookie encryption key
-#   vault_relay_auth_secret                 relay auth secret (base64)
+#   vault_datastore_encryption_key          at-rest data encryption key. KEEP/back
+#                                           it up: it is NOT in the backup archive
+#                                           and a restore MUST reuse the same value,
+#                                           else the encrypted user data is lost.
+#   vault_session_cookie_encryption_key     session cookie encryption key. Auto-
+#                                           generated internal — do NOT edit:
+#                                           regenerating it only logs users out
+#                                           (it must match across instances only for
+#                                           HA/multi-replica, out of scope here).
+#   vault_relay_auth_secret                 relay auth secret (base64). Auto-generated
+#                                           internal — do NOT edit: it lives inside
+#                                           the combined management+relay container
+#                                           (shared only with an external relay).
 #   vault_owner_password                    first owner password
-#   vault_host_ansible_password                  service account password (only when
+#   vault_ansible_password                  service account password (only when
 #                                           no public key is given)
-#   vault_host_admin_password                    admin password (only when
+#   vault_admin_password                    admin password (only when
 #                                           host_admin_enabled is true)
-# Ownership is disjoint: a key lives in exactly one file. Back up BOTH files:
-# losing vault_datastore_encryption_key makes the encrypted user data unrecoverable.
+# Ownership is disjoint: a key lives in exactly one file. Back up BOTH files; only
+# vault_datastore_encryption_key is unrecoverable if lost.

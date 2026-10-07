@@ -112,6 +112,9 @@ make restore FROM=backup/<host>/<stamp>
   `vault_datastore_encryption_key` 会导致归档数据不可恢复。
 - `restore` 会替换数据卷再重新部署。`config.yaml` 由控制端当前的
   `vault.yml` 重新渲染，因此该文件必须与归档数据来自同一时刻的同一密钥。
+- 加密密钥中**只有 `vault_datastore_encryption_key` 与恢复相关**；
+  `vault_session_cookie_encryption_key` 与 `vault_relay_auth_secret` 为自动生成的
+  内部密钥，无需关注（重生成只会让会话失效 / relay 重新认证）。
 
 恢复后验证：OIDC discovery 地址可访问且用户能登录。
 

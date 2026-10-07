@@ -218,8 +218,12 @@ Never commit vaults. Ownership is split by direction:
 values plus control-generated inputs passed to the host (the datastore/session/
 relay keys, the owner/ansible passwords). `vault_managed.yml` is
 host-authoritative — secrets the host returns (the `admin` PAT, setup-key
-secrets). A key lives in exactly one file. **Back up `vault.yml`** — losing
-`vault_datastore_encryption_key` makes encrypted user data unrecoverable.
+secrets). A key lives in exactly one file. Of the crypto keys, only
+`vault_datastore_encryption_key` needs your attention: **back up `vault.yml`** and
+reuse the same value on restore, or encrypted user data is unrecoverable. The
+session-cookie (`vault_session_cookie_encryption_key`) and relay-auth
+(`vault_relay_auth_secret`) keys are auto-generated internals — leave them
+unedited (regenerating them only drops sessions / re-auths the relay).
 
 ## License
 

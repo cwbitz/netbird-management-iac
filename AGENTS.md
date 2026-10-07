@@ -36,6 +36,12 @@ is Debian-only.
   `vault_datastore_encryption_key`, `vault_session_cookie_encryption_key`,
   `vault_relay_auth_secret`, `vault_owner_password`, `vault_host_ansible_password`,
   `vault_host_admin_password` (only when `host_admin_enabled` is set).
+  Of the crypto keys, only `vault_datastore_encryption_key` is user-critical: it is
+  **not** in the backup archive and a restore must reuse the same value, or the
+  encrypted user data is unrecoverable. `vault_session_cookie_encryption_key` and
+  `vault_relay_auth_secret` are auto-generated internals — leave them unedited
+  (regenerating them only drops sessions / re-auths the relay; they must match
+  across instances only for HA or an external relay, both out of scope here).
   Each identity may set a password and/or a private key file; SSH prefers the key,
   then the password. An optional public key file (`vault_*_ssh_pubkey_file`) is
   authorized for that account by `make host-bootstrap` when set. Because these are
