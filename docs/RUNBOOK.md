@@ -150,6 +150,7 @@ Verify after restore: the OIDC discovery URL answers and users can log in.
 | Tenant run: token rejected | PAT expired — recreate it for the `admin` service user and update the vault (§2). |
 | Host reinstalled / reimaged | `vault_managed.yml` holds stale host-returned secrets — move it aside (or delete it) before deploying so a fresh PAT/setup keys are written (§2). |
 | A vault file is unreadable | It must be ansible-vault encrypted; the helpers re-encrypt a plaintext file on the next run. |
+| SSH refuses the private key (`UNPROTECTED PRIVATE KEY FILE`, `are too open`) | The shared `scripts/run-with-ssh-agent.sh` starts the pinned Keychain agent, loads the vault keys and retries once automatically. If it still fails, check the `vault_*_ssh_privkey_file` paths and run `make agent-load`. |
 
 Useful commands:
 

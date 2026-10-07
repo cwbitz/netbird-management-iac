@@ -12,6 +12,7 @@ SHELL := /bin/bash
 ANS_PLAY      := ansible-playbook
 PLAYBOOK      := playbooks/site.yml
 INVENTORY     := inventory/hosts.yml
+INV           := $(INVENTORY)
 INVENTORY_DIR := inventory
 
 # Command-line inputs (set at invocation, e.g. `make restore FROM=<dir>`).
@@ -58,6 +59,78 @@ KEYCHAIN_ASSET   := $(KEYCHAIN_CACHE)/keychain-$(KEYCHAIN_VERSION).pyz
 # SSH_AUTH_SOCK / SSH_AGENT_PID exports on stdout (banner goes to stderr).
 KEYCHAIN_AGENT   := eval "$$($(KEYCHAIN_BIN) agent start --eval --quiet 2>/dev/null)"
 
+# ------------------------------------------------ shared ssh-agent runner ----
+# Identical across the 5 IaC projects: the generic scripts/run-with-ssh-agent.sh
+# is driven by the SSH_AGENT_* environment variables, so only the per-project
+# values below differ (the private-key hostvar names, and the inventory/playbook
+# paths already defined above). The agent is prepared proactively only when a
+# configured key has permissions OpenSSH would refuse (e.g. WSL /mnt/c), and the
+# runner retries once on a refused-key failure as a safety net.
+SSH_AGENT_ENV   ?= $(HOME)/.cache/iac/ssh-agent.env
+SSH_AGENT_RUN   ?= $(CURDIR)/scripts/run-with-ssh-agent.sh
+# Per-project fork: hostvars holding the control-node private-key paths.
+SSH_AGENT_KEY_VARS ?= vault_host_ansible_ssh_privkey_file vault_host_admin_ssh_privkey_file vault_host_root_ssh_privkey_file
+export SSH_AGENT_ENV
+export SSH_AGENT_KEYCHAIN_BIN  := $(KEYCHAIN_BIN)
+export SSH_AGENT_ANS_PLAY      := $(ANS_PLAY)
+export SSH_AGENT_INVENTORY     := $(INV)
+export SSH_AGENT_LOAD_PLAYBOOK := playbooks/ssh_agent_load.yml
+
+# (shared) Probe: exit 0 when a configured private key has unsafe permissions
+# (group/other bits set, e.g. 0777), i.e. OpenSSH would refuse it.
+SSH_AGENT_PROBE := ansible-inventory -i $(INV) --list 2>/dev/null | SSH_AGENT_KEY_VARS="$(SSH_AGENT_KEY_VARS)" python3 -c "import json,os,sys; names=os.environ['SSH_AGENT_KEY_VARS'].split(); vs=json.load(sys.stdin).get('_meta',{}).get('hostvars',{}); ks={os.path.expanduser(h.get(v)) for h in vs.values() for v in names if h.get(v)}; sys.exit(0 if any(os.path.isfile(k) and (os.stat(k).st_mode & 0o077) for k in ks) else 1)"
+
+# (shared) Canned recipe: prepare the Keychain ssh-agent. Reuse a loaded agent;
+# otherwise start Keychain and load the configured keys. SSH_AGENT_FORCE=1 skips
+# the permission probe. Writes SSH_AGENT_ENV for the runner to source.
+define SSH_AGENT_PREPARE
+	@set -e; \
+	mkdir -p "$$(dirname "$(SSH_AGENT_ENV)")"; \
+	rm -f "$(SSH_AGENT_ENV)"; \
+	if [ -n "$${SSH_AUTH_SOCK:-}" ] && ssh-add -l >/dev/null 2>&1; then \
+		echo "ssh-agent: reusing loaded agent"; \
+		echo "export SSH_AUTH_SOCK='$$SSH_AUTH_SOCK'" > "$(SSH_AGENT_ENV)"; exit 0; \
+	fi; \
+	if [ "$(SSH_AGENT_FORCE)" != "1" ] && ! $(SSH_AGENT_PROBE); then \
+		echo "ssh-agent: not needed (keys usable or password auth)"; exit 0; \
+	fi; \
+	echo "ssh-agent: starting Keychain and loading keys"; \
+	eval "$$($(KEYCHAIN_BIN) agent start --eval --quiet 2>/dev/null)"; \
+	echo "export SSH_AUTH_SOCK='$$SSH_AUTH_SOCK'" > "$(SSH_AGENT_ENV)"; \
+	$(ANS_PLAY) -i $(INV) $(SSH_AGENT_LOAD_PLAYBOOK)
+endef
+
+# (internal) Diagnostic probe: exit 0 when a configured private key would be
+# refused by OpenSSH. Shared across the 5 projects.
+agent-needed: vault-init
+	@$(SSH_AGENT_PROBE)
+
+# (internal) Prepare the Keychain ssh-agent, probe-gated (Ansible targets).
+agent-fallback: ensure-keychain
+	$(SSH_AGENT_PREPARE)
+
+# (internal) Prepare the Keychain ssh-agent unconditionally. Unused by this
+# Ansible-only project, kept so the block is identical across the 5 projects.
+agent-ensure: ensure-keychain
+	$(SSH_AGENT_PREPARE)
+agent-ensure: SSH_AGENT_FORCE := 1
+
+# (internal) Load the connection keys into the Keychain ssh-agent
+agent-load: vault-init ensure-keychain
+	@$(KEYCHAIN_AGENT); \
+	$(ANS_PLAY) -i $(INV) $(SSH_AGENT_LOAD_PLAYBOOK)
+
+# (internal) Ensure the Keychain agent has identities loaded
+agent-check: ensure-keychain
+	@$(KEYCHAIN_AGENT); \
+	if ssh-add -l >/dev/null 2>&1; then \
+		echo "ssh-agent: identities loaded"; \
+	else \
+		echo "ERROR: the Keychain ssh-agent has no identities loaded."; \
+		echo "Load the connection keys with: make agent-load"; \
+		exit 1; \
+	fi
+
 .PHONY: help
 help: ## Show this help
 	@printf '\nUsage: make <target> [VAR=value ...]\n\n'
@@ -76,7 +149,8 @@ install: ensure-sshpass ensure-keychain ## Install the pinned toolchain, collect
 	ansible-galaxy install -r requirements.yml
 
 # Internal helpers (not listed in `make help`; not part of the public interface).
-.PHONY: ensure-sshpass ensure-keychain keychain-fetch verify-keychain-pin
+.PHONY: ensure-sshpass ensure-keychain keychain-fetch verify-keychain-pin \
+        agent-needed agent-fallback agent-ensure agent-load agent-check
 # (internal) ensure sshpass: passwordless apt-get when available, otherwise a
 # rootless install into ~/.local/bin. A failure is fatal — no silent fallback.
 ensure-sshpass:
@@ -155,9 +229,9 @@ host-init: vault-init ## Scaffold host_vars/<HOST> from the example
 	@echo "Scaffolded $(INVENTORY_DIR)/host_vars/$(HOST)/ (edit main.yml; use 'make vault-edit HOST=$(HOST)' for the encrypted vault.yml)"
 
 .PHONY: host-bootstrap
-host-bootstrap: vault-init ## Create the ansible service account (bootstrap.yml); HOST_KEY=1 refreshes host keys first
+host-bootstrap: vault-init agent-fallback ## Create the ansible service account (bootstrap.yml); HOST_KEY=1 refreshes host keys first
 	@if [ -n "$(HOST_KEY)" ]; then $(MAKE) --no-print-directory hostkey-init; fi; \
-	$(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml
+	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml
 
 # (internal) Scan every inventory host and (re)write its SSH host key into the
 # control node's known_hosts (removing any stale entry first). Invoked by
@@ -246,40 +320,40 @@ lint: vault-init
 	ansible-lint playbooks/site.yml playbooks/tenant.yml playbooks/bootstrap.yml playbooks/backup.yml playbooks/restore.yml
 
 .PHONY: dry-run
-dry-run: vault-init ## Dry-run (--check --diff); HOST_KEY=1 refreshes host keys first
+dry-run: vault-init agent-fallback ## Dry-run (--check --diff); HOST_KEY=1 refreshes host keys first
 	@if [ -n "$(HOST_KEY)" ]; then $(MAKE) --no-print-directory hostkey-init; fi; \
-	$(ANS_PLAY) -i $(INVENTORY) $(PLAYBOOK) --check --diff $(if $(TAGS),--tags $(TAGS),)
+	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) $(PLAYBOOK) --check --diff $(if $(TAGS),--tags $(TAGS),)
 
 .PHONY: deploy
-deploy: vault-init ## One-shot: bootstrap the host, deploy the server, then apply the tenant state; TAGS=... runs only the server; HOST_KEY=1 refreshes host keys first
+deploy: vault-init agent-fallback ## One-shot: bootstrap the host, deploy the server, then apply the tenant state; TAGS=... runs only the server; HOST_KEY=1 refreshes host keys first
 	@if [ -n "$(HOST_KEY)" ]; then $(MAKE) --no-print-directory hostkey-init; fi
 	@echo "==> Bootstrapping the host (playbooks/bootstrap.yml: service account, Docker)..."
-	$(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml
+	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml
 	@echo "==> Deploying the NetBird server (playbooks/site.yml)..."
-	$(ANS_PLAY) -i $(INVENTORY) $(PLAYBOOK) $(if $(TAGS),--tags $(TAGS),)
+	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) $(PLAYBOOK) $(if $(TAGS),--tags $(TAGS),)
 	@if [ -z "$(TAGS)" ]; then \
 		echo "==> Applying the tenant config-as-code state (playbooks/tenant.yml)..."; \
-		$(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml -e tenant_commit=true; \
+		$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml -e tenant_commit=true; \
 	fi
 
 .PHONY: plan
-plan: vault-init ## Tenant config-as-code: read-only diff (safe)
-	$(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml
+plan: vault-init agent-fallback ## Tenant config-as-code: read-only diff (safe)
+	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml
 
 .PHONY: apply
-apply: vault-init ## Tenant config-as-code: apply desired state (strict via tenant_strict in host_vars)
-	$(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml -e tenant_commit=true
+apply: vault-init agent-fallback ## Tenant config-as-code: apply desired state (strict via tenant_strict in host_vars)
+	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml -e tenant_commit=true
 
 .PHONY: backup
-backup: vault-init ## Back up the netbird_data volume (key stays in vault_managed.yml)
-	$(ANS_PLAY) -i $(INVENTORY) playbooks/backup.yml
+backup: vault-init agent-fallback ## Back up the netbird_data volume (key stays in vault_managed.yml)
+	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/backup.yml
 
 .PHONY: restore
-restore: vault-init ## Restore FROM=backup/<host>/<stamp>
+restore: vault-init agent-fallback ## Restore FROM=backup/<host>/<stamp>
 	@if [ -z "$(FROM)" ]; then echo "Usage: make restore FROM=backup/<host>/<timestamp>" >&2; exit 1; fi
 	@restore_dir="$(abspath $(FROM))"; \
 	if [ ! -d "$$restore_dir" ]; then echo "No such backup directory: $$restore_dir" >&2; exit 1; fi; \
-	$(ANS_PLAY) -i $(INVENTORY) playbooks/restore.yml -e restore_from="$$restore_dir"
+	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/restore.yml -e restore_from="$$restore_dir"
 
 .PHONY: print
 print: vault-init ## Print resolved host vars (incl. decrypted vault)

@@ -90,10 +90,16 @@ is Debian-only.
   targets do not need it. Keychain is ensured by the internal `ensure-keychain`
   target: it downloads the pinned single-file zipapp (version + SHA256 in
   `keychain.pin`, Renovate-tracked) into `~/.cache/netbird-iac/` and installs it
-  to `~/.local/bin/keychain`. It is an OPTIONAL fallback ssh-agent for private
-  keys whose permissions OpenSSH rejects (e.g. WSL `/mnt/c`); the `keychain-*` /
-  `ensure-keychain` / `verify-keychain-pin` targets are internal and are never
-  exposed as public `make` commands.
+  to `~/.local/bin/keychain`. It is a fallback ssh-agent used only when a
+  configured private key has permissions OpenSSH rejects (e.g. WSL `/mnt/c`):
+  every SSH-consuming target runs through the shared, project-agnostic
+  `scripts/run-with-ssh-agent.sh` (driven by the `SSH_AGENT_*` environment
+  variables), the internal `agent-fallback` prepares the agent (probe-gated by
+  the internal `agent-needed`; `agent-ensure` is the unconditional variant) and
+  loads the keys via `playbooks/ssh_agent_load.yml`, and the runner retries once
+  on a refused-key failure. The `keychain-*` / `ensure-keychain` /
+  `verify-keychain-pin` / `agent-*` targets are internal and are never exposed as
+  public `make` commands.
 - `make vault-init` — create the vault password file if missing (runs before
   every deploy/lint target).
 - `make vault-view` — print the decrypted `vault.yml` + `vault_managed.yml` for a

@@ -36,8 +36,10 @@ issues Let's Encrypt certificates automatically.
 - On the control node: `mise` or `asdf`, `openssl`, and SSH access to the host.
   `sshpass` is only needed for the `make host-bootstrap` password probe and is
   auto-installed by `make install`; `make install` also installs the pinned
-  Keychain 3 (an optional ssh-agent fallback for private keys whose permissions
-  OpenSSH rejects, e.g. under WSL).
+  Keychain 3 (an ssh-agent fallback used only when a private key's permissions
+  are rejected by OpenSSH, e.g. under WSL). Every SSH-consuming target runs
+  through the shared `scripts/run-with-ssh-agent.sh`, which prepares the agent on
+  demand and retries once on a refused key.
 
 ## Quickstart
 

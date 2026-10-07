@@ -133,6 +133,7 @@ make restore FROM=backup/<host>/<stamp>
 | tenant 运行提示 token 被拒 | PAT 过期——为 `admin` service user 重新创建并更新 vault（§2）。 |
 | 主机被重装 / 重镜像 | `vault_managed.yml` 内是旧主机回传的失效密钥——先移走（或删除）再部署，让新的 PAT/setup key 写入（§2）。 |
 | vault 文件不可读 | 必须为 ansible-vault 加密；helper 会在下次运行时把明文文件就地重加密。 |
+| SSH 拒绝私钥（`UNPROTECTED PRIVATE KEY FILE`、`are too open`） | 共享脚本 `scripts/run-with-ssh-agent.sh` 会自动启动固定版 Keychain agent、加载 vault 私钥并重试一次；仍失败则检查 `vault_*_ssh_privkey_file` 路径并运行 `make agent-load`。 |
 
 常用命令：
 

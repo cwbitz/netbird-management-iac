@@ -32,7 +32,10 @@
   （`https://get.docker.com`）自动安装（Debian 系）；设 `install_docker: false`
   可改为要求预装。
 - 控制端：`mise` 或 `asdf`、`openssl`，以及对主机的 SSH 访问。`sshpass` 仅
-  `make host-bootstrap` 的密码探测需要，由 `make install` 自动安装。
+  `make host-bootstrap` 的密码探测需要，由 `make install` 自动安装。`make install`
+  还会安装固定的 Keychain 3（ssh-agent 兜底，仅当私钥权限被 OpenSSH 拒绝时使用，
+  如 WSL 下）；所有走 SSH 的目标都经由共享脚本 `scripts/run-with-ssh-agent.sh`
+  执行，并在私钥被拒时自动重试一次。
 
 ## 快速开始
 
