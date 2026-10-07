@@ -6,7 +6,7 @@
 # committed; real <hostname>/ directories are gitignored.
 #
 # This is the per-host file you maintain. Put secrets/PII in the sibling
-# vault.yml; the role writes runtime secrets to the sibling vault_managed.yml.
+# vault.yml; the role writes host-returned secrets to the sibling vault_managed.yml.
 
 # --- Topology ----------------------------------------------------------------
 # ansible_host comes from hosts.yml; the port from vault_host in vault.yml.
@@ -23,21 +23,21 @@ host_ssh_port: "{{ vault_host.port | default(22) }}"
 host_ssh_identities:
   root:
     user: "root"
-    password: "{{ vault_root_password | default('', true) }}"
-    privkey: "{{ vault_root_ssh_privkey_file | default('', true) }}"
-    pubkey: "{{ vault_root_ssh_pubkey_file | default('', true) }}"
+    password: "{{ vault_host_root_password | default('', true) }}"
+    privkey: "{{ vault_host_root_ssh_privkey_file | default('', true) }}"
+    pubkey: "{{ vault_host_root_ssh_pubkey_file | default('', true) }}"
     become: false
   admin:
-    user: "{{ vault_admin_user | default('admin') }}"
-    password: "{{ vault_admin_password | default('', true) }}"
-    privkey: "{{ vault_admin_ssh_privkey_file | default('', true) }}"
-    pubkey: "{{ vault_admin_ssh_pubkey_file | default('', true) }}"
+    user: "{{ vault_host_admin_user | default('admin') }}"
+    password: "{{ vault_host_admin_password | default('', true) }}"
+    privkey: "{{ vault_host_admin_ssh_privkey_file | default('', true) }}"
+    pubkey: "{{ vault_host_admin_ssh_pubkey_file | default('', true) }}"
     become: true
   ansible:
-    user: "{{ vault_ansible_user | default('ansible') }}"
-    password: "{{ vault_ansible_password | default('', true) }}"
-    privkey: "{{ vault_ansible_ssh_privkey_file | default('', true) }}"
-    pubkey: "{{ vault_ansible_ssh_pubkey_file | default('', true) }}"
+    user: "{{ vault_host_ansible_user | default('ansible') }}"
+    password: "{{ vault_host_ansible_password | default('', true) }}"
+    privkey: "{{ vault_host_ansible_ssh_privkey_file | default('', true) }}"
+    pubkey: "{{ vault_host_ansible_ssh_pubkey_file | default('', true) }}"
     become: true
 
 host_ssh_identity: "{{ host_ssh_identities['ansible'] }}"
@@ -66,7 +66,7 @@ letsencrypt_email: "{{ vault_letsencrypt_email }}"
 # --- Optional first-owner bootstrap ------------------------------------------
 # When owner_email is set the role creates the first owner via /api/setup (only
 # works while the instance has no accounts). If owner_password is empty one is
-# generated into vault_managed.yml. Leave the email empty to onboard manually at
+# generated into vault.yml. Leave the email empty to onboard manually at
 # https://<domain>/setup (a password without an email is ignored with a warning).
 #
 # On that first setup the role also bootstraps tenant automation: it creates an
@@ -93,8 +93,13 @@ owner_password: "{{ vault_owner_password | default('', true) }}"
 # service account when not already connected as it. Each configured
 # vault_<id>_ssh_pubkey_file is authorized for its account; unset is ignored. The
 # ansible pubkey switches the account to key auth, otherwise a password is set
-# (host_bootstrap_password, else generated into the encrypted vault). Private key
-# paths go in vault.yml (vault_<id>_ssh_privkey_file).
+# (host_bootstrap_password, else generated into the encrypted vault); passwords
+# use a per-account random salt with update_password=on_create. Private key paths
+# go in vault.yml (vault_<id>_ssh_privkey_file).
+#
+# The optional human 'admin' account is created only when enabled here; it always
+# gets a password (generated into vault.yml when empty) and any configured key.
+# host_admin_enabled: true
 
 # ==============================================================================
 # Tenant configuration (playbooks/tenant.yml)

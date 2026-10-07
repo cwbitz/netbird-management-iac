@@ -54,7 +54,7 @@
 
 # ------------------------------------------------------------------------------
 # Generate the server's crypto material into the encrypted per-host
-# vault_managed.yml. Existing values are preserved (never rotated).
+# vault.yml. Existing values are preserved (never rotated).
 # ------------------------------------------------------------------------------
 - name: "[NetBird] Provision per-host secrets in the encrypted vault"
   tags: [netbird]

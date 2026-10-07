@@ -12,10 +12,12 @@
 # optional control-node path to the matching public key; when set it is
 # authorized for that account. Unset is ignored (keys are never generated).
 #
-# The `ansible` account uses key auth when vault_ansible_ssh_pubkey_file is set;
+# The `ansible` account uses key auth when vault_host_ansible_ssh_pubkey_file is set;
 # otherwise a password is set (host_bootstrap_password, else generated into
-# vault_ansible_password). If sshd disables password auth, login fails (sshd
-# config is out of scope).
+# vault_host_ansible_password). Passwords are hashed with a per-account random salt
+# and applied with update_password=on_create, so re-runs are idempotent and a
+# host-side password rotation is preserved. If sshd disables password auth,
+# login fails (sshd config is out of scope).
 #
 # Mirrors (each a no-op unless set):
 #   host_apt_mirror / host_apt_security_mirror (derived) / docker_registry_mirrors
@@ -204,10 +206,15 @@
     # --------------------------------------------------------------------------
     # Service account: create/repair only when not already connected as ansible.
     # --------------------------------------------------------------------------
+    # Key mode is decided by the PUBLIC key path: that is the key bootstrap
+    # installs, so it is what actually keeps the account reachable. A
+    # private-key-only config is NOT treated as key mode (the key may not be
+    # authorized yet), so a password is still provisioned as a lockout-safe
+    # fallback.
     - name: "[Bootstrap] Resolve the service account settings"
       ansible.builtin.set_fact:
         bootstrap_service_user: "{{ host_bootstrap_user | default('ansible') }}"
-        bootstrap_use_key: "{{ vault_ansible_ssh_pubkey_file | default('', true) | length > 0 }}"
+        bootstrap_use_key: "{{ vault_host_ansible_ssh_pubkey_file | default('', true) | length > 0 }}"
 
     - name: "[Bootstrap] Provision a service-account password (no key supplied)"
       ansible.builtin.include_role:
@@ -218,19 +225,25 @@
         vault_secrets_vault_file: "vault.yml"
         vault_secrets_prune_from: "vault_managed.yml"
         vault_secrets_list:
-          - var: "vault_ansible_password"
+          - var: "vault_host_ansible_password"
             type: "base64"
             length: 18
-      when: not (bootstrap_use_key | bool)
+      when:
+        - not (bootstrap_use_key | bool)
+        - (host_bootstrap_password | default('', true) | length) == 0
 
     - name: "[Bootstrap] Resolve the effective service-account password"
       ansible.builtin.set_fact:
         host_bootstrap_password_final: >-
           {{ host_bootstrap_password
              if (host_bootstrap_password | default('', true) | length > 0)
-             else (vault_ansible_password | default('', true)) }}
+             else (vault_host_ansible_password | default('', true)) }}
       when: not (bootstrap_use_key | bool)
 
+    # Password mode only (no key supplied): hash with a per-account RANDOM salt
+    # and update_password=on_create, so re-runs are idempotent and a password
+    # rotated on the host is not silently reverted. Key mode omits the password
+    # entirely — the account is reached by its authorized key.
     - name: "[Bootstrap] Create/repair the service account"
       ansible.builtin.user:
         name: "{{ bootstrap_service_user }}"
@@ -239,28 +252,38 @@
         shell: /bin/bash
         create_home: true
         state: present
+        password: >-
+          {{ (host_bootstrap_password_final | password_hash('sha512'))
+             if not (bootstrap_use_key | bool) else omit }}
+        update_password: on_create
+      no_log: true
       when: probe_identity | lower != 'ansible'
 
-    - name: "[Bootstrap] Set the account password (password-auth mode)"
-      ansible.builtin.user:
-        name: "{{ bootstrap_service_user }}"
-        password: "{{ host_bootstrap_password_final | password_hash('sha512', 'netbirdiacsalt') }}"
-        update_password: always
-      when:
-        - probe_identity | lower != 'ansible'
-        - not (bootstrap_use_key | bool)
-
     # --------------------------------------------------------------------------
-    # Admin identity (optional): when credentials and/or a public key are set,
-    # create/repair the account and set its password. Root is never created; the
-    # service account is handled above.
+    # Admin identity (optional, opt-in via host_admin_enabled). This is a HUMAN
+    # operator account, so it always gets a password (generated into vault.yml
+    # when left empty) for console login and sudo; a configured public key is
+    # installed additionally. Root is never created; the service account is
+    # handled above.
     # --------------------------------------------------------------------------
     - name: "[Bootstrap] Resolve the admin identity settings"
       ansible.builtin.set_fact:
         bootstrap_admin: "{{ host_ssh_identities.admin }}"
-        bootstrap_admin_defined: >-
-          {{ (host_ssh_identities.admin.password | default('', true) | length > 0)
-             or (host_ssh_identities.admin.pubkey | default('', true) | length > 0) }}
+        bootstrap_admin_defined: "{{ host_admin_enabled | default(false) | bool }}"
+
+    - name: "[Bootstrap] Provision the admin password (enabled, none supplied)"
+      ansible.builtin.include_role:
+        name: helpers
+        tasks_from: vault_secrets_dispatch
+      vars:
+        vault_secrets_component: "netbird_admin"
+        vault_secrets_vault_file: "vault.yml"
+        vault_secrets_prune_from: "vault_managed.yml"
+        vault_secrets_list:
+          - var: "vault_host_admin_password"
+            type: "base64"
+            length: 18
+      when: bootstrap_admin_defined | bool
 
     - name: "[Bootstrap] Create/repair the admin account"
       ansible.builtin.user:
@@ -270,20 +293,13 @@
         shell: /bin/bash
         create_home: true
         state: present
+        password: "{{ vault_host_admin_password | password_hash('sha512') }}"
+        update_password: on_create
+      no_log: true
       when:
         - bootstrap_admin_defined | bool
         - bootstrap_admin.user != 'root'
         - bootstrap_admin.user != bootstrap_service_user
-
-    - name: "[Bootstrap] Set the admin account password"
-      ansible.builtin.user:
-        name: "{{ bootstrap_admin.user }}"
-        password: "{{ bootstrap_admin.password | password_hash('sha512', 'netbirdiacsalt') }}"
-        update_password: always
-      when:
-        - bootstrap_admin_defined | bool
-        - bootstrap_admin.user != 'root'
-        - bootstrap_admin.password | default('', true) | length > 0
 
     # --------------------------------------------------------------------------
     # SSH public keys: authorize each supplied vault_<id>_ssh_pubkey_file for its
@@ -294,7 +310,8 @@
         bootstrap_pubkey_specs: >-
           {%- set ns = namespace(specs=[]) -%}
           {%- for id, ident in host_ssh_identities.items() -%}
-          {%-   if (ident.pubkey | default('', true) | string | trim) | length > 0 -%}
+          {%-   if (id != 'admin' or (bootstrap_admin_defined | default(false) | bool))
+                 and (ident.pubkey | default('', true) | string | trim) | length > 0 -%}
           {%-     set ns.specs = ns.specs + [{'id': id, 'user': ident.user, 'path': ident.pubkey}] -%}
           {%-   endif -%}
           {%- endfor -%}
@@ -359,20 +376,22 @@
       loop_control:
         label: "{{ item.item.id }}"
 
-    - name: "[Bootstrap] Resolve the passwordless-sudo accounts"
+    - name: "[Bootstrap] Resolve the sudo accounts"
       ansible.builtin.set_fact:
         # The `default()` guards make the template resolvable by static analysis
         # (ansible-lint) before the earlier set_fact tasks have run; at runtime
         # the real values are always defined.
-        bootstrap_sudo_users: >-
-          {{ ([bootstrap_service_user | default('ansible')]
-              + ([(bootstrap_admin | default({})).user | default('admin')]
-                 if (bootstrap_admin_defined | default(false) | bool
-                     and (bootstrap_admin | default({})).user | default('', true) != 'root')
-                 else []))
-             | unique }}
+        bootstrap_sudo_nopasswd_users: >-
+          {{ [bootstrap_service_user | default('ansible')] }}
+        bootstrap_sudo_password_users: >-
+          {{ [((bootstrap_admin | default({})).user | default('admin'))]
+             if (bootstrap_admin_defined | default(false) | bool
+                 and (bootstrap_admin | default({})).user | default('', true) != 'root'
+                 and (bootstrap_admin | default({})).user | default('', true)
+                     != (bootstrap_service_user | default('ansible')))
+             else [] }}
 
-    - name: "[Bootstrap] Grant passwordless sudo"
+    - name: "[Bootstrap] Grant the automation account passwordless sudo"
       ansible.builtin.copy:
         content: "{{ item }} ALL=(ALL) NOPASSWD:ALL\n"
         dest: "/etc/sudoers.d/90-netbird-{{ item }}"
@@ -380,8 +399,18 @@
         group: root
         mode: "0440"
         validate: "visudo -cf %s"
-      loop: "{{ bootstrap_sudo_users }}"
+      loop: "{{ bootstrap_sudo_nopasswd_users }}"
       when: host_bootstrap_sudo_nopasswd | default(true) | bool
+
+    - name: "[Bootstrap] Grant the admin account password sudo"
+      ansible.builtin.copy:
+        content: "{{ item }} ALL=(ALL) ALL\n"
+        dest: "/etc/sudoers.d/90-netbird-{{ item }}"
+        owner: root
+        group: root
+        mode: "0440"
+        validate: "visudo -cf %s"
+      loop: "{{ bootstrap_sudo_password_users }}"
 
     - name: "[Bootstrap] Report the outcome"
       ansible.builtin.debug:
@@ -389,5 +418,5 @@
           Probed as '{{ probe_identity }}'. Service account
           '{{ bootstrap_service_user }}'{{ " and admin account '" ~ bootstrap_admin.user ~ "'"
           if bootstrap_admin_defined | bool else "" }} should exist; subsequent
-          runs connect via vault_{ansible,admin,root}_* in
+          runs connect via vault_{ansible,root}_* / vault_host_admin_* in
           inventory/host_vars/{{ inventory_hostname }}/vault.yml.

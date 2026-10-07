@@ -30,11 +30,12 @@ is Debian-only.
   (even encrypted). The operator-facing, **control-authoritative** secrets file:
   values the user supplies (topology `vault_host.{ip,port}`, the public domain
   `vault_domain_name`, the ACME email `vault_letsencrypt_email`, the SSH
-  identities `vault_root_*`/`vault_admin_*`/`vault_ansible_*`, the optional
+  identities `vault_root_*`/`vault_ansible_*`/`vault_host_admin_*`, the optional
   first-owner credentials `vault_owner_*`) and values the control node generates
   when the user leaves them empty and passes TO the host:
   `vault_datastore_encryption_key`, `vault_session_cookie_encryption_key`,
-  `vault_relay_auth_secret`, `vault_owner_password`, `vault_ansible_password`.
+  `vault_relay_auth_secret`, `vault_owner_password`, `vault_host_ansible_password`,
+  `vault_host_admin_password` (only when `host_admin_enabled` is set).
   Each identity may set a password and/or a private key file; SSH prefers the key,
   then the password. An optional public key file (`vault_*_ssh_pubkey_file`) is
   authorized for that account by `make host-bootstrap` when set. Because these are
@@ -106,7 +107,8 @@ is Debian-only.
 - `make host-bootstrap` — host init only: ensures Docker Engine + Compose v2
   (installing Docker CE when missing), sets APT/Docker mirrors for
   region-restricted hosts, and probes [ansible, admin, root] to create the
-  `ansible` service account plus any configured `admin` account. Run standalone
+  `ansible` service account plus the `admin` account when `host_admin_enabled`
+  is set. Run standalone
   to init a host without deploying; `make deploy` runs it automatically first
   (so a fresh/rebuilt host gets its service account before `site.yml` connects).
   The mirror parts are no-ops unless their vars are set.
@@ -169,11 +171,17 @@ is Debian-only.
   asserts `host_ssh_user != root` (override with `host_allow_root_login=true`).
   `make host-bootstrap` probes [ansible, admin, root] and uses the first that
   works; when it is not `ansible` it creates `ansible`. Every explicitly set
-  `vault_{root,admin,ansible}_ssh_pubkey_file` is authorized for the matching
-  account (unset ignored, never generated); for `ansible` a missing key falls back
+  `vault_{root,ansible}_ssh_pubkey_file` / `vault_host_admin_ssh_pubkey_file` is
+  authorized for the matching account (unset ignored, never generated); for
+  `ansible` a missing key falls back
   to a password (`host_bootstrap_password`, else generated into
-  `vault_ansible_password`). Both `ansible` and any configured `admin` account get
-  passwordless sudo.
+  `vault_host_ansible_password`), while key mode omits the password. The optional human
+  `admin` account is created only when `host_admin_enabled` is set and always gets
+  a password (generated into `vault_host_admin_password` when empty) plus any configured
+  key. Passwords are hashed with a per-account random salt and applied with
+  `update_password: on_create`, so re-runs are idempotent and a host-side password
+  rotation is preserved. `ansible` gets passwordless sudo; `admin` gets password
+  sudo (`ALL=(ALL) ALL`).
 - Neither vault file may stay plaintext: the vault helpers call
   `ensure_vault_encrypted` to re-encrypt a plaintext file in place (e.g. after a
   restore). Writes are disjoint — a key written to one file prunes a stale copy
@@ -222,9 +230,10 @@ is Debian-only.
   (`docker_registry_mirrors`), ensures Docker Engine + Compose v2 (installing
   Docker CE when missing), probes the SSH identities and creates the
   least-privilege `ansible` service account when not already connected as it, plus
-  any configured `admin` account (authorizes each identity's
-  `vault_*_ssh_pubkey_file` when set; otherwise, for `ansible`, a password) +
-  NOPASSWD sudo. Never runs as part of `site.yml`. Debian-family only for APT.
+  the `admin` account when `host_admin_enabled` is set (authorizes each identity's
+  `vault_*_ssh_pubkey_file` when set; otherwise a password, and the admin always
+  gets one) + NOPASSWD sudo for `ansible` and password sudo for `admin`. Never
+  runs as part of `site.yml`. Debian-family only for APT.
 - `playbooks/backup.yml` / `playbooks/restore.yml` — stop-container backup of the
   `netbird_data` volume, and the paired restore (which needs the same datastore
   key in `vault_managed.yml`).

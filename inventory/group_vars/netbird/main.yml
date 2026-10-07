@@ -14,3 +14,10 @@ stack_dir: "/opt/netbird"
 # repository when missing (Debian-family). Set false to require a preinstalled
 # Docker; the preflight then fails with install guidance.
 install_docker: true
+
+# Create/repair the optional human 'admin' operator account during
+# `make host-bootstrap`. When true the account is created and ALWAYS gets a
+# password (generated into vault.yml when left empty) for console login and
+# sudo; a configured public key is installed additionally. Default false: no
+# admin account is managed (least privilege).
+host_admin_enabled: false

@@ -34,20 +34,30 @@ vault_host:
 # vault_*_ssh_pubkey_file is an optional control-node path to the matching public
 # key; when set, `make host-bootstrap` authorizes it for that account. Empty is
 # ignored (nothing is generated). Only paths, never raw key strings.
-vault_root_password: ""
-vault_root_ssh_privkey_file: "~/.ssh/id_ed25519"
-vault_root_ssh_pubkey_file: ""
-vault_admin_user: "admin"
-vault_admin_password: ""
-vault_admin_ssh_privkey_file: ""
-vault_admin_ssh_pubkey_file: ""
+#
+# Key-first: when vault_host_ansible_ssh_pubkey_file is set the ansible account is
+# key-only (no password). Otherwise a password is set — host_bootstrap_password
+# if given, else generated into this file — hashed with a per-account random
+# salt and applied with update_password=on_create, so a password rotated on the
+# host is preserved.
+vault_host_root_password: ""
+vault_host_root_ssh_privkey_file: "~/.ssh/id_ed25519"
+vault_host_root_ssh_pubkey_file: ""
+# The optional human 'admin' operator account is created only when
+# `host_admin_enabled: true` is set in main.yml. It always gets a password
+# (generated into this file when left empty) for console login and sudo; a
+# configured public key is installed additionally.
+vault_host_admin_user: "admin"
+vault_host_admin_password: ""
+vault_host_admin_ssh_privkey_file: ""
+vault_host_admin_ssh_pubkey_file: ""
 # The ansible identity is the service account host-bootstrap creates/repairs;
 # its public key (when set) also switches the account to key auth instead of a
 # generated password.
-vault_ansible_user: "ansible"
-vault_ansible_password: ""
-vault_ansible_ssh_privkey_file: "~/.ssh/id_ed25519_ansible"
-vault_ansible_ssh_pubkey_file: ""
+vault_host_ansible_user: "ansible"
+vault_host_ansible_password: ""
+vault_host_ansible_ssh_privkey_file: "~/.ssh/id_ed25519_ansible"
+vault_host_ansible_ssh_pubkey_file: ""
 
 # --- Public endpoint ---------------------------------------------------------
 vault_domain_name: "netbird.example.com"
@@ -64,10 +74,8 @@ vault_owner_name: ""
 vault_owner_password: ""
 
 # --- Tenant config-as-code access token --------------------------------------
-# Personal Access Token of the 'admin' service user, used by playbooks/tenant.yml.
-# On a fresh deploy it is created automatically by the first-owner bootstrap and
-# written to vault_managed.yml (leave this empty).
-vault_admin_service_user_access_token: ""
+# The 'admin' service-user PAT used by playbooks/tenant.yml is host-returned, so
+# it lives in the sibling vault_managed.yml, NOT here (see the section below).
 
 # ==============================================================================
 # Host-returned secrets (written to vault_managed.yml; do not set them here)
@@ -85,7 +93,9 @@ vault_admin_service_user_access_token: ""
 #   vault_session_cookie_encryption_key     session cookie encryption key
 #   vault_relay_auth_secret                 relay auth secret (base64)
 #   vault_owner_password                    first owner password
-#   vault_ansible_password                  service account password (only when
+#   vault_host_ansible_password                  service account password (only when
 #                                           no public key is given)
+#   vault_host_admin_password                    admin password (only when
+#                                           host_admin_enabled is true)
 # Ownership is disjoint: a key lives in exactly one file. Back up BOTH files:
 # losing vault_datastore_encryption_key makes the encrypted user data unrecoverable.

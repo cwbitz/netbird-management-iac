@@ -73,8 +73,8 @@ unless `host_allow_root_login=true`). Bootstrap creates it; point the connection
 at it in `vault.yml`:
 
 ```bash
-#   vault_ansible_user: ansible
-#   vault_ansible_ssh_privkey_file: ~/.ssh/...   (or vault_ansible_password)
+#   vault_host_ansible_user: ansible
+#   vault_host_ansible_ssh_privkey_file: ~/.ssh/...   (or vault_host_ansible_password)
 ```
 
 `make host-bootstrap` probes `ansible → admin → root` and uses the first that
@@ -82,9 +82,13 @@ works; when it is not `ansible` it creates the account. It also ensures Docker
 Engine + Compose v2 (installing Docker CE when missing) and applies the mirrors
 below. Each configured `vault_<id>_ssh_pubkey_file` is authorized for its account
 (`ansible`, `admin` or `root`); unset is ignored. For `ansible`, no public key
-means a password is set instead (generated into the encrypted vault). When the
-`admin` identity is configured, its account is created/updated too. Private key
-paths are set in `vault_<id>_ssh_privkey_file` (paths only, never raw keys).
+means a password is set instead (generated into the encrypted vault), hashed with
+a per-account random salt and applied with `update_password: on_create`, so a
+password rotated on the host is preserved. When `host_admin_enabled: true` is
+set, the human `admin` account is created too and always gets a password
+(generated into the encrypted vault when empty) for console login and sudo, plus
+any configured key. Private key paths are set in `vault_<id>_ssh_privkey_file`
+(paths only, never raw keys).
 
 With `owner_email` set, the first owner is created automatically via `/api/setup`
 (if `owner_password` is empty, one is generated into `vault.yml`). The

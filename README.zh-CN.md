@@ -57,15 +57,18 @@ make dry-run && make deploy   # deploy 同时应用租户状态
 ```bash
 make host-bootstrap      # 创建 ansible 账号 + sudo
 # 然后在 vault.yml 指向它：
-#   vault_ansible_user: ansible
-#   vault_ansible_ssh_privkey_file: ~/.ssh/...   （或 vault_ansible_password）
+#   vault_host_ansible_user: ansible
+#   vault_host_ansible_ssh_privkey_file: ~/.ssh/...   （或 vault_host_ansible_password）
 ```
 
 `host-bootstrap` 按 `ansible → admin → root` 顺序探测，用第一个能登录的身份；若非
 ansible，则创建该服务账号，并确保 Docker Engine + Compose v2 已安装（缺失时安装 Docker
 CE），同时应用下方镜像源。对每个设置了 `vault_<id>_ssh_pubkey_file` 的身份，把该路径
 公钥写入被控机对应账号（`ansible` / `admin` / `root`）；留空则忽略。ansible 身份未给
-公钥时才设密码（自动生成并写入加密 vault）。配置了 `admin` 身份时也会创建/更新该账号。
+公钥时才设密码（自动生成并写入加密 vault），用每账号随机盐哈希并以
+`update_password: on_create` 应用，因此在主机上手动改过的密码不会被覆盖。设置
+`host_admin_enabled: true` 时会额外创建人工 `admin` 账号，且**始终**设置密码
+（留空则自动生成写入加密 vault），用于控制台登录与 sudo，另可安装配置的公钥。
 私钥路径由 `vault_<id>_ssh_privkey_file` 指定（仅接受路径，不接受内联字符串）。
 
 填了 `owner_email` 时会通过 `/api/setup` 自动创建首个 owner；`owner_password` 留空则
