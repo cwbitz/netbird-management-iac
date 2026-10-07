@@ -142,7 +142,7 @@
 
     - name: "[Bootstrap] Render the APT sources from the mirror"
       ansible.builtin.template:
-        src: templates/apt-sources.list.j2
+        src: templates/apt_sources.list.j2
         dest: /etc/apt/sources.list
         owner: root
         group: root
