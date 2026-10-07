@@ -223,7 +223,6 @@
       vars:
         vault_secrets_component: "netbird_bootstrap"
         vault_secrets_vault_file: "vault.yml"
-        vault_secrets_prune_from: "vault_managed.yml"
         vault_secrets_list:
           - var: "vault_host_ansible_password"
             type: "base64"
@@ -278,7 +277,6 @@
       vars:
         vault_secrets_component: "netbird_admin"
         vault_secrets_vault_file: "vault.yml"
-        vault_secrets_prune_from: "vault_managed.yml"
         vault_secrets_list:
           - var: "vault_host_admin_password"
             type: "base64"

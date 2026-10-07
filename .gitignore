@@ -19,9 +19,10 @@ backup/
 .vault_pass*
 *.vault_pass
 
-# Never commit a vault*.yml file, even encrypted. Covers user secrets (vault.yml)
-# and role-generated secrets (vault_managed.yml); the committed schema reference
-# is inventory/host_vars/example/vault.yml.example.
+# Never commit a vault*.yml file, even encrypted. The single per-host encrypted
+# vault (vault.yml) holds user secrets, role-generated secrets, and host-returned
+# secrets; the committed schema reference is
+# inventory/host_vars/example/vault.yml.example.
 **/vault.yml
 **/vault_*.yml
 # Keep role task files that merely start with vault_ (source, not secrets).

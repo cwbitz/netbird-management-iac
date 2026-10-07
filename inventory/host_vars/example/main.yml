@@ -5,8 +5,9 @@
 # Copy to inventory/host_vars/<hostname>/main.yml for each host. Only example/ is
 # committed; real <hostname>/ directories are gitignored.
 #
-# This is the per-host file you maintain. Put secrets/PII in the sibling
-# vault.yml; the role writes host-returned secrets to the sibling vault_managed.yml.
+# This is the per-host file you maintain. Put secrets/PII in the encrypted
+# vault.yml next to it (user input, control-generated values, and host-returned
+# values all live there).
 
 # --- Topology ----------------------------------------------------------------
 # ansible_host comes from hosts.yml; the port from vault_host in vault.yml.
@@ -71,7 +72,7 @@ letsencrypt_email: "{{ vault_letsencrypt_email }}"
 #
 # On that first setup the role also bootstraps tenant automation: it creates an
 # 'admin' service user and a PAT for it, and persists that token as
-# vault_admin_service_user_access_token in vault_managed.yml.
+# vault_admin_service_user_access_token in vault.yml.
 owner_email: "{{ vault_owner_email | default('', true) }}"
 owner_name: "{{ vault_owner_name | default('', true) }}"
 owner_password: "{{ vault_owner_password | default('', true) }}"
@@ -188,7 +189,7 @@ owner_password: "{{ vault_owner_password | default('', true) }}"
 #
 # --- Setup keys (setup_keys.yml) ---------------------------------------------
 # The secret is returned only at creation; after `apply` it is persisted
-# to vault_managed.yml as vault_setup_key_<name> (non-alphanumerics -> '_').
+# to vault.yml as vault_setup_key_<name> (non-alphanumerics -> '_').
 # expires_in is seconds, 1..31536000 (1 year max). A never-expiring key
 # (expires_in: 0) is not expressible here; create it once via the API instead.
 # netbird_setup_keys: []

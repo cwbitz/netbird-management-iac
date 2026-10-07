@@ -132,7 +132,7 @@ Team → Service Users 建 `admin` service user 及其 access token）。
 | 账户设置（Dashboard settings） | 可以 | `netbird_settings` |
 | Services | 可以 | `netbird_services`、`netbird_service_domains` |
 | 用户 / 服务用户 | 可以* | 对象/角色/组可管；内置 IdP 密码是一次性 |
-| Setup keys | 可以* | `netbird_setup_keys`；有效期 1..31536000 秒（最长 1 年，无法声明永不过期）；新建密钥的明文会写入 `vault_managed.yml` 的 `vault_setup_key_<name>` |
+| Setup keys | 可以* | `netbird_setup_keys`；有效期 1..31536000 秒（最长 1 年，无法声明永不过期）；新建密钥的明文会写入 `vault.yml` 的 `vault_setup_key_<name>` |
 | 外部 IdP | 可以* | client secret 需存 vault |
 | **Peer（设备）** | **不可以** | 是入网设备，只能管其设置；设备用 setup key 重新入网 |
 | 审计/事件 | 不可以 | 只读 |
@@ -181,11 +181,10 @@ docs/RUNBOOK.md      # 运维手册（部署、备份恢复、回滚）
 
 ## 密钥
 
-切勿提交 vault。密钥按“数据流向”拆分：
-`inventory/host_vars/<host>/vault.yml` 是**控制端权威**——用户提供以及控制端生成的、
-传给主机的输入（datastore/session/relay 密钥、owner/ansible 密码）；
-`vault_managed.yml` 是**主机权威**——主机回传的密钥（`admin` PAT、setup key 明文）。
-每个 key 只属于一个文件。加密密钥中**只有 `vault_datastore_encryption_key` 需要你关注**：
+切勿提交 vault。单一 per-host 加密 vault `inventory/host_vars/<host>/vault.yml`
+存放：用户提供、控制端生成并传给主机的输入（datastore/session/relay 密钥、
+owner/ansible 密码），以及主机回传的密钥（`admin` PAT、setup key 明文）。
+加密密钥中**只有 `vault_datastore_encryption_key` 需要你关注**：
 **务必备份 `vault.yml`** 且恢复时必须沿用同一值，否则加密的用户数据不可恢复；
 session cookie（`vault_session_cookie_encryption_key`）与 relay auth
 （`vault_relay_auth_secret`）密钥为自动生成的内部密钥，**勿手改**（重生成只会让会话失效 /

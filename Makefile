@@ -299,7 +299,7 @@ vault-view: vault-init ## View a per-host vault (read-only)
 	if [ -z "$$host" ]; then \
 		echo "Usage: make vault-view HOST=<hostname> (required when the inventory has no single host)" >&2; exit 1; \
 	fi; \
-	for f in vault.yml vault_managed.yml; do \
+	for f in vault.yml; do \
 		p="$(INVENTORY_DIR)/host_vars/$$host/$$f"; \
 		printf '\n\033[1m== %s ==\033[0m\n' "$$p"; \
 		if [ ! -f "$$p" ]; then echo "(missing)"; continue; fi; \
@@ -345,7 +345,7 @@ apply: vault-init agent-fallback ## Tenant config-as-code: apply desired state (
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml -e tenant_commit=true
 
 .PHONY: backup
-backup: vault-init agent-fallback ## Back up the netbird_data volume (key stays in vault_managed.yml)
+backup: vault-init agent-fallback ## Back up the netbird_data volume (key stays in vault.yml)
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/backup.yml
 
 .PHONY: restore

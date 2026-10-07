@@ -160,7 +160,7 @@ Team → Service Users). What you can and cannot codify:
 | Account settings (Dashboard settings) | Yes | `netbird_settings` |
 | Services | Yes | `netbird_services`, `netbird_service_domains` |
 | Users / service users | Yes* | `netbird_users`, `netbird_service_users`; embedded-IdP passwords are one-time |
-| Setup keys | Yes* | `netbird_setup_keys`; expiry 1..31536000s (1 year max, never-expire not expressible); newly created secrets are persisted to `vault_managed.yml` as `vault_setup_key_<name>` |
+| Setup keys | Yes* | `netbird_setup_keys`; expiry 1..31536000s (1 year max, never-expire not expressible); newly created secrets are persisted to `vault.yml` as `vault_setup_key_<name>` |
 | Identity providers (external IdP) | Yes* | client secret must be stored in vault |
 | **Peers** | **No** | enrolled devices: only settings are managed; devices re-enroll with setup keys |
 | Audit / events | No | read-only |
@@ -213,12 +213,11 @@ docs/RUNBOOK.md      # operations runbook (deploy, backup/restore, rollback)
 
 ## Secrets
 
-Never commit vaults. Ownership is split by direction:
-`inventory/host_vars/<host>/vault.yml` is control-authoritative — user-supplied
-values plus control-generated inputs passed to the host (the datastore/session/
-relay keys, the owner/ansible passwords). `vault_managed.yml` is
-host-authoritative — secrets the host returns (the `admin` PAT, setup-key
-secrets). A key lives in exactly one file. Of the crypto keys, only
+Never commit vaults. The single per-host encrypted vault
+`inventory/host_vars/<host>/vault.yml` holds user-supplied values,
+control-generated inputs passed to the host (the datastore/session/relay keys,
+the owner/ansible passwords), and secrets the host returns (the `admin` PAT,
+setup-key secrets). Of the crypto keys, only
 `vault_datastore_encryption_key` needs your attention: **back up `vault.yml`** and
 reuse the same value on restore, or encrypted user data is unrecoverable. The
 session-cookie (`vault_session_cookie_encryption_key`) and relay-auth

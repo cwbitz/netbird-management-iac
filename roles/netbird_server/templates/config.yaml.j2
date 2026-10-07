@@ -46,5 +46,5 @@ server:
   store:
     engine: "sqlite"
     # Must keep base64 padding (Go base64.StdEncoding). Losing this key makes
-    # encrypted user data unrecoverable — keep vault_managed.yml safe.
+    # encrypted user data unrecoverable — keep vault.yml safe.
     encryptionKey: "{{ vault_datastore_encryption_key }}"

@@ -64,7 +64,6 @@
   vars:
     vault_secrets_component: "netbird_server"
     vault_secrets_vault_file: "vault.yml"
-    vault_secrets_prune_from: "vault_managed.yml"
     vault_secrets_list:
       - var: "vault_relay_auth_secret"
         type: "base64"
@@ -165,7 +164,6 @@
   vars:
     vault_secrets_component: "netbird_owner"
     vault_secrets_vault_file: "vault.yml"
-    vault_secrets_prune_from: "vault_managed.yml"
     vault_secrets_list:
       - var: "vault_owner_password"
         type: "base64"
@@ -321,11 +319,11 @@
     - name: "[NetBird] Persist the service-user access token in the vault"
       ansible.builtin.include_role:
         name: helpers
-        tasks_from: vault_secrets_persist
+        tasks_from: vault_secret_store
       vars:
-        vault_secrets_persist_vault_file: "vault_managed.yml"
-        vault_secrets_persist_name: "vault_admin_service_user_access_token"
-        vault_secrets_persist_value: "{{ admin_service_user_token.json.plain_token }}"
+        vault_secret_store_file: "vault.yml"
+        vault_secret_store_var: "vault_admin_service_user_access_token"
+        vault_secret_store_value: "{{ admin_service_user_token.json.plain_token }}"
 
     - name: "[NetBird] List the owner's access tokens"
       ansible.builtin.uri:

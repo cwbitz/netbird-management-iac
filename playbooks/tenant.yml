@@ -151,16 +151,16 @@
 
     # --------------------------------------------------------------------------
     # A setup key's secret is returned only at creation. Persist each newly
-    # created key as vault_setup_key_<name> in vault_managed.yml.
+    # created key as vault_setup_key_<name> in vault.yml.
     # --------------------------------------------------------------------------
     - name: "[Tenant] Persist newly created setup key values in the vault"
       ansible.builtin.include_role:
         name: helpers
-        tasks_from: vault_secrets_persist
+        tasks_from: vault_secret_store
       vars:
-        vault_secrets_persist_vault_file: "vault_managed.yml"
-        vault_secrets_persist_name: "vault_setup_key_{{ item.item.name | regex_replace('[^A-Za-z0-9_]', '_') }}"
-        vault_secrets_persist_value: "{{ item.setup_key.key }}"
+        vault_secret_store_file: "vault.yml"
+        vault_secret_store_var: "vault_setup_key_{{ item.item.name | regex_replace('[^A-Za-z0-9_]', '_') }}"
+        vault_secret_store_value: "{{ item.setup_key.key }}"
       loop: "{{ (netbird_setup_key_results | default({'results': []})).results }}"
       loop_control:
         label: "{{ item.item.name }}"

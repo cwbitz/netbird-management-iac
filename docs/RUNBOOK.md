@@ -39,7 +39,8 @@ Focused tags: `netbird`, `netbird_preflight`, `netbird_config`,
 `netbird_deploy`, `netbird_owner` (`make deploy TAGS=<tag>`).
 
 The deploy asserts inputs and the non-root account, generates missing secrets
-into `vault.yml` (host-returned secrets go to `vault_managed.yml`), renders
+into the encrypted `vault.yml` (user, control-generated and host-returned
+secrets all live there), renders
 `config.yaml` / `dashboard.env` /
 `docker-compose.yml` to `{{ stack_dir }}` (`/opt/netbird`), starts the stack,
 waits for TLS, then optionally creates the first owner.
@@ -68,7 +69,7 @@ GeoLite2 DBs from `pkgs.netbird.io`. If the readiness wait times out, re-run
   set `vault_admin_service_user_access_token` in `vault.yml`.
 - PATs expire (max 365 days). When a tenant run reports the token rejected,
   recreate it in the Dashboard and update the vault.
-- **Host reinstalled/reimaged**: the secrets in `vault_managed.yml` are stale
+- **Host reinstalled/reimaged**: the host-returned secrets in `vault.yml` are stale
   (they existed only on the old server). Move the file aside — or delete it — and
   redeploy: a missing file is regenerated (a fresh PAT via the first-owner
   bootstrap when `vault_owner_email` is set; new setup keys via `make apply`).
@@ -152,7 +153,7 @@ Verify after restore: the OIDC discovery URL answers and users can log in.
 | STUN / relay clients fail | UDP 3478 open; Traefik owns `172.30.0.10`. |
 | Readiness times out on first deploy | GeoLite2 download (§1); re-run or pre-seed the DBs. |
 | Tenant run: token rejected | PAT expired — recreate it for the `admin` service user and update the vault (§2). |
-| Host reinstalled / reimaged | `vault_managed.yml` holds stale host-returned secrets — move it aside (or delete it) before deploying so a fresh PAT/setup keys are written (§2). |
+| Host reinstalled / reimaged | `vault.yml` holds stale host-returned secrets — delete those keys before deploying so a fresh PAT/setup keys are written (§2). |
 | A vault file is unreadable | It must be ansible-vault encrypted; the helpers re-encrypt a plaintext file on the next run. |
 | SSH refuses the private key (`UNPROTECTED PRIVATE KEY FILE`, `are too open`) | The shared `scripts/run-with-ssh-agent.sh` starts the pinned Keychain agent, loads the vault keys and retries once automatically. If it still fails, check the `vault_*_ssh_privkey_file` paths and run `make agent-load`. |
 
@@ -166,7 +167,7 @@ ssh <host> 'cd /opt/netbird && docker compose ps'
 
 ## 8. Secrets and safety
 
-- Never commit `vault.yml`, `vault_managed.yml`, or `backup/` (all gitignored).
+- Never commit `vault.yml` or `backup/` (all gitignored).
 - The vault password file is required to decrypt any vault.
-- Keep a copy of both `vault.yml` (datastore key) and `vault_managed.yml` off-host,
+- Keep a copy of `vault.yml` (which holds the datastore key) off-host,
   separate from data backups.

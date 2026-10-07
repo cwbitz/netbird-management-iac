@@ -1,0 +1,85 @@
+---
+# ==============================================================================
+# Write a per-host vault file (roles/helpers/tasks/vault_write.yml)
+# ==============================================================================
+# Renders vault_write_data as YAML and encrypts it into
+# <vault_write_dir>/<vault_write_file> (mode 0600). Keys are written in
+# alphabetical order (sort_keys), so every rewrite produces the same deterministic
+# layout. Always writes through a throwaway plaintext temp file, so every vault
+# file stays encrypted at rest. Callers gate the call on a real change (it always
+# reports changed).
+#
+# Params (include vars):
+#   vault_write_dir   Absolute directory holding the vault file. Required (see
+#                     vault_read.yml).
+#   vault_write_file  Vault filename (e.g. vault.yml)
+#   vault_write_data  Mapping to persist
+# ==============================================================================
+
+- name: "[VaultWrite] Validate the write contract"
+  tags: [always]
+  ansible.builtin.assert:
+    that:
+      - vault_write_dir is defined and (vault_write_dir | string | trim) | length > 0
+      - vault_write_file is defined and (vault_write_file | string | trim) | length > 0
+      - vault_write_file is regex('^[a-zA-Z0-9_.-]+\.yml$')
+      - vault_write_data is defined and vault_write_data is mapping
+    fail_msg: "vault_write requires vault_write_dir, a safe *.yml vault_write_file, and mapping vault_write_data."
+  run_once: true
+  delegate_to: localhost
+  become: false
+
+- name: "[VaultWrite] Ensure the vault directory exists"
+  tags: [always]
+  ansible.builtin.file:
+    path: "{{ vault_write_dir }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+
+- name: "[VaultWrite] Persist the encrypted vault file"
+  tags: [always]
+  delegate_to: localhost
+  become: false
+  block:
+    - name: "[VaultWrite] Create a throwaway plaintext file"
+      ansible.builtin.tempfile:
+        state: file
+        suffix: ".yml"
+      register: vault_write_tmp
+      changed_when: false
+
+    - name: "[VaultWrite] Render the plaintext content"
+      ansible.builtin.copy:
+        dest: "{{ vault_write_tmp.path }}"
+        content: "{{ vault_write_data | to_nice_yaml(sort_keys=true) }}"
+        mode: "0600"
+      no_log: true
+      changed_when: false
+
+    - name: "[VaultWrite] Encrypt into the vault file"
+      ansible.builtin.command:
+        argv:
+          - ansible-vault
+          - encrypt
+          - --vault-password-file
+          - "{{ helper_vault_password_file }}"
+          - --encrypt-vault-id
+          - default
+          - --output
+          - "{{ vault_write_dir }}/{{ vault_write_file }}"
+          - "{{ vault_write_tmp.path }}"
+      changed_when: true
+      no_log: true
+  always:
+    - name: "[VaultWrite] Remove the throwaway plaintext file"
+      ansible.builtin.file:
+        path: "{{ vault_write_tmp.path }}"
+        state: absent
+      when:
+        - vault_write_tmp is defined
+        - vault_write_tmp.path is defined
+      no_log: true
+      delegate_to: localhost
+      become: false

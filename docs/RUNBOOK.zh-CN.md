@@ -35,8 +35,8 @@ make deploy      # 部署服务器，随后应用租户状态（TAGS=... 则仅�
 定向 tag：`netbird`、`netbird_preflight`、`netbird_config`、`netbird_deploy`、
 `netbird_owner`（`make deploy TAGS=<tag>`）。
 
-部署会校验输入与非 root 账号、把缺失的密钥生成进 `vault.yml`（主机回传的密钥写入
-`vault_managed.yml`）、把 `config.yaml` / `dashboard.env` / `docker-compose.yml` 渲染到 `{{ stack_dir }}`
+部署会校验输入与非 root 账号、把缺失的密钥生成进加密的 `vault.yml`（用户、控制端生成与
+主机回传的密钥都在此）、把 `config.yaml` / `dashboard.env` / `docker-compose.yml` 渲染到 `{{ stack_dir }}`
 （默认 `/opt/netbird`）、启动容器栈、等待 TLS 就绪，然后可选地创建首个 owner。
 
 验证：
@@ -61,7 +61,7 @@ ssh <host> 'cd /opt/netbird && docker compose ps'
   `vault_admin_service_user_access_token`。
 - PAT 会过期（最长 365 天）。当 tenant 运行提示 token 被拒时，在 Dashboard 重新创建并
   更新 vault。
-- **主机被重装/重镜像后**：`vault_managed.yml` 里的密钥已失效（它们只存在于旧主机）。
+- **主机被重装/重镜像后**：`vault.yml` 里**主机回传的**密钥已失效（它们只存在于旧主机）。
   请把该文件移走备份——或直接删除——再重新部署：缺失文件会被重新生成（设置了
   `vault_owner_email` 时，首次 owner 引导会写入新的 PAT；`make apply` 会写入新的
   setup key）。若保留失效的非空值，则会一直沿用无效 token，tenant 每次运行都会报
@@ -134,7 +134,7 @@ make restore FROM=backup/<host>/<stamp>
 | STUN / relay 客户端失败 | UDP 3478 是否放行；Traefik 是否持有 `172.30.0.10`。 |
 | 首次部署就绪检查超时 | GeoLite2 下载（见 §1）；重跑或预置数据库。 |
 | tenant 运行提示 token 被拒 | PAT 过期——为 `admin` service user 重新创建并更新 vault（§2）。 |
-| 主机被重装 / 重镜像 | `vault_managed.yml` 内是旧主机回传的失效密钥——先移走（或删除）再部署，让新的 PAT/setup key 写入（§2）。 |
+| 主机被重装 / 重镜像 | `vault.yml` 内是旧主机回传的失效密钥——先删除这些键再部署，让新的 PAT/setup key 写入（§2）。 |
 | vault 文件不可读 | 必须为 ansible-vault 加密；helper 会在下次运行时把明文文件就地重加密。 |
 | SSH 拒绝私钥（`UNPROTECTED PRIVATE KEY FILE`、`are too open`） | 共享脚本 `scripts/run-with-ssh-agent.sh` 会自动启动固定版 Keychain agent、加载 vault 私钥并重试一次；仍失败则检查 `vault_*_ssh_privkey_file` 路径并运行 `make agent-load`。 |
 
@@ -148,6 +148,6 @@ ssh <host> 'cd /opt/netbird && docker compose ps'
 
 ## 8. 密钥与安全
 
-- 切勿提交 `vault.yml`、`vault_managed.yml`、`backup/`（均已 gitignore）。
+- 切勿提交 `vault.yml`、`backup/`（均已 gitignore）。
 - 解密任何 vault 都需要 vault 密码文件。
-- 请把 `vault.yml`（datastore 密钥）与 `vault_managed.yml` 各另存一份到异地，与数据备份分开存放。
+- 请把 `vault.yml`（含 datastore 密钥）另存一份到异地，与数据备份分开存放。
