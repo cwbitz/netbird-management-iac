@@ -7,9 +7,9 @@
 # or empty). Read-only and check-mode safe; never writes.
 #
 # Params (include vars):
-#   vault_read_dir   Absolute directory holding the vault file. Required: the
-#                    migration playbook runs on implicit localhost, where
-#                    inventory_dir is undefined, so a default is unsafe.
+#   vault_read_dir   Absolute directory holding the vault file. Required: no safe
+#                    default exists, because inventory_dir is undefined when the
+#                    helper runs on implicit localhost.
 #   vault_read_file  Vault filename (e.g. vault.yml)
 #   vault_read_var   Output fact name (default: vault_read_data)
 # ==============================================================================
