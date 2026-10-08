@@ -1,4 +1,10 @@
 ---
+exclude_paths:
+  - collections/
+  - .ansible/
+  - .ansible_cache/
+  - .cache/
+
 # ansible-lint configuration.
 #
 # The shared `helpers` role is a library invoked via include_role + tasks_from;

@@ -5,3 +5,8 @@
 rules:
   empty-lines:
     max-end: 0
+
+# Installed collections are third-party code; never lint them.
+ignore:
+  - "collections/"
+  - ".ansible/"

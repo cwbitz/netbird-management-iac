@@ -146,10 +146,20 @@ install: ensure-sshpass ensure-keychain ## Install the pinned toolchain, collect
 	@if command -v mise >/dev/null 2>&1; then mise install; \
 	elif command -v asdf >/dev/null 2>&1; then asdf install; \
 	else echo "Neither mise nor asdf found; install one, or ensure ansible-core 2.19.x is on PATH." >&2; exit 1; fi
-	ansible-galaxy install -r requirements.yml
+	@$(MAKE) --no-print-directory ensure-ansible-collections
+
+# Internal. Install/refresh the pinned Ansible collections into the
+# project-local `collections/` dir (selected by ansible.cfg's `collections_path`,
+# which REPLACES the global ~/.ansible/collections). ansible-galaxy is
+# idempotent and version-aware: it no-ops when the pinned versions are present,
+# and installs/upgrades to the exact requirements.yml pins otherwise. The
+# requirements.yml GitHub-tarball entry (community.ansible_netbird) installs the
+# same way as Galaxy-hosted collections.
+ensure-ansible-collections:
+	@ansible-galaxy collection install -r requirements.yml
 
 # Internal helpers (not listed in `make help`; not part of the public interface).
-.PHONY: ensure-sshpass ensure-keychain keychain-fetch verify-keychain-pin \
+.PHONY: ensure-ansible-collections ensure-sshpass ensure-keychain keychain-fetch verify-keychain-pin \
         agent-needed agent-fallback agent-ensure agent-load agent-check
 # (internal) ensure sshpass: passwordless apt-get when available, otherwise a
 # rootless install into ~/.local/bin. A failure is fatal — no silent fallback.

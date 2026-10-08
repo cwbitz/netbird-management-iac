@@ -4,6 +4,9 @@
 
 # Local persistent fact cache directory (contains sensitive infrastructure details)
 .ansible_cache/
+# Project-local Ansible home/runtime (home = ./.cache/ansible in ansible.cfg):
+# temp files, ssh control sockets, galaxy cache/token. Never commit.
+.cache/
 
 # Local backups of server state (contain user PII / hashed credentials / the key)
 backup/
@@ -35,7 +38,9 @@ inventory/host_vars/*
 # Real inventory (real hostnames) is local-only.
 inventory/hosts.yml
 
-# Installed collections/roles (ansible-galaxy output). Never commit these.
+# Project-local Ansible collections (installed by `make install` into
+# collections/). Never commit installed collections or a runtime .ansible/ dir.
+collections/
 .ansible/
 
 # Guard against a stray rendered copy of a config that may hold secrets.
