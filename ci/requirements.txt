@@ -1,3 +1,0 @@
-# CI-only lint tooling. ansible-core comes from .tool-versions; ansible-lint is
-# pinned here for reproducible lint results. Renovate tracks it (pip_requirements).
-ansible-lint==26.6.0

@@ -35,6 +35,17 @@
     },
     {
       "customType": "regex",
+      "description": "ansible-lint pinned through mise's pipx backend in .tool-versions",
+      "managerFilePatterns": [
+        "/(^|/)\\.tool-versions$/"
+      ],
+      "matchStrings": [
+        "pipx:(?<depName>\\S+) (?<currentValue>\\S+)"
+      ],
+      "datasourceTemplate": "pypi"
+    },
+    {
+      "customType": "regex",
       "description": "Keychain 3 pin (version + sha256) via GitHub release attachments",
       "managerFilePatterns": [
         "/^keychain\\.pin$/"
@@ -52,9 +63,21 @@
       "matchManagers": [
         "mise",
         "asdf",
-        "pip_requirements",
         "ansible-galaxy",
         "github-actions"
+      ],
+      "automerge": false,
+      "addLabels": [
+        "review-required"
+      ]
+    },
+    {
+      "description": "ansible-lint (PyPI, via mise's pipx backend): manual review, never automerge",
+      "matchDatasources": [
+        "pypi"
+      ],
+      "matchPackageNames": [
+        "ansible-lint"
       ],
       "automerge": false,
       "addLabels": [

@@ -23,9 +23,9 @@ jobs:
         run: make install
       - name: Verify the pinned Keychain asset (SHA256)
         run: make verify-keychain-pin
-      - name: Install lint tooling
-        run: python -m pip install -r ci/requirements.txt
       - name: Show the running ansible-core version
         run: ansible --version
+      - name: Show the running ansible-lint version
+        run: ansible-lint --version
       - name: Lint (syntax check + ansible-lint)
         run: make lint
