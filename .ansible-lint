@@ -2,7 +2,6 @@
 exclude_paths:
   - collections/
   - .ansible/
-  - .ansible_cache/
   - .cache/
 
 # ansible-lint configuration.

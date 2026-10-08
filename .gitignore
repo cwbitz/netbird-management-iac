@@ -2,10 +2,9 @@
 # Git Ignore Configuration for the NetBird self-hosted IaC project
 # ==============================================================================
 
-# Local persistent fact cache directory (contains sensitive infrastructure details)
-.ansible_cache/
-# Project-local Ansible home/runtime (home = ./.cache/ansible in ansible.cfg):
-# temp files, ssh control sockets, galaxy cache/token. Never commit.
+# Project-local Ansible runtime/cache root (may contain sensitive host details):
+# home = ./.cache/ansible (temp, ssh control sockets, galaxy cache/token),
+# the jsonfile fact cache (.cache/facts) and generated outputs. Never commit.
 .cache/
 
 # Local backups of server state (contain user PII / hashed credentials / the key)

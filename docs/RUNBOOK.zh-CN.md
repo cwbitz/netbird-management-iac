@@ -88,7 +88,7 @@ strict 模式（同时删除未纳管资源）默认关闭，可在
 
 期望状态用 collection 原生变量写在 `inventory/host_vars/<host>/main.yml`（机密/PII 放
 `vault.yml`）。playbook 会渲染出一个 gitignore 的生成目录
-（`.ansible_cache/tenant_config/<host>/`）再应用。需要有效的
+（`.cache/tenant_config/<host>/`）再应用。需要有效的
 `vault_admin_service_user_access_token`。
 
 路由网络与出口节点的执行顺序：

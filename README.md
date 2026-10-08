@@ -134,7 +134,7 @@ the running server's REST API. Desired state lives in the per-host Ansible
 variables (`inventory/host_vars/<host>/main.yml` for non-secret values,
 `vault.yml` for secrets/PII) using the collection's native variable names; the
 play renders them into a generated, gitignored directory
-(`.ansible_cache/tenant_config/<host>/`) and applies them declaratively, with
+(`.cache/tenant_config/<host>/`) and applies them declaratively, with
 plain names resolved to IDs and resources applied in dependency order.
 
 ```bash

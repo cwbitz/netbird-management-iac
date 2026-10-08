@@ -247,7 +247,7 @@ is Debian-only.
 - `playbooks/tenant.yml` — tenant config-as-code on `localhost` against the server
   API using `vault_admin_service_user_access_token`. The collection's `configure`
   role reads raw YAML (no templating), so the play renders the per-host variables
-  into a generated, gitignored directory (`.ansible_cache/tenant_config/<host>/`)
+  into a generated, gitignored directory (`.cache/tenant_config/<host>/`)
   and passes it as `config_dir`; `commit`/`strict` come from
   `tenant_commit`/`tenant_strict` (both default false = preview). Users/service
   users use the separate `netbird_user` module and are applied afterward from

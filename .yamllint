@@ -6,7 +6,8 @@ rules:
   empty-lines:
     max-end: 0
 
-# Installed collections are third-party code; never lint them.
+# Installed collections / local runtime caches are never linted.
 ignore:
   - "collections/"
   - ".ansible/"
+  - ".cache/"

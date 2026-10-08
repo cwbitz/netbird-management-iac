@@ -100,7 +100,7 @@ host with `tenant_strict: true` in `inventory/host_vars/<host>/main.yml` (or
 Desired state uses the collection's native variables in
 `inventory/host_vars/<host>/main.yml` (secret/PII in `vault.yml`). The play
 renders a generated, gitignored directory
-(`.ansible_cache/tenant_config/<host>/`) and applies it. Requires a valid
+(`.cache/tenant_config/<host>/`) and applies it. Requires a valid
 `vault_admin_service_user_access_token`.
 
 Order for routed networks and exit nodes:

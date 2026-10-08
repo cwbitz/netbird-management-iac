@@ -108,7 +108,7 @@ OIDC*，issuer 用 `https://authentik.example.com/application/o/netbird/`。面�
 期望状态以「每主机 Ansible 变量」的形式维护：非机密放
 `inventory/host_vars/<host>/main.yml`，机密/PII 放 `vault.yml`，变量名沿用
 collection 原生名；playbook 把它们渲染到一个 gitignore 的生成目录
-（`.ansible_cache/tenant_config/<host>/`）再声明式应用，支持纯名称→ID 解析、
+（`.cache/tenant_config/<host>/`）再声明式应用，支持纯名称→ID 解析、
 按依赖顺序应用：
 
 ```bash

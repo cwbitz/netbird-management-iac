@@ -8,7 +8,7 @@
 # running server's REST API via community.ansible_netbird:
 #
 #   inventory/host_vars/<host>/{main,vault}.yml
-#     -> .ansible_cache/tenant_config/<host>/  ->  NetBird API
+#     -> .cache/tenant_config/<host>/  ->  NetBird API
 #
 # Preview by default; nothing changes unless tenant_commit=true:
 #   make plan          # read-only diff
@@ -29,7 +29,7 @@
   gather_facts: false
   vars:
     # Generated config directory (gitignored).
-    tenant_build_dir: "{{ playbook_dir }}/../.ansible_cache/tenant_config/{{ inventory_hostname }}"
+    tenant_build_dir: "{{ playbook_dir }}/../.cache/tenant_config/{{ inventory_hostname }}"
     config_dir: "{{ tenant_build_dir }}"
     netbird_api_url: "https://{{ domain_name }}"
     netbird_api_token: "{{ vault_admin_service_user_access_token | default('', true) }}"

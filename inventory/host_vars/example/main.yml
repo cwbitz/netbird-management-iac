@@ -108,7 +108,7 @@ owner_password: "{{ vault_owner_password | default('', true) }}"
 # Desired state for the NetBird account (users, groups, policies, networks,
 # DNS, account settings, ...), applied against the running server's REST API via
 # community.ansible_netbird. Define non-secret values here, secret/PII in
-# vault.yml; the play renders them into .ansible_cache/tenant_config/<host>/.
+# vault.yml; the play renders them into .cache/tenant_config/<host>/.
 #
 # Preview by default: `make plan`; apply with `make apply`. Strict mode (remove
 # unmanaged resources) is off unless `tenant_strict: true` is set here (per host)
