@@ -52,3 +52,7 @@ galaxy-install-*.tmp
 
 # mise per-machine local overrides (project pin lives in the committed mise.toml)
 mise.local.toml
+
+# Only the shared editor settings are tracked; everything else is local.
+.vscode/*
+!.vscode/settings.json
