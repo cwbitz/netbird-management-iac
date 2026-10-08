@@ -1,7 +1,10 @@
 ---
 # ==============================================================================
-# Shared helpers role defaults (roles/helpers/defaults/main.yml)
+# Shared helpers role internal constants (roles/helpers/vars/main.yml)
 # ==============================================================================
+# Values the helper library owns; kept out of defaults/main.yml so inventory
+# cannot override them.
+
 # Canonical per-host vault filename. All per-host secrets live in ONE encrypted
 # file per host: user-provided values, values the control node generates and
 # passes to the host, and values a managed host creates and returns (API tokens).

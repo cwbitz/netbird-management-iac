@@ -25,11 +25,6 @@ network_subnet: "172.30.0.0/24"
 network_gateway: "172.30.0.1"
 traefik_ip: "172.30.0.10"
 
-# --- Volumes -----------------------------------------------------------------
-# Explicit names keep the volumes stable regardless of the compose project dir.
-netbird_data_volume: "netbird_data"
-netbird_traefik_certs_volume: "netbird_traefik_letsencrypt"
-
 # --- Ports / endpoint --------------------------------------------------------
 http_protocol: "https"
 exposed_port: 443
