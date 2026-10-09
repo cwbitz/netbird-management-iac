@@ -1,4 +1,9 @@
 ---
+# Run offline: do not install requirements.yml or create ansible-lint's
+# project-local `.ansible/` isolated dependency cache. Collections are installed
+# project-locally into ./collections by `make install` and resolved via
+# ansible.cfg's collections_path, so no lint-time install is needed.
+offline: true
 exclude_paths:
   - collections/
   - .ansible/
