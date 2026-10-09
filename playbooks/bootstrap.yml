@@ -320,23 +320,25 @@
 
     - name: "[Bootstrap] Read the supplied public key files"
       ansible.builtin.slurp:
-        src: "{{ item.path }}"
+        src: "{{ pubkey_spec.path }}"
       register: bootstrap_pubkey_files
       delegate_to: localhost
       become: false
       loop: "{{ bootstrap_pubkey_specs }}"
       loop_control:
-        label: "{{ item.id }}"
+        loop_var: pubkey_spec
+        label: "{{ pubkey_spec.id }}"
 
     - name: "[Bootstrap] Check that each public-key account exists"
       ansible.builtin.getent:
         database: passwd
-        key: "{{ item.user }}"
+        key: "{{ pubkey_spec.user }}"
       register: bootstrap_pubkey_users
       failed_when: false
       loop: "{{ bootstrap_pubkey_specs }}"
       loop_control:
-        label: "{{ item.id }}"
+        loop_var: pubkey_spec
+        label: "{{ pubkey_spec.id }}"
 
     - name: "[Bootstrap] Fail if a public key targets a missing account"
       ansible.builtin.assert:
@@ -348,7 +350,7 @@
           by this bootstrap and do not exist on {{ inventory_hostname }}:
           {{ bootstrap_pubkey_users.results | default([])
              | selectattr('msg', 'defined') | selectattr('msg', 'ne', '')
-             | map(attribute='item.user') | join(', ') }}.
+             | map(attribute='pubkey_spec.user') | join(', ') }}.
           Only the root, service (ansible) and explicitly configured admin
           accounts are provisioned; clear the pubkey path(s) or create the
           account(s) first.
@@ -356,26 +358,28 @@
 
     - name: "[Bootstrap] Ensure each account's .ssh directory exists"
       ansible.builtin.file:
-        path: "{{ ('/root' if item.item.user == 'root' else '/home/' ~ item.item.user) }}/.ssh"
+        path: "{{ ('/root' if pubkey_file.pubkey_spec.user == 'root' else '/home/' ~ pubkey_file.pubkey_spec.user) }}/.ssh"
         state: directory
-        owner: "{{ item.item.user }}"
-        group: "{{ item.item.user }}"
+        owner: "{{ pubkey_file.pubkey_spec.user }}"
+        group: "{{ pubkey_file.pubkey_spec.user }}"
         mode: "0700"
       loop: "{{ bootstrap_pubkey_files.results | default([]) }}"
       loop_control:
-        label: "{{ item.item.id }}"
+        loop_var: pubkey_file
+        label: "{{ pubkey_file.pubkey_spec.id }}"
 
     - name: "[Bootstrap] Authorize each supplied public key for its account"
       ansible.builtin.lineinfile:
-        path: "{{ ('/root' if item.item.user == 'root' else '/home/' ~ item.item.user) }}/.ssh/authorized_keys"
-        line: "{{ item.content | b64decode | trim }}"
+        path: "{{ ('/root' if pubkey_file.pubkey_spec.user == 'root' else '/home/' ~ pubkey_file.pubkey_spec.user) }}/.ssh/authorized_keys"
+        line: "{{ pubkey_file.content | b64decode | trim }}"
         create: true
-        owner: "{{ item.item.user }}"
-        group: "{{ item.item.user }}"
+        owner: "{{ pubkey_file.pubkey_spec.user }}"
+        group: "{{ pubkey_file.pubkey_spec.user }}"
         mode: "0600"
       loop: "{{ bootstrap_pubkey_files.results | default([]) }}"
       loop_control:
-        label: "{{ item.item.id }}"
+        loop_var: pubkey_file
+        label: "{{ pubkey_file.pubkey_spec.id }}"
 
     - name: "[Bootstrap] Resolve the sudo accounts"
       ansible.builtin.set_fact:
