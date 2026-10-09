@@ -1,0 +1,16 @@
+---
+# ==============================================================================
+# Role-owned constants (roles/monitoring/vars/main.yml)
+# ==============================================================================
+# Debian package / systemd unit names (not operator knobs).
+pkg_node_exporter: "prometheus-node-exporter"
+pkg_crowdsec: "crowdsec"
+pkg_crowdsec_firewall_bouncer: "crowdsec-firewall-bouncer"
+
+svc_node_exporter: "prometheus-node-exporter"
+svc_crowdsec: "crowdsec"
+svc_crowdsec_firewall_bouncer: "crowdsec-firewall-bouncer"
+
+# Container image repositories (tags are *_version in defaults/, Renovate-tracked).
+netbird_agent_image: "ghcr.io/netbirdio/netbird"
+alloy_image: "grafana/alloy"

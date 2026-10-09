@@ -1,10 +1,10 @@
 ---
 - name: "[Monitoring] Restart node_exporter"
   ansible.builtin.systemd_service:
-    name: "{{ host_monitoring_svc_node_exporter }}"
+    name: "{{ svc_node_exporter }}"
     state: restarted
 
 - name: "[Monitoring] Restart crowdsec"
   ansible.builtin.systemd_service:
-    name: "{{ host_monitoring_svc_crowdsec }}"
+    name: "{{ svc_crowdsec }}"
     state: restarted

@@ -366,7 +366,7 @@ apply: vault-init agent-fallback ## Tenant config-as-code: apply desired state (
 		$(RETRY_RUN) $(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml -e tenant_commit=true
 
 .PHONY: monitoring
-monitoring: vault-init agent-fallback ## Optional host monitoring + host security (CrowdSec + node_exporter); opt-in via host_monitoring_enabled
+monitoring: vault-init agent-fallback ## Optional host monitoring + host security (CrowdSec + node_exporter); opt-in via monitoring_enabled
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/monitoring.yml
 
 .PHONY: backup

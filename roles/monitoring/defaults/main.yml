@@ -1,0 +1,41 @@
+---
+# ==============================================================================
+# Role defaults (roles/monitoring/defaults/main.yml)
+# ==============================================================================
+# Optional VPS host monitoring + host security (Debian-family, apt-based) plus a
+# NetBird overlay agent. Opt-in: set `monitoring_enabled: true` in
+# inventory/host_vars/<host>/main.yml. When false (default) the role is skipped.
+
+monitoring_enabled: false
+
+# Stack directory for the rendered monitoring Docker services (the NetBird
+# overlay agent + the optional Alloy log shipper).
+monitoring_dir: "/opt/monitoring"
+
+# Components (each independently disableable). Node exporter and CrowdSec; the
+# nftables firewall bouncer ships with CrowdSec.
+node_exporter_enabled: true
+crowdsec_enabled: true
+
+# node_exporter listen address. Localhost-only by default; the role ALSO binds
+# the overlay address, so a central Prometheus can scrape it without any public
+# port.
+node_exporter_listen_addr: "127.0.0.1:9100"
+
+# --- NetBird overlay agent (always installed) ---------------------------------
+# The host joins the mesh through the agent so a central Prometheus/Alloy can
+# reach its exporters over the overlay, with no public port. Use a setup key
+# whose group grants NO exit/LAN routes (the tenant's `vps` group): Auto Apply
+# would otherwise install exit/LAN routes and could hijack the host's default
+# route, breaking public SSH.
+host_setup_key: "{{ vault_setup_key_vps_enrollment | default('', true) }}"
+# renovate: datasource=docker depName=ghcr.io/netbirdio/netbird
+netbird_agent_version: "0.77.0"
+
+# --- Log shipping to a central Loki over the overlay (optional) ---------------
+# Requires a central Loki reachable at loki_url over the overlay
+# (e.g. "http://100.125.0.5:3100").
+alloy_enabled: false
+loki_url: ""
+# renovate: datasource=docker depName=grafana/alloy
+alloy_version: "v1.18.1"

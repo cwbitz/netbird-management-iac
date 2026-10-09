@@ -1,11 +1,10 @@
 # ==============================================================================
-# Optional monitoring Docker services (netbird overlay peer + Alloy log shipper)
+# Monitoring Docker services (NetBird overlay agent + optional Alloy log shipper)
 # Managed by Ansible - do not edit on the target host.
 # ==============================================================================
 services:
-{% if host_monitoring_netbird_enabled | bool %}
   netbird:
-    image: "{{ host_monitoring_netbird_image }}:{{ host_monitoring_netbird_version }}"
+    image: "{{ netbird_agent_image }}:{{ netbird_agent_version }}"
     container_name: netbird
     restart: unless-stopped
     stop_grace_period: 15s
@@ -17,15 +16,14 @@ services:
     devices:
       - /dev/net/tun
     environment:
-      NB_SETUP_KEY: "{{ host_monitoring_netbird_setup_key }}"
-      NB_MANAGEMENT_URL: "{{ host_monitoring_netbird_management_url }}"
-      NB_HOSTNAME: "{{ host_monitoring_netbird_hostname }}"
+      NB_SETUP_KEY: "{{ host_setup_key }}"
+      NB_MANAGEMENT_URL: "https://{{ domain_name }}"
+      NB_HOSTNAME: "{{ inventory_hostname }}"
     volumes:
       - netbird_config:/var/lib/netbird
-{% endif %}
-{% if host_monitoring_alloy_enabled | bool %}
+{% if alloy_enabled | bool %}
   alloy:
-    image: "{{ host_monitoring_alloy_image }}:{{ host_monitoring_alloy_version }}"
+    image: "{{ alloy_image }}:{{ alloy_version }}"
     container_name: alloy
     restart: unless-stopped
     user: "0:0"
