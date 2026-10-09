@@ -101,9 +101,9 @@ vault_owner_password: ""
 #                                           the combined management+relay container
 #                                           (shared only with an external relay).
 #   vault_owner_password                    first owner password
-#   vault_ansible_password                  service account password (only when
+#   vault_host_ansible_password             service account password (only when
 #                                           no public key is given)
-#   vault_admin_password                    admin password (only when
+#   vault_host_admin_password               admin password (only when
 #                                           host_admin_enabled is true)
 # Ownership is disjoint: a key lives in exactly one file. Back up BOTH files; only
 # vault_datastore_encryption_key is unrecoverable if lost.
