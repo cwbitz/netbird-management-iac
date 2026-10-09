@@ -308,7 +308,7 @@
         body_format: json
         body:
           name: "netbird-iac"
-          expires_in: "{{ admin_service_user_access_token_expire_in | int }}"
+          expires_in: "{{ admin_service_user_access_token_expire_days | int }}"
         validate_certs: true
         return_content: true
         status_code: [200]

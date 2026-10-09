@@ -45,4 +45,4 @@ trusted_peers: []
 # Lifetime (days) of the 'admin' service-user PAT minted by the first-owner
 # bootstrap. NetBird caps PATs at 365 days; recreate it from the Dashboard when
 # it expires (the tenant run reports it).
-admin_service_user_access_token_expire_in: 365
+admin_service_user_access_token_expire_days: 365
