@@ -3,6 +3,9 @@ collections:
     version: "4.8.5"
   - name: community.general
     version: "11.4.2"
+  # Provides the timer/profile_tasks callbacks enabled in ansible.cfg.
+  - name: ansible.posix
+    version: "2.2.2"
   # Not published to Galaxy: install the pinned GitHub release tarball.
   # Bump the version in BOTH the URL path and the filename when updating.
   - name: https://github.com/netbirdio/ansible-netbird/releases/download/v1.4.1/community-ansible_netbird-1.4.1.tar.gz
