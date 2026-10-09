@@ -178,15 +178,19 @@
         tasks_from: store_secret
       vars:
         secret_store_file: "vault.yml"
-        secret_store_var: "vault_setup_key_{{ item.item.name | regex_replace('[^A-Za-z0-9_]', '_') }}"
-        secret_store_value: "{{ item.setup_key.key }}"
+        # key_result.item is the original setup-key spec recorded by the
+        # community.ansible_netbird configure role (its loop uses the default
+        # `item` loop var, so the nested key stays `item`).
+        secret_store_var: "vault_setup_key_{{ key_result.item.name | regex_replace('[^A-Za-z0-9_]', '_') }}"
+        secret_store_value: "{{ key_result.setup_key.key }}"
       loop: "{{ (netbird_setup_key_results | default({'results': []})).results }}"
       loop_control:
-        label: "{{ item.item.name }}"
+        loop_var: key_result
+        label: "{{ key_result.item.name }}"
       when:
         - tenant_commit | bool
-        - item.changed | default(false)
-        - (item.setup_key.key | default('', true)) | length > 0
+        - key_result.changed | default(false)
+        - (key_result.setup_key.key | default('', true)) | length > 0
 
     # --------------------------------------------------------------------------
     # Users/service users use the separate netbird_user module, so they are
