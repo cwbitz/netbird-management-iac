@@ -5,11 +5,6 @@
 # Values the helper library owns; kept out of defaults/main.yml so inventory
 # cannot override them.
 
-# Canonical per-host vault filename. All per-host secrets live in ONE encrypted
-# file per host: user-provided values, values the control node generates and
-# passes to the host, and values a managed host creates and returns (API tokens).
-vault_file: "vault.yml"
-
 # Password file passed explicitly to ansible-vault. The helper runs ansible-vault
 # as a subprocess whose working directory does not discover ansible.cfg, so the
 # vault_password_file setting there is not picked up automatically. Prefers the

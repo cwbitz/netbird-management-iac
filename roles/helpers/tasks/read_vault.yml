@@ -1,27 +1,27 @@
 ---
 # ==============================================================================
-# Read a per-host vault file (roles/helpers/tasks/vault_read.yml)
+# Read a per-host vault file (roles/helpers/tasks/read_vault.yml)
 # ==============================================================================
-# Reads <vault_read_dir>/<vault_read_file> (encrypted or plaintext) and sets the
-# fact named by vault_read_var to the parsed mapping ({} when the file is absent
+# Reads <read_vault_dir>/<read_vault_file> (encrypted or plaintext) and sets the
+# fact named by read_vault_var to the parsed mapping ({} when the file is absent
 # or empty). Read-only and check-mode safe; never writes.
 #
 # Params (include vars):
-#   vault_read_dir   Absolute directory holding the vault file. Required: no safe
+#   read_vault_dir   Absolute directory holding the vault file. Required: no safe
 #                    default exists, because inventory_dir is undefined when the
 #                    helper runs on implicit localhost.
-#   vault_read_file  Vault filename (e.g. vault.yml)
-#   vault_read_var   Output fact name (default: vault_read_data)
+#   read_vault_file  Vault filename (e.g. vault.yml)
+#   read_vault_var   Output fact name (default: read_vault_data)
 # ==============================================================================
 
 - name: "[VaultRead] Validate the read contract"
   tags: [always]
   ansible.builtin.assert:
     that:
-      - vault_read_dir is defined and (vault_read_dir | string | trim) | length > 0
-      - vault_read_file is defined and (vault_read_file | string | trim) | length > 0
-      - vault_read_file is regex('^[a-zA-Z0-9_.-]+\.yml$')
-    fail_msg: "vault_read requires vault_read_dir and a safe *.yml vault_read_file."
+      - read_vault_dir is defined and (read_vault_dir | string | trim) | length > 0
+      - read_vault_file is defined and (read_vault_file | string | trim) | length > 0
+      - read_vault_file is regex('^[a-zA-Z0-9_.-]+\.yml$')
+    fail_msg: "read_vault requires read_vault_dir and a safe *.yml read_vault_file."
   run_once: true
   delegate_to: localhost
   become: false
@@ -29,8 +29,8 @@
 - name: "[VaultRead] Stat the vault file"
   tags: [always]
   ansible.builtin.stat:
-    path: "{{ vault_read_dir }}/{{ vault_read_file }}"
-  register: vault_read_stat
+    path: "{{ read_vault_dir }}/{{ read_vault_file }}"
+  register: read_vault_stat
   check_mode: false
   delegate_to: localhost
   become: false
@@ -38,9 +38,9 @@
 - name: "[VaultRead] Slurp the vault file"
   tags: [always]
   ansible.builtin.slurp:
-    src: "{{ vault_read_dir }}/{{ vault_read_file }}"
-  register: vault_read_raw
-  when: vault_read_stat.stat.exists | default(false)
+    src: "{{ read_vault_dir }}/{{ read_vault_file }}"
+  register: read_vault_raw
+  when: read_vault_stat.stat.exists | default(false)
   check_mode: false
   delegate_to: localhost
   become: false
@@ -48,9 +48,9 @@
 - name: "[VaultRead] Determine whether the vault file is encrypted"
   tags: [always]
   ansible.builtin.set_fact:
-    vault_read_encrypted: >-
-      {{ (vault_read_stat.stat.exists | default(false))
-         and ('$ANSIBLE_VAULT' in (vault_read_raw.content | default('') | b64decode)) }}
+    read_vault_encrypted: >-
+      {{ (read_vault_stat.stat.exists | default(false))
+         and ('$ANSIBLE_VAULT' in (read_vault_raw.content | default('') | b64decode)) }}
   no_log: true
   delegate_to: localhost
   become: false
@@ -63,42 +63,42 @@
       - view
       - --vault-password-file
       - "{{ helper_vault_password_file }}"
-      - "{{ vault_read_dir }}/{{ vault_read_file }}"
-  register: vault_read_view
+      - "{{ read_vault_dir }}/{{ read_vault_file }}"
+  register: read_vault_view
   changed_when: false
   no_log: true
   check_mode: false
-  when: vault_read_encrypted | bool
+  when: read_vault_encrypted | bool
   delegate_to: localhost
   become: false
 
 - name: "[VaultRead] Set the parsed data (encrypted file)"
   tags: [always]
   ansible.builtin.set_fact:
-    "{{ vault_read_var | default('vault_read_data') }}": >-
-      {{ (vault_read_view.stdout | default('')) | from_yaml | default({}, true) }}
+    "{{ read_vault_var | default('read_vault_data') }}": >-
+      {{ (read_vault_view.stdout | default('')) | from_yaml | default({}, true) }}
   no_log: true
-  when: vault_read_encrypted | bool
+  when: read_vault_encrypted | bool
   delegate_to: localhost
   become: false
 
 - name: "[VaultRead] Set the parsed data (plaintext file)"
   tags: [always]
   ansible.builtin.set_fact:
-    "{{ vault_read_var | default('vault_read_data') }}": >-
-      {{ ((vault_read_raw.content | default('')) | b64decode) | from_yaml | default({}, true) }}
+    "{{ read_vault_var | default('read_vault_data') }}": >-
+      {{ ((read_vault_raw.content | default('')) | b64decode) | from_yaml | default({}, true) }}
   no_log: true
   when:
-    - vault_read_stat.stat.exists | default(false)
-    - not (vault_read_encrypted | bool)
+    - read_vault_stat.stat.exists | default(false)
+    - not (read_vault_encrypted | bool)
   delegate_to: localhost
   become: false
 
 - name: "[VaultRead] Set empty data when the file is absent"
   tags: [always]
   ansible.builtin.set_fact:
-    "{{ vault_read_var | default('vault_read_data') }}": {}
+    "{{ read_vault_var | default('read_vault_data') }}": {}
   no_log: true
-  when: not (vault_read_stat.stat.exists | default(false))
+  when: not (read_vault_stat.stat.exists | default(false))
   delegate_to: localhost
   become: false

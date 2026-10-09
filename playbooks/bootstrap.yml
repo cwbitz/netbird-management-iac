@@ -222,11 +222,11 @@
     - name: "[Bootstrap] Provision a service-account password (no key supplied)"
       ansible.builtin.include_role:
         name: helpers
-        tasks_from: vault_secrets_dispatch
+        tasks_from: dispatch_secrets
       vars:
-        vault_secrets_component: "netbird_bootstrap"
-        vault_secrets_vault_file: "vault.yml"
-        vault_secrets_list:
+        secrets_component: "netbird_bootstrap"
+        secrets_vault_file: "vault.yml"
+        secrets_list:
           - var: "vault_host_ansible_password"
             type: "base64"
             length: 18
@@ -276,11 +276,11 @@
     - name: "[Bootstrap] Provision the admin password (enabled, none supplied)"
       ansible.builtin.include_role:
         name: helpers
-        tasks_from: vault_secrets_dispatch
+        tasks_from: dispatch_secrets
       vars:
-        vault_secrets_component: "netbird_admin"
-        vault_secrets_vault_file: "vault.yml"
-        vault_secrets_list:
+        secrets_component: "netbird_admin"
+        secrets_vault_file: "vault.yml"
+        secrets_list:
           - var: "vault_host_admin_password"
             type: "base64"
             length: 18

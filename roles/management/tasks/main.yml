@@ -60,11 +60,11 @@
   tags: [netbird]
   ansible.builtin.include_role:
     name: helpers
-    tasks_from: vault_secrets_dispatch
+    tasks_from: dispatch_secrets
   vars:
-    vault_secrets_component: "netbird_server"
-    vault_secrets_vault_file: "vault.yml"
-    vault_secrets_list:
+    secrets_component: "netbird_server"
+    secrets_vault_file: "vault.yml"
+    secrets_list:
       - var: "vault_relay_auth_secret"
         type: "base64"
         length: 32
@@ -160,11 +160,11 @@
   tags: [netbird, netbird_owner]
   ansible.builtin.include_role:
     name: helpers
-    tasks_from: vault_secrets_dispatch
+    tasks_from: dispatch_secrets
   vars:
-    vault_secrets_component: "netbird_owner"
-    vault_secrets_vault_file: "vault.yml"
-    vault_secrets_list:
+    secrets_component: "netbird_owner"
+    secrets_vault_file: "vault.yml"
+    secrets_list:
       - var: "vault_owner_password"
         type: "base64"
         length: 24
@@ -319,11 +319,11 @@
     - name: "[NetBird] Persist the service-user access token in the vault"
       ansible.builtin.include_role:
         name: helpers
-        tasks_from: vault_secret_store
+        tasks_from: store_secret
       vars:
-        vault_secret_store_file: "vault.yml"
-        vault_secret_store_var: "vault_admin_service_user_access_token"
-        vault_secret_store_value: "{{ admin_service_user_token.json.plain_token }}"
+        secret_store_file: "vault.yml"
+        secret_store_var: "vault_admin_service_user_access_token"
+        secret_store_value: "{{ admin_service_user_token.json.plain_token }}"
 
     - name: "[NetBird] List the owner's access tokens"
       ansible.builtin.uri:

@@ -159,11 +159,11 @@
     - name: "[Tenant] Persist newly created setup key values in the vault"
       ansible.builtin.include_role:
         name: helpers
-        tasks_from: vault_secret_store
+        tasks_from: store_secret
       vars:
-        vault_secret_store_file: "vault.yml"
-        vault_secret_store_var: "vault_setup_key_{{ item.item.name | regex_replace('[^A-Za-z0-9_]', '_') }}"
-        vault_secret_store_value: "{{ item.setup_key.key }}"
+        secret_store_file: "vault.yml"
+        secret_store_var: "vault_setup_key_{{ item.item.name | regex_replace('[^A-Za-z0-9_]', '_') }}"
+        secret_store_value: "{{ item.setup_key.key }}"
       loop: "{{ (netbird_setup_key_results | default({'results': []})).results }}"
       loop_control:
         label: "{{ item.item.name }}"

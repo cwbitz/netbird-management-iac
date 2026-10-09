@@ -204,7 +204,7 @@ is Debian-only.
   `update_password: on_create`, so re-runs are idempotent and a host-side password
   rotation is preserved. `ansible` gets passwordless sudo; `admin` gets password
   sudo (`ALL=(ALL) ALL`).
-- The vault file must never stay plaintext: `vault_write` always encrypts, and a
+- The vault file must never stay plaintext: `write_vault` always encrypts, and a
   plaintext `vault.yml` (e.g. restored from backup) is re-encrypted on the next
   write by the vault helpers.
 - The built-in Traefik owns `172.30.0.10` in the `netbird` bridge network and is
@@ -280,9 +280,9 @@ is Debian-only.
   - `control_node_prereqs.yml` — openssl availability check.
   - `install_docker.yml` — install Docker Engine + Compose v2 when missing
     (`install_docker`, default true; false makes a missing Docker fatal).
-  - `vault_read.yml` / `vault_write.yml` — read/encrypt the per-host vault file.
-  - `vault_secrets_dispatch.yml` / `vault_secrets_generate.yml` /
-    `vault_secret_store.yml` — per-host encrypted secret provisioning.
+  - `read_vault.yml` / `write_vault.yml` — read/encrypt the per-host vault file.
+  - `dispatch_secrets.yml` / `generate_secrets.yml` /
+    `store_secret.yml` — per-host encrypted secret provisioning.
 - `roles/management/` — the deploy. `tasks/main.yml` runs preflight checks,
   provisions secrets, renders `config.yaml` / `dashboard.env` /
   `docker-compose.yml` from `templates/`, deploys with `docker_compose_v2`, waits

@@ -27,8 +27,6 @@ backup/
 # inventory/host_vars/example/vault.yml.example.
 **/vault.yml
 **/vault_*.yml
-# Keep role task files that merely start with vault_ (source, not secrets).
-!roles/**/vault_*.yml
 
 # Real per-host inventory is local-only; only the example/ template is committed.
 inventory/host_vars/*
