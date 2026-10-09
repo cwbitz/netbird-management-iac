@@ -330,6 +330,14 @@ lint: vault-init
 	$(ANS_PLAY) --syntax-check playbooks/monitoring.yml
 	ansible-lint playbooks/site.yml playbooks/tenant.yml playbooks/bootstrap.yml playbooks/backup.yml playbooks/restore.yml playbooks/monitoring.yml
 
+# Transient-network retry for the tenant apply. The pinned collection does not
+# retry API calls, and a cross-region link can drop a small fraction of TLS
+# handshakes; scripts/retry-transient.sh re-runs only on a network-level failure
+# (a config/auth error still fails fast). See the script for the knobs.
+RETRY_RUN          ?= $(CURDIR)/scripts/retry-transient.sh
+TENANT_RETRY_MAX   ?= 5
+TENANT_RETRY_DELAY ?= 8
+
 .PHONY: dry-run
 dry-run: vault-init agent-fallback ## Dry-run (--check --diff); HOST_KEY=1 refreshes host keys first
 	@if [ -n "$(HOST_KEY)" ]; then $(MAKE) --no-print-directory hostkey-init; fi; \
@@ -344,7 +352,8 @@ deploy: vault-init agent-fallback ## One-shot: bootstrap the host, deploy the se
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) $(PLAYBOOK) $(if $(TAGS),--tags $(TAGS),)
 	@if [ -z "$(TAGS)" ]; then \
 		echo "==> Applying the tenant config-as-code state (playbooks/tenant.yml)..."; \
-		$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml -e tenant_commit=true; \
+		RETRY_MAX=$(TENANT_RETRY_MAX) RETRY_DELAY=$(TENANT_RETRY_DELAY) \
+			$(RETRY_RUN) $(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml -e tenant_commit=true; \
 	fi
 
 .PHONY: plan
@@ -353,7 +362,8 @@ plan: vault-init agent-fallback ## Tenant config-as-code: read-only diff (safe)
 
 .PHONY: apply
 apply: vault-init agent-fallback ## Tenant config-as-code: apply desired state (strict via tenant_strict in host_vars)
-	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml -e tenant_commit=true
+	RETRY_MAX=$(TENANT_RETRY_MAX) RETRY_DELAY=$(TENANT_RETRY_DELAY) \
+		$(RETRY_RUN) $(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml -e tenant_commit=true
 
 .PHONY: monitoring
 monitoring: vault-init agent-fallback ## Optional host monitoring + host security (CrowdSec + node_exporter); opt-in via host_monitoring_enabled

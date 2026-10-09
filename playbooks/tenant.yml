@@ -66,6 +66,9 @@
         status_code: [200, 401, 403]
         return_content: false
       register: token_probe
+      until: token_probe.status | default(0) in [200, 401, 403]
+      retries: 10
+      delay: 5
       changed_when: false
       no_log: true
 
