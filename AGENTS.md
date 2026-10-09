@@ -143,15 +143,15 @@ is Debian-only.
   Keep `vault.yml` separately; a restore needs the same datastore key.
 - `make monitoring` — optional host monitoring + host security (Debian-family):
   installs `prometheus-node-exporter`, `crowdsec` (journald-based detection) and
-  the `crowdsec-firewall-bouncer` (nftables enforcement). Opt-in per host with
-  `host_monitoring_enabled: true` in `host_vars/<host>/main.yml`; default off.
-  node_exporter listens on `127.0.0.1:9100` unless `host_monitoring_node_exporter_listen`
-  is widened for a trusted central scraper. With
-  `host_monitoring_netbird_enabled: true` the host also joins the overlay (via
-  `vault_setup_key_vps_enrollment`, a `vps`-group key that grants no
-  exit/LAN routes) and the exporters bind the overlay address; with
-  `host_monitoring_alloy_enabled: true` + `host_monitoring_loki_url` an Alloy
-  container ships journald SSH events to a central Loki over the overlay.
+  the `crowdsec-firewall-bouncer` (nftables enforcement), and runs a NetBird
+  overlay agent. Opt-in per host with `monitoring_enabled: true` in
+  `host_vars/<host>/main.yml`; default off. node_exporter listens on
+  `127.0.0.1:9100` plus the overlay address unless `node_exporter_listen_addr`
+  is changed. The agent joins the overlay via `host_setup_key` (default
+  `vault_setup_key_vps_enrollment`, a `vps`-group key that grants no exit/LAN
+  routes) and the exporters bind the overlay address; with `alloy_enabled: true`
+  + `loki_url` an Alloy container ships journald SSH events to a central Loki
+  over the overlay.
 - `make print [HOST=<name>]` — resolved host vars incl. decrypted vault; HOST
   is auto-detected when the inventory has a single host.
 
@@ -245,7 +245,7 @@ is Debian-only.
 
 ## Role layout
 
-- `playbooks/site.yml` — server preflight + the `netbird_server` role.
+- `playbooks/site.yml` — server preflight + the `management` role.
 - `playbooks/bootstrap.yml` — **optional, opt-in** host tuning: APT mirror
   (`host_apt_mirror`, security mirror derived) + Docker registry mirrors
   (`docker_registry_mirrors`), ensures Docker Engine + Compose v2 (installing
@@ -283,14 +283,15 @@ is Debian-only.
   - `vault_read.yml` / `vault_write.yml` — read/encrypt the per-host vault file.
   - `vault_secrets_dispatch.yml` / `vault_secrets_generate.yml` /
     `vault_secret_store.yml` — per-host encrypted secret provisioning.
-- `roles/netbird_server/` — the deploy. `tasks/main.yml` runs preflight checks,
+- `roles/management/` — the deploy. `tasks/main.yml` runs preflight checks,
   provisions secrets, renders `config.yaml` / `dashboard.env` /
   `docker-compose.yml` from `templates/`, deploys with `docker_compose_v2`, waits
   for TLS readiness, then optionally creates the first owner.
   `defaults/main.yml` holds every image tag behind a `_version` var.
-- `roles/host_monitoring/` — optional, opt-in (`make monitoring`). Apt-installs
+- `roles/monitoring/` — optional, opt-in (`make monitoring`). Apt-installs
   `prometheus-node-exporter` + `crowdsec` + `crowdsec-firewall-bouncer` on a
-  Debian-family host; skipped unless `host_monitoring_enabled: true`.
+  Debian-family host and runs a NetBird overlay agent; skipped unless
+  `monitoring_enabled: true`.
 
 ## Image version baseline
 

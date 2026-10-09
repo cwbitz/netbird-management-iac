@@ -162,23 +162,21 @@ make restore FROM=backup/<host>/<stamp>  # 成对恢复
 make monitoring
 ```
 
-按主机 opt-in：设置 `host_monitoring_enabled: true` 后，安装
+按主机 opt-in：设置 `monitoring_enabled: true` 后，安装
 `prometheus-node-exporter` 与 `crowdsec`（基于 journald 的检测），以及
-`crowdsec-firewall-bouncer`（nftables 拦截）。node_exporter 默认只监听
-`127.0.0.1:9100`；如需对可信的采集端开放，可用
-`host_monitoring_node_exporter_listen` 放宽。无需公网端口时，设置
-`host_monitoring_netbird_enabled: true`：主机通过租户的 `vps` 组加入 overlay
-（`vault_setup_key_vps_enrollment`，该组不授予任何 exit/LAN 路由），各 exporter
-随之绑定 overlay 地址。再设置 `host_monitoring_alloy_enabled: true` 与
-`host_monitoring_loki_url`，Alloy 容器会把 journald 的 SSH 事件经 overlay 推送到
-中心 Loki。
+`crowdsec-firewall-bouncer`（nftables 拦截），并运行 NetBird overlay agent：主机
+通过租户的 `vps` 组加入 overlay（`host_setup_key`，默认
+`vault_setup_key_vps_enrollment`，该组不授予任何 exit/LAN 路由），各 exporter
+随之绑定 overlay 地址，无需公网端口。node_exporter 默认监听 `127.0.0.1:9100`
+再加 overlay 地址；可用 `node_exporter_listen_addr` 调整本机监听地址。再设置
+`alloy_enabled: true` 与 `loki_url`，Alloy 容器会把 journald 的 SSH 事件经
+overlay 推送到中心 Loki。
 
 ```yaml
 # inventory/host_vars/<host>/main.yml
-host_monitoring_enabled: true
-host_monitoring_netbird_enabled: true
-host_monitoring_alloy_enabled: true
-host_monitoring_loki_url: "http://<loki-overlay-ip>:3100"
+monitoring_enabled: true
+alloy_enabled: true
+loki_url: "http://<loki-overlay-ip>:3100"
 ```
 
 ## 区域受限主机的镜像源（可选）
@@ -197,9 +195,9 @@ docker_registry_mirrors:
 
 ```
 inventory/           # hosts.yml(.example)、group_vars/netbird、host_vars/example
-playbooks/site.yml   # server preflight + netbird_server role
+playbooks/site.yml   # server preflight + management role
 playbooks/tenant.yml # 租户 config-as-code（community.ansible_netbird）
-roles/netbird_server # defaults（镜像版本）、tasks、templates/
+roles/management     # defaults（镜像版本）、tasks、templates/
 roles/helpers/       # 共享的 vault 密钥生成
 docs/RUNBOOK.md      # 运维手册（部署、备份恢复、回滚）
 ```

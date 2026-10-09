@@ -193,24 +193,21 @@ decrypted. `backup/` is gitignored; keep a copy off-host.
 make monitoring
 ```
 
-Opt-in per host with `host_monitoring_enabled: true`; installs
+Opt-in per host with `monitoring_enabled: true`; installs
 `prometheus-node-exporter` and `crowdsec` (journald-based detection) plus the
-`crowdsec-firewall-bouncer` (nftables enforcement). node_exporter binds
-`127.0.0.1:9100` unless `host_monitoring_node_exporter_listen` is widened.
-
-To scrape over the overlay instead of a public port, set
-`host_monitoring_netbird_enabled: true`: the host joins the mesh through the
-tenant `vps` group (`vault_setup_key_vps_enrollment`), which grants no exit/LAN
-routes, and the exporters bind the overlay address. With
-`host_monitoring_alloy_enabled: true` and `host_monitoring_loki_url`, an Alloy
-container also ships journald SSH events to a central Loki over the overlay.
+`crowdsec-firewall-bouncer` (nftables enforcement), and runs a NetBird overlay
+agent that joins the host to the mesh through the tenant `vps` group
+(`host_setup_key`, default `vault_setup_key_vps_enrollment`, which grants no
+exit/LAN routes). node_exporter binds `127.0.0.1:9100` plus the overlay address
+unless `node_exporter_listen_addr` is changed. With `alloy_enabled: true` and
+`loki_url`, an Alloy container also ships journald SSH events to a central Loki
+over the overlay.
 
 ```yaml
 # inventory/host_vars/<host>/main.yml
-host_monitoring_enabled: true
-host_monitoring_netbird_enabled: true
-host_monitoring_alloy_enabled: true
-host_monitoring_loki_url: "http://<loki-overlay-ip>:3100"
+monitoring_enabled: true
+alloy_enabled: true
+loki_url: "http://<loki-overlay-ip>:3100"
 ```
 
 ## Mirrors for region-restricted hosts (optional)
@@ -230,9 +227,9 @@ docker_registry_mirrors:
 
 ```
 inventory/           # hosts.yml(.example), group_vars/netbird, host_vars/example
-playbooks/site.yml   # server preflight + netbird_server role
+playbooks/site.yml   # server preflight + management role
 playbooks/tenant.yml # tenant config-as-code (community.ansible_netbird)
-roles/netbird_server # defaults (image pins), tasks, templates/
+roles/management     # defaults (image pins), tasks, templates/
 roles/helpers/       # shared vault-secret provisioning
 docs/RUNBOOK.md      # operations runbook (deploy, backup/restore, rollback)
 ```
