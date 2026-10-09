@@ -1,7 +1,7 @@
 ---
 # ==============================================================================
 # Deploy the self-hosted NetBird server
-# (roles/netbird_server/tasks/main.yml)
+# (roles/management/tasks/main.yml)
 # ==============================================================================
 # Deploys the combined server container (Management + Signal + Relay + STUN +
 # embedded Dex IdP), the dashboard, and a built-in Traefik reverse proxy that

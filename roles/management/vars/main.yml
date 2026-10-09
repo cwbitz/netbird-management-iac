@@ -1,6 +1,6 @@
 ---
 # ==============================================================================
-# netbird_server role internal constants (roles/netbird_server/vars/main.yml)
+# management role internal constants (roles/management/vars/main.yml)
 # ==============================================================================
 # Values the role owns; kept out of defaults/main.yml so inventory cannot
 # override them.
@@ -8,4 +8,4 @@
 # --- Volumes -----------------------------------------------------------------
 # Explicit names keep the volumes stable regardless of the compose project dir.
 netbird_data_volume: "netbird_data"
-netbird_traefik_certs_volume: "netbird_traefik_letsencrypt"
+traefik_certs_volume: "traefik_letsencrypt"

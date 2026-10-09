@@ -81,7 +81,7 @@ GeoLite2 DBs from `pkgs.netbird.io`. If the readiness wait times out, re-run
 - Edit `inventory/host_vars/<host>/main.yml` (non-secret) or the vault (secret),
   then `make deploy`. Config templates notify the restart handler, so the stack
   restarts when config changes.
-- Image versions live in `roles/netbird_server/defaults/main.yml`
+- Image versions live in `roles/management/defaults/main.yml`
   (Renovate-tracked); the dashboard follows `latest`.
 - Never edit rendered files under `{{ stack_dir }}` on the host — rendering is
   the source of truth.
@@ -138,7 +138,7 @@ Verify after restore: the OIDC discovery URL answers and users can log in.
 ## 6. Upgrade and rollback
 
 - **Upgrade**: let Renovate bump the pinned tags (or edit
-  `roles/netbird_server/defaults/main.yml`), then `make deploy`.
+  `roles/management/defaults/main.yml`), then `make deploy`.
 - **Version rollback**: set the previous tag and re-run `make deploy`.
 - **Full rollback**: restore from a matching backup (data **and** the same
   `vault.yml`).

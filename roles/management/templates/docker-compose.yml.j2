@@ -1,6 +1,6 @@
 # ==============================================================================
 # NetBird self-hosted stack (combined server + dashboard + built-in Traefik)
-# Rendered by the netbird_server Ansible role. Do NOT edit on the target host.
+# Rendered by the management Ansible role. Do NOT edit on the target host.
 # ==============================================================================
 services:
   # Traefik reverse proxy (automatic TLS via Let's Encrypt TLS-ALPN).
@@ -118,7 +118,7 @@ volumes:
   netbird_data:
     name: "{{ netbird_data_volume }}"
   traefik_letsencrypt:
-    name: "{{ netbird_traefik_certs_volume }}"
+    name: "{{ traefik_certs_volume }}"
 
 networks:
   netbird:

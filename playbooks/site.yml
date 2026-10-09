@@ -40,4 +40,4 @@
   hosts: netbird
   gather_facts: true
   roles:
-    - role: netbird_server
+    - role: management

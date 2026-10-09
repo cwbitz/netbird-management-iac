@@ -69,7 +69,7 @@
 
     - name: "[Restore] Redeploy the stack with the current vault key"
       ansible.builtin.include_role:
-        name: netbird_server
+        name: management
 
     - name: "[Restore] Report"
       ansible.builtin.debug:

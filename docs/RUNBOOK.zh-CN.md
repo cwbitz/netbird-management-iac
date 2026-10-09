@@ -71,7 +71,7 @@ ssh <host> 'cd /opt/netbird && docker compose ps'
 
 - 编辑 `inventory/host_vars/<host>/main.yml`（非机密）或 vault（机密），然后
   `make deploy`。配置模板会触发重启 handler，因此配置变更会重启容器栈。
-- 镜像版本在 `roles/netbird_server/defaults/main.yml`（由 Renovate 跟踪）；dashboard
+- 镜像版本在 `roles/management/defaults/main.yml`（由 Renovate 跟踪）；dashboard
   跟随 `latest`。
 - 切勿编辑主机上 `{{ stack_dir }}` 下渲染出的文件——渲染才是唯一事实来源。
 
@@ -121,7 +121,7 @@ make restore FROM=backup/<host>/<stamp>
 ## 6. 升级与回滚
 
 - **升级**：让 Renovate 更新固定 tag（或手动改
-  `roles/netbird_server/defaults/main.yml`），再 `make deploy`。
+  `roles/management/defaults/main.yml`），再 `make deploy`。
 - **版本回滚**：把 tag 改回上一版本，重跑 `make deploy`。
 - **整体回滚**：从匹配的备份恢复（数据**和**同一份 `vault.yml`）。
 - **配置回滚**：`git revert` 或改回 per-host 变量，再 `make deploy`。

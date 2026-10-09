@@ -1,6 +1,6 @@
 ---
 # ==============================================================================
-# Role defaults (roles/netbird_server/defaults/main.yml)
+# Role defaults (roles/management/defaults/main.yml)
 # ==============================================================================
 # Container tags are pinned here and kept current by Renovate (see the
 # "# renovate:" annotation above each var).

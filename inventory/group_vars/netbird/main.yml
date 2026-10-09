@@ -4,7 +4,7 @@
 # (inventory/group_vars/netbird/main.yml)
 # ==============================================================================
 # Per-host overrides go in inventory/host_vars/<hostname>/main.yml; image and
-# behaviour defaults live in roles/netbird_server/defaults/main.yml.
+# behaviour defaults live in roles/management/defaults/main.yml.
 
 # Target-host directory holding the rendered stack (docker-compose.yml,
 # config.yaml, dashboard.env).
