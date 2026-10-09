@@ -81,6 +81,19 @@ owner_password: "{{ vault_owner_password | default('', true) }}"
 # pkgs.netbird.io; set true on air-gapped/slow-CDN hosts — see AGENTS.md).
 # disable_geolite_update: true
 
+# --- Optional host monitoring + host security (make monitoring) --------------
+# Installs prometheus-node-exporter + CrowdSec (+ the nftables firewall bouncer)
+# on the host. Opt-in (default off). node_exporter is localhost-only by default;
+# widen it to the NetBird overlay IP only when a trusted scraper must reach it.
+# host_monitoring_enabled: true
+# host_monitoring_node_exporter_listen: "127.0.0.1:9100"
+# Join the host to the overlay (tenant `vps` group, no exit/LAN routes) so a
+# central Prometheus/Alloy reaches it with no public port; then optionally ship
+# host logs to a central Loki reachable over the overlay.
+# host_monitoring_netbird_enabled: true
+# host_monitoring_alloy_enabled: true
+# host_monitoring_loki_url: "http://<loki-overlay-ip>:3100"
+
 # --- Optional host bootstrap (make host-bootstrap) ---------------------------
 # Region-specific mirrors for hosts where the defaults are slow/blocked (e.g.
 # China-based VPS). This playbook is opt-in and NOT part of make deploy.

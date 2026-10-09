@@ -156,6 +156,31 @@ make restore FROM=backup/<host>/<stamp>  # 成对恢复
 该文件重新渲染，因此它必须与归档数据来自同一时刻的同一密钥，否则数据无法解密。
 `backup/` 已 gitignore；请另存异地副本。
 
+## 主机监控与主机安全（可选）
+
+```bash
+make monitoring
+```
+
+按主机 opt-in：设置 `host_monitoring_enabled: true` 后，安装
+`prometheus-node-exporter` 与 `crowdsec`（基于 journald 的检测），以及
+`crowdsec-firewall-bouncer`（nftables 拦截）。node_exporter 默认只监听
+`127.0.0.1:9100`；如需对可信的采集端开放，可用
+`host_monitoring_node_exporter_listen` 放宽。无需公网端口时，设置
+`host_monitoring_netbird_enabled: true`：主机通过租户的 `vps` 组加入 overlay
+（`vault_setup_key_vps_enrollment`，该组不授予任何 exit/LAN 路由），各 exporter
+随之绑定 overlay 地址。再设置 `host_monitoring_alloy_enabled: true` 与
+`host_monitoring_loki_url`，Alloy 容器会把 journald 的 SSH 事件经 overlay 推送到
+中心 Loki。
+
+```yaml
+# inventory/host_vars/<host>/main.yml
+host_monitoring_enabled: true
+host_monitoring_netbird_enabled: true
+host_monitoring_alloy_enabled: true
+host_monitoring_loki_url: "http://<loki-overlay-ip>:3100"
+```
+
 ## 区域受限主机的镜像源（可选）
 
 `make host-bootstrap`（可选，**不**在 `deploy` 内）可把主机指向替代软件源——适合中国

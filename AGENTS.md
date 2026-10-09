@@ -138,6 +138,17 @@ is Debian-only.
 - `make backup` / `make restore FROM=backup/<host>/<stamp>` —
   stop-container snapshot of the `netbird_data` volume, and the paired restore.
   Keep `vault.yml` separately; a restore needs the same datastore key.
+- `make monitoring` — optional host monitoring + host security (Debian-family):
+  installs `prometheus-node-exporter`, `crowdsec` (journald-based detection) and
+  the `crowdsec-firewall-bouncer` (nftables enforcement). Opt-in per host with
+  `host_monitoring_enabled: true` in `host_vars/<host>/main.yml`; default off.
+  node_exporter listens on `127.0.0.1:9100` unless `host_monitoring_node_exporter_listen`
+  is widened for a trusted central scraper. With
+  `host_monitoring_netbird_enabled: true` the host also joins the overlay (via
+  `vault_setup_key_vps_enrollment`, a `vps`-group key that grants no
+  exit/LAN routes) and the exporters bind the overlay address; with
+  `host_monitoring_alloy_enabled: true` + `host_monitoring_loki_url` an Alloy
+  container ships journald SSH events to a central Loki over the overlay.
 - `make print [HOST=<name>]` — resolved host vars incl. decrypted vault; HOST
   is auto-detected when the inventory has a single host.
 
@@ -274,6 +285,9 @@ is Debian-only.
   `docker-compose.yml` from `templates/`, deploys with `docker_compose_v2`, waits
   for TLS readiness, then optionally creates the first owner.
   `defaults/main.yml` holds every image tag behind a `_version` var.
+- `roles/host_monitoring/` — optional, opt-in (`make monitoring`). Apt-installs
+  `prometheus-node-exporter` + `crowdsec` + `crowdsec-firewall-bouncer` on a
+  Debian-family host; skipped unless `host_monitoring_enabled: true`.
 
 ## Image version baseline
 
@@ -292,7 +306,8 @@ current (see `renovate.json`).
 - **In scope**: self-hosted server + dashboard + built-in Traefik, embedded Dex
   IdP (local users), optional first-owner bootstrap (which also provisions the
   `admin` service-user PAT for tenant automation), tenant/ACL config-as-code
-  (`playbooks/tenant.yml` + per-host vars), and backup/restore.
+  (`playbooks/tenant.yml` + per-host vars), optional host monitoring/host
+  security (`playbooks/monitoring.yml`), and backup/restore.
 - **Not codifiable** (inherent): **peers** are enrolled devices (only settings are
   managed; devices re-enroll with setup keys), local-user **passwords** (returned
   once at creation), setup-key/PAT **secret values** (returned once), IdP client

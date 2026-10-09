@@ -327,7 +327,8 @@ lint: vault-init
 	$(ANS_PLAY) --syntax-check playbooks/bootstrap.yml
 	$(ANS_PLAY) --syntax-check playbooks/backup.yml
 	$(ANS_PLAY) --syntax-check playbooks/restore.yml
-	ansible-lint playbooks/site.yml playbooks/tenant.yml playbooks/bootstrap.yml playbooks/backup.yml playbooks/restore.yml
+	$(ANS_PLAY) --syntax-check playbooks/monitoring.yml
+	ansible-lint playbooks/site.yml playbooks/tenant.yml playbooks/bootstrap.yml playbooks/backup.yml playbooks/restore.yml playbooks/monitoring.yml
 
 .PHONY: dry-run
 dry-run: vault-init agent-fallback ## Dry-run (--check --diff); HOST_KEY=1 refreshes host keys first
@@ -353,6 +354,10 @@ plan: vault-init agent-fallback ## Tenant config-as-code: read-only diff (safe)
 .PHONY: apply
 apply: vault-init agent-fallback ## Tenant config-as-code: apply desired state (strict via tenant_strict in host_vars)
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml -e tenant_commit=true
+
+.PHONY: monitoring
+monitoring: vault-init agent-fallback ## Optional host monitoring + host security (CrowdSec + node_exporter); opt-in via host_monitoring_enabled
+	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/monitoring.yml
 
 .PHONY: backup
 backup: vault-init agent-fallback ## Back up the netbird_data volume (key stays in vault.yml)

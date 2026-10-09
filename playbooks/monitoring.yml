@@ -1,0 +1,21 @@
+---
+# ==============================================================================
+# Optional VPS host monitoring + host security.
+#
+#   make monitoring
+#
+# Installs prometheus-node-exporter + CrowdSec (+ the nftables firewall bouncer)
+# on a Debian-family host. Opt-in per host with `host_monitoring_enabled: true`
+# in inventory/host_vars/<host>/main.yml; when unset/false the role is skipped.
+#
+# Metrics and CrowdSec events are meant to be visualized from the sibling
+# docker-stack-iac central stack (Prometheus/Grafana/Loki); this playbook only
+# installs the host-side agents. See roles/host_monitoring for details.
+# ==============================================================================
+
+- name: Optional host monitoring and host security
+  hosts: netbird
+  gather_facts: true
+  roles:
+    - role: host_monitoring
+      when: host_monitoring_enabled | default(false) | bool

@@ -1,0 +1,43 @@
+---
+# ==============================================================================
+# Role defaults (roles/host_monitoring/defaults/main.yml)
+# ==============================================================================
+# Optional VPS host monitoring + host security (Debian-family, apt-based).
+# Opt-in: set `host_monitoring_enabled: true` in
+# inventory/host_vars/<host>/main.yml. When false (default) the role is skipped.
+
+host_monitoring_enabled: false
+
+# Stack directory for the optional Docker services (overlay peer / log shipper).
+host_monitoring_dir: "/opt/netbird/monitoring"
+
+# Components (each independently disableable).
+host_monitoring_node_exporter_enabled: true
+host_monitoring_crowdsec_enabled: true
+host_monitoring_crowdsec_firewall_bouncer_enabled: true
+
+# node_exporter listen address. Localhost-only by default; when the overlay peer
+# is enabled the role ALSO binds the overlay address, so a central Prometheus
+# can scrape it without any public port.
+host_monitoring_node_exporter_listen: "127.0.0.1:9100"
+
+# --- NetBird overlay peer (optional) -----------------------------------------
+# Join the server host itself to the mesh so a central Prometheus/Alloy can
+# reach its exporters over the overlay, with no public port. Use a setup key
+# whose group grants NO exit/LAN routes (the tenant's `vps` group): Auto Apply
+# would otherwise install exit/LAN routes and could hijack the host's default
+# route, breaking public SSH.
+host_monitoring_netbird_enabled: false
+host_monitoring_netbird_setup_key: "{{ vault_setup_key_vps_enrollment | default('', true) }}"
+host_monitoring_netbird_management_url: "https://{{ domain_name }}"
+host_monitoring_netbird_hostname: "{{ inventory_hostname }}"
+# renovate: datasource=docker depName=ghcr.io/netbirdio/netbird
+host_monitoring_netbird_version: "0.77.0"
+
+# --- Log shipping to a central Loki over the overlay (optional) ---------------
+# Requires host_monitoring_netbird_enabled and a central Loki reachable at
+# host_monitoring_loki_url over the overlay (e.g. "http://100.125.0.5:3100").
+host_monitoring_alloy_enabled: false
+host_monitoring_loki_url: ""
+# renovate: datasource=docker depName=grafana/alloy
+host_monitoring_alloy_version: "v1.18.1"
