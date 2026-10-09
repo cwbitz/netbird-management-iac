@@ -135,9 +135,9 @@ owner_password: "{{ vault_owner_password | default('', true) }}"
 # netbird_settings:
 #   # Authentication
 #   peer_login_expiration_enabled: true        # require periodic SSO re-auth (setup-key peers exempt)
-#   peer_login_expiration: 604800              # 7 days (seconds)
+#   peer_login_expire_seconds: 604800          # 7 days (seconds)
 #   peer_inactivity_expiration_enabled: false
-#   peer_inactivity_expiration: 2592000        # 30 days (only used when enabled)
+#   peer_inactivity_expire_seconds: 2592000    # 30 days (only used when enabled)
 #   extra_user_approval_required: false        # approve users auto-joining by email domain
 #   # extra_peer_approval_enabled: false       # ENTERPRISE
 #   # Permissions

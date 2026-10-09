@@ -274,7 +274,12 @@ is Debian-only.
   `netbird_dns_disabled_management_groups`, `netbird_networks`,
   `netbird_setup_keys`, `netbird_services` + `netbird_service_domains`, and
   `netbird_users` / `netbird_service_users`). Plain names are resolved to IDs.
-  The generated directory is never hand-edited.
+  The generated directory is never hand-edited. Exception: within
+  `netbird_settings` the peer expiry durations use the project convention
+  `peer_login_expire_seconds` / `peer_inactivity_expire_seconds`, which
+  `playbooks/tenant.yml` maps to the collection's `peer_login_expiration` /
+  `peer_inactivity_expiration` fields when rendering; the `*_expiration_enabled`
+  toggles keep the collection names.
 - `roles/helpers/` — a real role (no `tasks/main.yml`), always invoked via
   `include_role` + `tasks_from`:
   - `control_node_prereqs.yml` — openssl availability check.

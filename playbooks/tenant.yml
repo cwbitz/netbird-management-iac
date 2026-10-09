@@ -112,6 +112,22 @@
         - "access_control"
         - "dns"
 
+    # netbird_settings uses the collection's native field names, except the peer
+    # expiry DURATIONS, which follow the project convention (*_expire_<unit>);
+    # the *_expiration_enabled toggles keep the collection names. Map the
+    # durations back to the collection/API names before rendering settings.yml.
+    - name: "[Tenant] Map project expiry durations to the collection's settings fields"
+      ansible.builtin.set_fact:
+        netbird_settings: >-
+          {%- set field_map = {
+               'peer_login_expire_seconds': 'peer_login_expiration',
+               'peer_inactivity_expire_seconds': 'peer_inactivity_expiration' } -%}
+          {%- set ns = namespace(out={}) -%}
+          {%- for key, value in (netbird_settings | default({})).items() -%}
+          {%-   set _ = ns.out.update({ field_map.get(key, key): value }) -%}
+          {%- endfor -%}
+          {{ ns.out }}
+
     - name: "[Tenant] Render the single-variable config files"
       ansible.builtin.copy:
         dest: "{{ tenant_build_dir }}/{{ item.path }}"
