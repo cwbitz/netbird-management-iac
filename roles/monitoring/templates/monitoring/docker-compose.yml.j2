@@ -1,27 +1,8 @@
 # ==============================================================================
-# Monitoring Docker services (NetBird overlay agent + optional Alloy log shipper)
+# Monitoring log shipper (Alloy) - the overlay agent is deployed by roles/agent.
 # Managed by Ansible - do not edit on the target host.
 # ==============================================================================
 services:
-  netbird:
-    image: "{{ netbird_agent_image }}:{{ netbird_agent_version }}"
-    container_name: netbird
-    restart: unless-stopped
-    stop_grace_period: 15s
-    network_mode: host
-    cap_add:
-      - NET_ADMIN
-      - SYS_ADMIN
-      - SYS_RESOURCE
-    devices:
-      - /dev/net/tun
-    environment:
-      NB_SETUP_KEY: "{{ host_setup_key }}"
-      NB_MANAGEMENT_URL: "https://{{ domain_name }}"
-      NB_HOSTNAME: "{{ inventory_hostname }}"
-    volumes:
-      - netbird_config:/var/lib/netbird
-{% if alloy_enabled | bool %}
   alloy:
     image: "{{ alloy_image }}:{{ alloy_version }}"
     container_name: alloy
@@ -36,8 +17,3 @@ services:
       - /var/log/journal:/var/log/journal:ro
       - /run/log/journal:/run/log/journal:ro
       - /etc/machine-id:/etc/machine-id:ro
-{% endif %}
-
-volumes:
-  netbird_config:
-    name: netbird_config

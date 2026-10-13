@@ -5,18 +5,20 @@
 #   make monitoring
 #
 # Installs prometheus-node-exporter + CrowdSec (+ the nftables firewall bouncer)
-# and a NetBird overlay agent on a Debian-family host. Opt-in per host with
+# and joins the host to the overlay through the shared agent role, so a central
+# Prometheus/Alloy can reach it over the overlay. Opt-in per host with
 # `monitoring_enabled: true` in inventory/host_vars/<host>/main.yml; when
-# unset/false the role is skipped.
+# unset/false the role is skipped WITHOUT connecting to the host (the play does
+# not gather facts), so a node that is not monitored need not be reachable here.
 #
 # Metrics and CrowdSec events are meant to be visualized from the sibling
 # docker-stack-iac central stack (Prometheus/Grafana/Loki); this playbook only
-# installs the host-side agents. See roles/monitoring for details.
+# installs the host-side agents. See roles/monitoring and roles/agent.
 # ==============================================================================
 
 - name: Optional host monitoring and host security
   hosts: netbird
-  gather_facts: true
+  gather_facts: false
   roles:
     - role: monitoring
       when: monitoring_enabled | default(false) | bool

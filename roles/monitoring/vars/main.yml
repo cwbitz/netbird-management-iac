@@ -11,6 +11,5 @@ svc_node_exporter: "prometheus-node-exporter"
 svc_crowdsec: "crowdsec"
 svc_crowdsec_firewall_bouncer: "crowdsec-firewall-bouncer"
 
-# Container image repositories (tags are *_version in defaults/, Renovate-tracked).
-netbird_agent_image: "ghcr.io/netbirdio/netbird"
+# Container image repository (tag is alloy_version in defaults/, Renovate-tracked).
 alloy_image: "grafana/alloy"
