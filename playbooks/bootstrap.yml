@@ -28,10 +28,25 @@
   connection: local
   gather_facts: false
   vars:
-    netbird_target: "{{ hostvars[groups['netbird'][0]] }}"
-    probe_host: "{{ netbird_target.ansible_host }}"
+    # The host to bootstrap: the Makefile passes HOST= as -e bootstrap_host.
+    # Defaults to the single netbird_management node (the usual `make deploy`
+    # case); pass it explicitly for a router/endpoint or when several
+    # management nodes exist.
+    bootstrap_host: "{{ bootstrap_host | default(groups['netbird_management'] | default([]) | first | default('', true)) }}"
+    netbird_target: "{{ hostvars[bootstrap_host] | default({}) }}"
+    probe_host: "{{ netbird_target.ansible_host | default('') }}"
     probe_port: "{{ netbird_target.ansible_port | default(22) }}"
   tasks:
+    - name: "[Probe] Assert a bootstrap target was resolved"
+      ansible.builtin.assert:
+        that:
+          - bootstrap_host | default('', true) | length > 0
+          - probe_host | default('', true) | length > 0
+        fail_msg: >-
+          No bootstrap target resolved. Pass one explicitly with
+          `make host-bootstrap HOST=<inventory name>` (or -e bootstrap_host=...);
+          it defaults to the single netbird_management host.
+
     - name: "[Probe] Try each identity over SSH"
       ansible.builtin.shell: |
         set -u
@@ -94,7 +109,7 @@
 
     - name: "[Probe] Register the probed identity on the target host"
       ansible.builtin.add_host:
-        name: "{{ groups['netbird'][0] }}"
+        name: "{{ bootstrap_host }}"
         probe_identity: "{{ probe.stdout | trim }}"
 
     - name: "[Probe] Report the working identity"
@@ -102,17 +117,21 @@
         msg: "Connected as '{{ probe_identity }}' ({{ probe_chosen.user }})."
 
 - name: Bootstrap host system tuning
-  # Target the single probed host by name (the bootstrap playbook manages one
-  # host at a time). Using the inventory host avoids a dynamic-only group that
+  # Target the probed host by name (the bootstrap playbook manages one host at a
+  # time). Using the inventory host avoids a dynamic-only group that
   # --syntax-check on a static inventory would warn about ("could not match
   # supplied host pattern").
-  hosts: "{{ groups['netbird'][0] }}"
+  hosts: "{{ bootstrap_host | default(groups['netbird_management'] | default([]) | first | default('', true)) }}"
   gather_facts: true
   # add_host vars rank below inventory host_vars; apply the probed identity as
   # play vars so it takes effect.
   vars:
     ansible_user: "{{ hostvars['localhost'].probe_chosen.user }}"
     ansible_password: "{{ hostvars['localhost'].probe_chosen.password }}"
+    # The probed identity may be a password-sudo account (e.g. the `admin`
+    # account when root SSH is disabled); use its password for sudo. The
+    # `ansible` service account is NOPASSWD, so an empty value is harmless.
+    ansible_become_password: "{{ hostvars['localhost'].probe_chosen.password }}"
     ansible_ssh_private_key_file: "{{ hostvars['localhost'].probe_chosen.privkey }}"
     ansible_become: "{{ hostvars['localhost'].probe_chosen.become }}"
   handlers:

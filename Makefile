@@ -239,9 +239,9 @@ host-init: vault-init ## Scaffold host_vars/<HOST> from the example
 	@echo "Scaffolded $(INVENTORY_DIR)/host_vars/$(HOST)/ (edit main.yml; use 'make vault-edit HOST=$(HOST)' for the encrypted vault.yml)"
 
 .PHONY: host-bootstrap
-host-bootstrap: vault-init agent-fallback ## Create the ansible service account (bootstrap.yml); HOST_KEY=1 refreshes host keys first
+host-bootstrap: vault-init agent-fallback ## Create the ansible service account on one host (HOST=<name>, default the management host); HOST_KEY=1 refreshes host keys first
 	@if [ -n "$(HOST_KEY)" ]; then $(MAKE) --no-print-directory hostkey-init; fi; \
-	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml
+	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml $(if $(HOST),-e bootstrap_host=$(HOST),)
 
 # (internal) Scan every inventory host and (re)write its SSH host key into the
 # control node's known_hosts (removing any stale entry first). Invoked by
@@ -348,7 +348,7 @@ dry-run: vault-init agent-fallback ## Dry-run (--check --diff); HOST_KEY=1 refre
 deploy: vault-init agent-fallback ## One-shot: bootstrap the host, deploy the server, then apply the tenant state; TAGS=... runs only the server; HOST_KEY=1 refreshes host keys first
 	@if [ -n "$(HOST_KEY)" ]; then $(MAKE) --no-print-directory hostkey-init; fi
 	@echo "==> Bootstrapping the host (playbooks/bootstrap.yml: service account, Docker)..."
-	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml
+	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml $(if $(HOST),-e bootstrap_host=$(HOST),)
 	@echo "==> Deploying the NetBird server (playbooks/site.yml)..."
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) $(PLAYBOOK) $(if $(TAGS),--tags $(TAGS),)
 	@if [ -z "$(TAGS)" ]; then \
