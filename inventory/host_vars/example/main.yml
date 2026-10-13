@@ -89,10 +89,23 @@ owner_password: "{{ vault_owner_password | default('', true) }}"
 # widen the local address only when a trusted scraper must reach it.
 # monitoring_enabled: true
 # node_exporter_listen_addr: "127.0.0.1:9100"
-# The overlay agent's setup key defaults to vault_setup_key_vps_enrollment; then
-# optionally ship host logs to a central Loki reachable over the overlay.
+# The overlay agent's peer_setup_key is resolved from the management node's
+# vault (the route-less `vps` key by default); then optionally ship host logs to
+# a central Loki reachable over the overlay.
 # alloy_enabled: true
 # loki_url: "http://<loki-overlay-ip>:3100"
+
+# --- Node type (inventory group) ---------------------------------------------
+# A host's node type is its inventory group (inventory/hosts.yml):
+#   * netbird_management - runs the server stack (this template's deploy path).
+#   * netbird_agent      - agent-only: a routing peer or a plain endpoint.
+# Agent nodes are brought up with `make agent` (playbooks/agent.yml, roles/agent).
+# They need the management FQDN; peer_setup_key is resolved from the management
+# node's vault (single source of truth), and a routing node also enables IP
+# forwarding:
+# domain_name: "{{ vault_domain_name }}"
+# peer_setup_key: "{{ (hostvars[netbird_management_host] | default({})).vault_setup_key_home_router_enrollment }}"
+# netbird_agent_routing: true
 
 # --- Optional host bootstrap (make host-bootstrap) ---------------------------
 # Region-specific mirrors for hosts where the defaults are slow/blocked (e.g.

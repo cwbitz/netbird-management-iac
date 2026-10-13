@@ -24,6 +24,20 @@
 - **server 镜像已固定版本**（Renovate 跟踪）；dashboard 上游只发布滚动 tag，故跟随
   `latest`。
 
+## 节点类型
+
+`netbird` 伞形组下按**节点类型分组**，`hosts:` 播放目标与 `group_vars/<group>/`
+即唯一事实来源：
+
+| 分组 | 运行内容 | 入口 |
+|---|---|---|
+| `netbird_management` | 服务器栈（Management + Signal + Relay + STUN + dashboard + Traefik） | `make deploy`（`site.yml`、`tenant.yml`、`backup.yml`、`restore.yml`） |
+| `netbird_agent` | 仅 NetBird agent —— 路由节点（`netbird_agent_routing: true`）或普通终端节点 | `make agent`（`agent.yml`） |
+
+`netbird` 父组涵盖所有受管节点，因此主机 bootstrap、主机密钥刷新、ssh-agent
+装填都作用于全部节点（`make host-bootstrap HOST=<name>` 针对单台主机，默认唯一的
+management 节点）。
+
 ## 依赖
 
 - 一台 Linux VM（≥ 1 CPU / 2 GB），公网可达 **TCP 80/443** 与 **UDP 3478**。
@@ -164,13 +178,13 @@ make monitoring
 
 按主机 opt-in：设置 `monitoring_enabled: true` 后，安装
 `prometheus-node-exporter` 与 `crowdsec`（基于 journald 的检测），以及
-`crowdsec-firewall-bouncer`（nftables 拦截），并运行 NetBird overlay agent：主机
-通过租户的 `vps` 组加入 overlay（`host_setup_key`，默认
-`vault_setup_key_vps_enrollment`，该组不授予任何 exit/LAN 路由），各 exporter
-随之绑定 overlay 地址，无需公网端口。node_exporter 默认监听 `127.0.0.1:9100`
-再加 overlay 地址；可用 `node_exporter_listen_addr` 调整本机监听地址。再设置
-`alloy_enabled: true` 与 `loki_url`，Alloy 容器会把 journald 的 SSH 事件经
-overlay 推送到中心 Loki。
+`crowdsec-firewall-bouncer`（nftables 拦截），并通过共享的 `agent` role（与
+`make agent` 同一个）把主机加入 overlay：默认用租户 `endpoint` 组
+（`peer_setup_key`，从 management 节点 vault 解析；`endpoint` 组不授予任何
+exit/LAN 路由），各 exporter 随之绑定 overlay 地址，无需公网端口。node_exporter
+默认监听 `127.0.0.1:9100` 再加 overlay 地址；可用 `node_exporter_listen_addr` 调整
+本机监听地址。再设置 `alloy_enabled: true` 与 `loki_url`，Alloy 容器会把 journald
+的 SSH 事件经 overlay 推送到中心 Loki。
 
 ```yaml
 # inventory/host_vars/<host>/main.yml
@@ -178,6 +192,27 @@ monitoring_enabled: true
 alloy_enabled: true
 loki_url: "http://<loki-overlay-ip>:3100"
 ```
+
+## 加入 agent 节点（路由节点与终端节点）
+
+```bash
+make agent     # 加入 netbird_agent 分组
+```
+
+在 agent-only 节点上运行 NetBird agent，使其成为 mesh peer。setup key
+（`peer_setup_key`）决定其自动加入的分组，从而决定角色；它从 management 节点
+vault 解析，因此 agent 节点不再保存该密钥副本。路由节点另设
+`netbird_agent_routing: true` 以启用 IP 转发：
+
+```yaml
+# inventory/host_vars/<router>/main.yml
+domain_name: "{{ vault_domain_name }}"
+peer_setup_key: "{{ (hostvars[netbird_management_host] | default({})).vault_setup_key_home_router_enrollment }}"
+netbird_agent_routing: true
+```
+
+被路由的网络资源（子网 / exit）与路由节点所在分组，在 management 节点的租户
+配置（`netbird_networks`）中声明。
 
 ## 区域受限主机的镜像源（可选）
 
@@ -194,10 +229,13 @@ docker_registry_mirrors:
 ## 目录
 
 ```
-inventory/           # hosts.yml(.example)、group_vars/netbird、host_vars/example
+inventory/           # hosts.yml(.example)、group_vars/{netbird,netbird_management}、host_vars/example
 playbooks/site.yml   # server preflight + management role
 playbooks/tenant.yml # 租户 config-as-code（community.ansible_netbird）
+playbooks/agent.yml  # 把路由/终端节点加入 mesh（agent role）
 roles/management     # defaults（镜像版本）、tasks、templates/
+roles/agent          # NetBird agent：加入 mesh（路由/终端节点、监控）
+roles/monitoring     # 可选主机安全 + exporter（含 agent role）
 roles/helpers/       # 共享的 vault 密钥生成
 docs/RUNBOOK.md      # 运维手册（部署、备份恢复、回滚）
 ```

@@ -25,6 +25,20 @@ issues Let's Encrypt certificates automatically.
 - **Pinned server image** (Renovate-tracked); the dashboard only ships moving
   tags upstream, so it follows `latest`.
 
+## Node types
+
+The inventory groups under the `netbird` umbrella are the node-type taxonomy, so
+`hosts:` play patterns and `group_vars/<group>/` are the single source of truth:
+
+| Group | What it runs | Entry point |
+|---|---|---|
+| `netbird_management` | the server stack (Management + Signal + Relay + STUN + dashboard + Traefik) | `make deploy` (`site.yml`, `tenant.yml`, `backup.yml`, `restore.yml`) |
+| `netbird_agent` | only the NetBird agent — a routing node (`netbird_agent_routing: true`) or a plain endpoint | `make agent` (`agent.yml`) |
+
+The `netbird` parent group spans every managed node, so host bootstrap, host-key
+refresh and ssh-agent loading cover all of them (`make host-bootstrap HOST=<name>`
+targets one host, defaulting to the single management node).
+
 ## Requirements
 
 - A Linux VM with at least 1 CPU / 2 GB RAM, publicly reachable on **TCP 80 and
@@ -195,10 +209,11 @@ make monitoring
 
 Opt-in per host with `monitoring_enabled: true`; installs
 `prometheus-node-exporter` and `crowdsec` (journald-based detection) plus the
-`crowdsec-firewall-bouncer` (nftables enforcement), and runs a NetBird overlay
-agent that joins the host to the mesh through the tenant `vps` group
-(`host_setup_key`, default `vault_setup_key_vps_enrollment`, which grants no
-exit/LAN routes). node_exporter binds `127.0.0.1:9100` plus the overlay address
+`crowdsec-firewall-bouncer` (nftables enforcement), and joins the host to the
+overlay through the shared `agent` role (the same one used by `make agent`),
+which by default uses the tenant `endpoint` group (`peer_setup_key`, resolved from the
+management node's vault; the `endpoint` key grants no exit/LAN routes). node_exporter
+binds `127.0.0.1:9100` plus the overlay address
 unless `node_exporter_listen_addr` is changed. With `alloy_enabled: true` and
 `loki_url`, an Alloy container also ships journald SSH events to a central Loki
 over the overlay.
@@ -209,6 +224,28 @@ monitoring_enabled: true
 alloy_enabled: true
 loki_url: "http://<loki-overlay-ip>:3100"
 ```
+
+## Joining agent-only nodes (routers & endpoints)
+
+```bash
+make agent     # joins the netbird_agent group
+```
+
+Runs the NetBird agent so an agent-only node becomes a mesh peer. The setup key
+(`peer_setup_key`) decides the group it auto-joins, hence its role; it is
+resolved from the management node's vault, so the agent keeps no copy of the
+secret. A routing node also sets `netbird_agent_routing: true` to enable IP
+forwarding:
+
+```yaml
+# inventory/host_vars/<router>/main.yml
+domain_name: "{{ vault_domain_name }}"
+peer_setup_key: "{{ (hostvars[netbird_management_host] | default({})).vault_setup_key_home_router_enrollment }}"
+netbird_agent_routing: true
+```
+
+The routed-network resources (subnets / exit) and the routing peer's group are
+declared on the management node's tenant config (`netbird_networks`).
 
 ## Mirrors for region-restricted hosts (optional)
 
@@ -226,10 +263,13 @@ docker_registry_mirrors:
 ## Layout
 
 ```
-inventory/           # hosts.yml(.example), group_vars/netbird, host_vars/example
+inventory/           # hosts.yml(.example), group_vars/{netbird,netbird_management}, host_vars/example
 playbooks/site.yml   # server preflight + management role
 playbooks/tenant.yml # tenant config-as-code (community.ansible_netbird)
+playbooks/agent.yml  # join routers/endpoints to the mesh (agent role)
 roles/management     # defaults (image pins), tasks, templates/
+roles/agent          # NetBird agent: mesh join (routers/endpoints, monitoring)
+roles/monitoring     # optional host security + exporters (+ the agent role)
 roles/helpers/       # shared vault-secret provisioning
 docs/RUNBOOK.md      # operations runbook (deploy, backup/restore, rollback)
 ```

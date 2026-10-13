@@ -13,10 +13,49 @@ vars and is rendered by `playbooks/tenant.yml` (config-as-code). **Peers are
 enrolled devices, not codifiable state** — only their settings are managed;
 desired enrollment is expressed through groups/setup keys/policies.
 
-Managed hosts live in `inventory/hosts.yml` (local-only/gitignored; committed
-template `inventory/hosts.yml.example`) and are never hardcoded into docs, roles,
-or templates. Entry playbooks: `playbooks/site.yml` (server deploy) and
-`playbooks/tenant.yml` (tenant config-as-code).
+Managed mesh nodes live in `inventory/hosts.yml` (local-only/gitignored;
+committed template `inventory/hosts.yml.example`) and are never hardcoded into
+docs, roles, or templates. **Node type is an inventory group** under the
+`netbird` umbrella, so `hosts:` play patterns and `group_vars/<group>/` are the
+single source of truth:
+
+- `netbird_management` — runs the server stack (`roles/management`); targeted by
+  `playbooks/site.yml`, `tenant.yml`, `backup.yml`, `restore.yml`.
+- `netbird_agent` — runs only the NetBird agent (`roles/agent`): both routing
+  nodes (a routed-network gateway / exit node) and plain endpoints live here;
+  they run the same role and differ only by `netbird_agent_routing`.
+
+The `netbird` parent group spans every managed node, so cross-cutting playbooks
+(`bootstrap.yml`, `host_keys.yml`, `ssh_agent_load.yml`) address all of them.
+`make host-bootstrap` targets one host (`HOST=<name>`, default the single
+management node). Entry playbooks: `playbooks/site.yml` (server deploy),
+`playbooks/tenant.yml` (tenant config-as-code) and `playbooks/agent.yml`
+(`make agent`, the agent-only nodes).
+
+## Integration contract (the mesh as a service)
+
+This project owns the **mesh**: the management server, the tenant (groups,
+networks, policies, DNS, setup keys) and the netbird agents of the hosts it
+owns. Other projects consume the mesh **only through the running service's public
+interface** — the management REST API and the embedded DNS — never by reading
+this project's vars/vault. Rules:
+
+- **Agent ownership = host ownership.** A host's netbird agent is owned by the
+  project that owns the host (e.g. the central docker host's agent belongs to
+  `docker-stack-iac`). A host is never split across projects; the mesh inputs it
+  needs (`management URL` + a setup key) are credentials the operator supplies to
+  that project's own vault.
+- **Contract (the documented interface):** the tenant guarantees these groups,
+  referenced by consumers by name:
+  - `home-router` — routed-network gateways;
+  - `observability` — the central monitoring stack host (scrapes `endpoint` and
+    `home-router`; their peers push logs to it);
+  - `endpoint` — observed-only clients with no routes (e.g. this server host).
+  Setup keys assign them: `docker-host-enrollment` → [home-router, observability];
+  `endpoint-enrollment` → [endpoint]; `admin-enrollment` → [admin].
+- **Discovery inputs** for a consumer (held in the consumer's own vault): the
+  management URL and a service-user PAT. Per-peer `ip` / `dns_label` / `groups`
+  come straight from `GET /api/peers`; nothing needs to be exported from here.
 
 **Supported platform**: Debian-family Linux with Docker Engine + Compose v2. When
 Docker is missing the preflight installs Docker CE via Docker's official install
@@ -105,13 +144,14 @@ is Debian-only.
   public `make` commands.
 - `make vault-init` — create the vault password file if missing (runs before
   every deploy/lint target).
-- `make vault-view` — print the decrypted `vault.yml` for a host (HOST optional
-  when the inventory has a single host).
-- `make vault-edit` — edit a host's `vault.yml` (HOST optional for a single
-  host); a plaintext `vault.yml` is encrypted first.
+- `make vault-view [HOST=<name>]` — print the decrypted `vault.yml`; **every host
+  by default**, or a single host with HOST.
+- `make vault-edit HOST=<name>` — edit one host's `vault.yml` (HOST required; the
+  target list is printed when it is omitted); a plaintext `vault.yml` is
+  encrypted first.
 - `make host-init HOST=<name>` — scaffold `inventory/hosts.yml` and
   `inventory/host_vars/<name>/` from the committed `example/` template, and
-  encrypt the scaffolded `vault.yml` (edit it with `make vault-edit`).
+  encrypt the scaffolded `vault.yml` (edit it with `make vault-edit HOST=<name>`).
 - `make host-bootstrap` — host init only: ensures Docker Engine + Compose v2
   (installing Docker CE when missing), sets APT/Docker mirrors for
   region-restricted hosts, and probes [ansible, admin, root] to create the
@@ -143,13 +183,15 @@ is Debian-only.
   Keep `vault.yml` separately; a restore needs the same datastore key.
 - `make monitoring` — optional host monitoring + host security (Debian-family):
   installs `prometheus-node-exporter`, `crowdsec` (journald-based detection) and
-  the `crowdsec-firewall-bouncer` (nftables enforcement), and runs a NetBird
-  overlay agent. Opt-in per host with `monitoring_enabled: true` in
+  the `crowdsec-firewall-bouncer` (nftables enforcement), and joins the host to
+  the overlay through the shared `agent` role. Opt-in per host with
+  `monitoring_enabled: true` in
   `host_vars/<host>/main.yml`; default off. node_exporter listens on
   `127.0.0.1:9100` plus the overlay address unless `node_exporter_listen_addr`
-  is changed. The agent joins the overlay via `host_setup_key` (default
-  `vault_setup_key_vps_enrollment`, a `vps`-group key that grants no exit/LAN
-  routes) and the exporters bind the overlay address; with `alloy_enabled: true`
+  is changed. The agent resolves its setup key (`peer_setup_key`) from the
+  management node's vault (single source of truth; the route-less `endpoint` key by
+  default, which grants no exit/LAN routes) and the exporters bind the overlay
+  address; with `alloy_enabled: true`
   + `loki_url` an Alloy container ships journald SSH events to a central Loki
   over the overlay.
 - `make print [HOST=<name>]` — resolved host vars incl. decrypted vault; HOST
@@ -213,7 +255,7 @@ is Debian-only.
 - The data volume uses an explicit name (`netbird_data`), stable regardless of the
   compose project directory.
 - Config files are rendered to `{{ stack_dir }}` (`/opt/netbird` by default, in
-  `inventory/group_vars/netbird/main.yml`) and applied with
+  `inventory/group_vars/netbird_management/main.yml`) and applied with
   `community.docker.docker_compose_v2`. Rendering is the source of truth; never
   edit the files on the target host.
 - `netbird_networks.routers` needs an enrolled peer, and `netbird_services` /
@@ -293,10 +335,17 @@ is Debian-only.
   `docker-compose.yml` from `templates/`, deploys with `docker_compose_v2`, waits
   for TLS readiness, then optionally creates the first owner.
   `defaults/main.yml` holds every image tag behind a `_version` var.
+- `roles/agent/` — joins an agent-only node to the overlay (the NetBird agent
+  container, in `agent_dir` = `/opt/netbird-agent`). Used by
+  `playbooks/agent.yml` (`make agent`, the `netbird_agent` group) and by
+  `roles/monitoring`. `peer_setup_key` (resolved from the management node's vault)
+  decides the peer's group; `netbird_agent_routing: true` enables IP forwarding
+  for a routed-network gateway / exit node.
 - `roles/monitoring/` — optional, opt-in (`make monitoring`). Apt-installs
   `prometheus-node-exporter` + `crowdsec` + `crowdsec-firewall-bouncer` on a
-  Debian-family host and runs a NetBird overlay agent; skipped unless
-  `monitoring_enabled: true`.
+  Debian-family host and includes the `agent` role; skipped unless
+  `monitoring_enabled: true`. The play sets `gather_facts: false` and the role
+  gathers facts itself, so non-opted hosts are never contacted.
 
 ## Image version baseline
 
@@ -309,6 +358,8 @@ current (see `renovate.json`).
 | netbird-server | dockerhub | `server_version` |
 | netbird-dashboard | dockerhub | `dashboard_version` (upstream has no pinned tags) |
 | traefik | dockerhub | `traefik_version` |
+| netbird-agent | ghcr.io | `netbird_agent_version` |
+| alloy | dockerhub | `alloy_version` |
 
 ## Scope
 
