@@ -282,14 +282,14 @@ vault-init: ## One-time: generate the vault password (idempotent)
 	fi
 
 .PHONY: vault-edit
-vault-edit: vault-init ## Edit a per-host vault (plaintext auto-encrypted first)
+vault-edit: vault-init ## Edit one host's vault (HOST=<name> required; plaintext auto-encrypted first)
 	@host="$(HOST)"; \
 	if [ -z "$$host" ]; then \
-		host="$$(ansible-inventory -i $(INVENTORY) --list 2>/dev/null \
-			| python3 -c 'import json,sys; h=list(json.load(sys.stdin).get("_meta",{}).get("hostvars",{})); print(h[0] if len(h)==1 else "")')"; \
-	fi; \
-	if [ -z "$$host" ]; then \
-		echo "Usage: make vault-edit HOST=<hostname>" >&2; exit 1; \
+		echo "Usage: make vault-edit HOST=<hostname>" >&2; \
+		echo "Available hosts:" >&2; \
+		ansible-inventory -i $(INVENTORY) --list 2>/dev/null \
+			| python3 -c 'import json,sys; [print("  "+h) for h in sorted(json.load(sys.stdin).get("_meta",{}).get("hostvars",{}))]' >&2; \
+		exit 1; \
 	fi; \
 	p="$(INVENTORY_DIR)/host_vars/$$host/vault.yml"; \
 	if [ ! -f "$$p" ]; then echo "No such vault file: $$p" >&2; exit 1; fi; \
@@ -300,17 +300,17 @@ vault-edit: vault-init ## Edit a per-host vault (plaintext auto-encrypted first)
 	ansible-vault edit "$$p"
 
 .PHONY: vault-view
-vault-view: vault-init ## View a per-host vault (read-only)
-	@host="$(HOST)"; \
-	if [ -z "$$host" ]; then \
-		host="$$(ansible-inventory -i $(INVENTORY) --list 2>/dev/null \
-			| python3 -c 'import json,sys; h=list(json.load(sys.stdin).get("_meta",{}).get("hostvars",{})); print(h[0] if len(h)==1 else "")')"; \
+vault-view: vault-init ## View vault.yml for EVERY host, or one with HOST=<name> (read-only)
+	@hosts="$(HOST)"; \
+	if [ -z "$$hosts" ]; then \
+		hosts="$$(ansible-inventory -i $(INVENTORY) --list 2>/dev/null \
+			| python3 -c 'import json,sys; print("\n".join(sorted(json.load(sys.stdin).get("_meta",{}).get("hostvars",{}))))')"; \
 	fi; \
-	if [ -z "$$host" ]; then \
-		echo "Usage: make vault-view HOST=<hostname> (required when the inventory has no single host)" >&2; exit 1; \
+	if [ -z "$$hosts" ]; then \
+		echo "No hosts found in $(INVENTORY)." >&2; exit 1; \
 	fi; \
-	for f in vault.yml; do \
-		p="$(INVENTORY_DIR)/host_vars/$$host/$$f"; \
+	for host in $$hosts; do \
+		p="$(INVENTORY_DIR)/host_vars/$$host/vault.yml"; \
 		printf '\n\033[1m== %s ==\033[0m\n' "$$p"; \
 		if [ ! -f "$$p" ]; then echo "(missing)"; continue; fi; \
 		if grep -q 'ANSIBLE_VAULT' "$$p"; then \

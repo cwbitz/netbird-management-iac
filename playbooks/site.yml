@@ -7,7 +7,7 @@
 # ==============================================================================
 
 - name: Preflight
-  hosts: netbird
+  hosts: netbird_management
   gather_facts: false
   run_once: true
   tasks:
@@ -37,7 +37,7 @@
           host_allow_root_login=true if you accept running as root.
 
 - name: Deploy the NetBird self-hosted server
-  hosts: netbird
+  hosts: netbird_management
   gather_facts: true
   roles:
     - role: management

@@ -16,7 +16,7 @@
 # ==============================================================================
 
 - name: Back up the NetBird server state
-  hosts: netbird
+  hosts: netbird_management
   gather_facts: false
   vars:
     backup_dir: "{{ playbook_dir }}/../backup"

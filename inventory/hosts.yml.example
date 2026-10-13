@@ -2,17 +2,25 @@
 # ==============================================================================
 # Ansible Inventory template (inventory/hosts.yml.example)
 # ==============================================================================
-# Copy this to inventory/hosts.yml and edit the host name. The real hosts.yml is
+# Copy this to inventory/hosts.yml and edit the host names. The real hosts.yml is
 # gitignored (real hostnames/IPs); only this example is committed.
 #
 # Host values resolve from inventory/host_vars/<hostname>/vault.yml via
 # {{ vault_host.* }}. Inventory names are real hostnames; each real
 # host_vars/<hostname>/ directory is also gitignored.
 #
-# Single group `netbird`: the public VPS running the self-hosted NetBird server.
+# NODE TYPE is expressed as an inventory GROUP under the `netbird` umbrella, so
+# `hosts:` play patterns and `group_vars/<group>/` are the single source of truth:
+#   * netbird_management - runs the self-hosted NetBird server stack
+#                          (Management + Signal + Relay + STUN + dashboard + Traefik).
+#   * netbird_agent      - runs only the NetBird agent (a mesh peer). BOTH routing
+#                          nodes and plain endpoints live here: they run the same
+#                          `agent` role and differ only by `netbird_agent_routing`
+#                          (true => routed-network gateway / exit node).
+# The `netbird` parent group spans every managed mesh node, so cross-cutting
+# playbooks (host bootstrap, host keys, ssh-agent) address all of them at once.
 # The project is always driven from the control node (no on-box mode). Connection
-# identity and per-host settings live in
-# inventory/host_vars/<hostname>/main.yml.
+# identity and per-host settings live in inventory/host_vars/<hostname>/main.yml.
 # ==============================================================================
 
 all:
@@ -26,6 +34,16 @@ all:
 
   children:
     netbird:
-      hosts:
-        netbird-1:
-          ansible_host: "{{ vault_host.ip }}"
+      children:
+        # Server node: the public VPS running the self-hosted NetBird server.
+        netbird_management:
+          hosts:
+            netbird-1:
+              ansible_host: "{{ vault_host.ip }}"
+        # Agent-only nodes OWNED BY THIS PROJECT (routing peers / plain
+        # endpoints). The central docker host's netbird agent is owned by the
+        # docker-stack-iac project (host-owner rule), so it is not listed here.
+        netbird_agent:
+          hosts:
+            netbird-endpoint-1:
+              ansible_host: "{{ vault_host.ip }}"

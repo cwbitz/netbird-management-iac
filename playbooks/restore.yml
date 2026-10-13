@@ -12,7 +12,7 @@
 # ==============================================================================
 
 - name: Restore the NetBird server state
-  hosts: netbird
+  hosts: netbird_management
   gather_facts: false
   vars:
     restore_from: ""

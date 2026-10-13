@@ -24,7 +24,7 @@
 # ==============================================================================
 
 - name: Apply NetBird tenant configuration as code
-  hosts: netbird
+  hosts: netbird_management
   connection: local
   gather_facts: false
   vars:

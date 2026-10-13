@@ -1,14 +1,15 @@
 ---
 # ==============================================================================
-# Shared group defaults for the NetBird server hosts
-# (inventory/group_vars/netbird/main.yml)
+# Global defaults for EVERY managed host (inventory/group_vars/all/main.yml)
 # ==============================================================================
-# Per-host overrides go in inventory/host_vars/<hostname>/main.yml; image and
-# behaviour defaults live in roles/management/defaults/main.yml.
+# Applies to all nodes (management + agents). Node-type-specific defaults live
+# in group_vars/<type>/ (netbird_management, netbird_agent); per-host overrides
+# in inventory/host_vars/<hostname>/main.yml; role internals in roles/<role>/.
 
-# Target-host directory holding the rendered stack (docker-compose.yml,
-# config.yaml, dashboard.env).
-stack_dir: "/opt/netbird"
+# Resolved inventory name of the management (server) node. Lets an agent node
+# resolve a mesh setup key from the management node's vault (single source of
+# truth) instead of copying the secret into every node's vault.
+netbird_management_host: "{{ groups['netbird_management'] | default([]) | first | default('', true) }}"
 
 # Install Docker Engine + the Compose v2 plugin from Docker's official apt
 # repository when missing (Debian-family). Set false to require a preinstalled
