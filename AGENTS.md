@@ -146,8 +146,9 @@ is Debian-only.
   every deploy/lint target).
 - `make vault-view [HOST=<name>]` — print the decrypted `vault.yml`; **every host
   by default**, or a single host with HOST.
-- `make vault-edit HOST=<name>` — edit one host's `vault.yml` (HOST required; the
-  target list is printed when it is omitted); a plaintext `vault.yml` is
+- `make vault-edit [HOST=<name>]` — edit one host's `vault.yml` (HOST, or the
+  single host when the inventory holds exactly one; the target list is printed
+  when it is omitted and the inventory has several); a plaintext `vault.yml` is
   encrypted first.
 - `make host-init [HOST=<name>]` — scaffold `inventory/hosts.yml` and
   `inventory/host_vars/<name>/` **comment-free** from the committed `example/`
