@@ -11,8 +11,9 @@ the overview and `AGENTS.md` for design notes and gotchas.
   **UDP 3478** open — verify *before* the first deploy.
 - Control node: ansible-core (pinned), Python 3, `openssl`, and the Galaxy
   collections: `make install`.
-- A host entry: `make host-init HOST=<hostname>` (scaffolds and encrypts
-  `vault.yml`), then edit `inventory/hosts.yml`,
+- A host entry: `make host-init HOST=<hostname>` — scaffolds `host_vars/<host>/`
+  (comment-free) + an encrypted vault, and adds the host to the inventory group
+  (`GROUP`, default `netbird_management`; HOST defaults to `netbird-1`). Then edit
   `inventory/host_vars/<host>/main.yml` (domain, ACME email) and the vault
   (`make vault-edit HOST=<host>`) for IP, SSH creds and owner.
 - Create the non-root service account (as root, once): `make host-bootstrap`,

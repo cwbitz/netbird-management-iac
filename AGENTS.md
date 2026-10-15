@@ -149,9 +149,12 @@ is Debian-only.
 - `make vault-edit HOST=<name>` — edit one host's `vault.yml` (HOST required; the
   target list is printed when it is omitted); a plaintext `vault.yml` is
   encrypted first.
-- `make host-init HOST=<name>` — scaffold `inventory/hosts.yml` and
-  `inventory/host_vars/<name>/` from the committed `example/` template, and
-  encrypt the scaffolded `vault.yml` (edit it with `make vault-edit HOST=<name>`).
+- `make host-init [HOST=<name>]` — scaffold `inventory/hosts.yml` and
+  `inventory/host_vars/<name>/` **comment-free** from the committed `example/`
+  template, encrypt the scaffolded `vault.yml`, and add the host to the inventory
+  group (`GROUP`, default `netbird_management`); HOST defaults to `netbird-1`.
+  Idempotent: existing files are kept and an already-present host leaves
+  `hosts.yml` untouched. Edit the vault with `make vault-edit HOST=<name>`.
 - `make host-bootstrap` — host init only: ensures Docker Engine + Compose v2
   (installing Docker CE when missing), sets APT/Docker mirrors for
   region-restricted hosts, and probes [ansible, admin, root] to create the

@@ -57,9 +57,9 @@ management 节点）。
 make install                # 工具链 + Galaxy collections
 
 make host-init HOST=netbird-1
-#   编辑 inventory/hosts.yml
+#   生成文件无注释，主机自动写入 inventory，vault.yml 自动加密
 #   编辑 inventory/host_vars/netbird-1/main.yml    （域名、ACME 邮箱）
-#   vault.yml 已自动加密；用它编辑（IP、SSH 凭据、owner）：
+#   用它编辑 vault（IP、SSH 凭据、owner）：
 make vault-edit HOST=netbird-1
 
 make dry-run && make deploy   # deploy 同时应用租户状态

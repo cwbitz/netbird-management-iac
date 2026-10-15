@@ -61,9 +61,9 @@ targets one host, defaulting to the single management node).
 # 1. Toolchain + collections
 make install
 
-# 2. Create a host from the committed template (vault.yml is encrypted for you)
+# 2. Create a host from the committed template (comment-free; the host is added
+#    to the inventory for you and vault.yml is encrypted)
 make host-init HOST=netbird-1
-#    - edit inventory/hosts.yml                       (hostname)
 #    - edit inventory/host_vars/netbird-1/main.yml    (domain, ACME email)
 #    - edit the encrypted vault:
 make vault-edit HOST=netbird-1

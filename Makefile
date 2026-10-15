@@ -18,6 +18,9 @@ INVENTORY_DIR := inventory
 # Command-line inputs (set at invocation, e.g. `make restore FROM=<dir>`).
 TAGS ?=
 HOST ?=
+# Inventory group host-init adds the new host to (the node type: the management
+# server by default, or netbird_agent for a routing peer / endpoint).
+GROUP ?= netbird_management
 FROM ?=
 # Refresh SSH host keys before connecting (HOST_KEY=1). Useful after a managed
 # host is rebuilt: its new host key would otherwise fail the "host key changed"
@@ -224,19 +227,20 @@ ensure-keychain: verify-keychain-pin
 	echo "keychain installed: $(KEYCHAIN_BIN) (v$(KEYCHAIN_VERSION))"
 
 .PHONY: host-init
-host-init: vault-init ## Scaffold host_vars/<HOST> from the example
-	@if [ -z "$(HOST)" ]; then echo "Usage: make host-init HOST=<hostname>" >&2; exit 1; fi
-	@if [ -e "$(INVENTORY)" ]; then :; else cp inventory/hosts.yml.example $(INVENTORY); echo "Created $(INVENTORY) from example"; fi
-	install -d -m 0700 $(INVENTORY_DIR)/host_vars/$(HOST)
-	if [ ! -e $(INVENTORY_DIR)/host_vars/$(HOST)/main.yml ]; then cp $(INVENTORY_DIR)/host_vars/example/main.yml $(INVENTORY_DIR)/host_vars/$(HOST)/main.yml; fi
-	chmod 0644 $(INVENTORY_DIR)/host_vars/$(HOST)/main.yml
-	if [ ! -e $(INVENTORY_DIR)/host_vars/$(HOST)/vault.yml ]; then cp $(INVENTORY_DIR)/host_vars/example/vault.yml.example $(INVENTORY_DIR)/host_vars/$(HOST)/vault.yml; fi
-	@if grep -q 'ANSIBLE_VAULT' $(INVENTORY_DIR)/host_vars/$(HOST)/vault.yml; then :; else \
-		echo "Encrypting $(INVENTORY_DIR)/host_vars/$(HOST)/vault.yml..."; \
-		ansible-vault encrypt $(INVENTORY_DIR)/host_vars/$(HOST)/vault.yml; \
-	fi
-	chmod 0600 $(INVENTORY_DIR)/host_vars/$(HOST)/vault.yml
-	@echo "Scaffolded $(INVENTORY_DIR)/host_vars/$(HOST)/ (edit main.yml; use 'make vault-edit HOST=$(HOST)' for the encrypted vault.yml)"
+host-init: vault-init ## Scaffold host_vars/<HOST> from the example (comment-free); adds HOST to GROUP (default netbird_management, HOST default netbird-1)
+	@host="$(HOST)"; host="$${host:-netbird-1}"; group="$(GROUP)"; group="$${group:-netbird_management}"; \
+	if [ -e "$(INVENTORY)" ]; then :; else python3 $(CURDIR)/scripts/render_clean_template.py inventory/hosts.yml.example $(INVENTORY); echo "Created $(INVENTORY) from example (comments stripped)"; fi; \
+	install -d -m 0700 $(INVENTORY_DIR)/host_vars/$$host; \
+	if [ ! -e $(INVENTORY_DIR)/host_vars/$$host/main.yml ]; then python3 $(CURDIR)/scripts/render_clean_template.py $(INVENTORY_DIR)/host_vars/example/main.yml $(INVENTORY_DIR)/host_vars/$$host/main.yml; fi; \
+	chmod 0644 $(INVENTORY_DIR)/host_vars/$$host/main.yml; \
+	if [ ! -e $(INVENTORY_DIR)/host_vars/$$host/vault.yml ]; then python3 $(CURDIR)/scripts/render_clean_template.py $(INVENTORY_DIR)/host_vars/example/vault.yml.example $(INVENTORY_DIR)/host_vars/$$host/vault.yml; fi; \
+	if grep -q 'ANSIBLE_VAULT' $(INVENTORY_DIR)/host_vars/$$host/vault.yml; then :; else \
+		echo "Encrypting $(INVENTORY_DIR)/host_vars/$$host/vault.yml..."; \
+		ansible-vault encrypt $(INVENTORY_DIR)/host_vars/$$host/vault.yml; \
+	fi; \
+	chmod 0600 $(INVENTORY_DIR)/host_vars/$$host/vault.yml; \
+	python3 $(CURDIR)/scripts/ensure_inventory_host.py $(INVENTORY) "$$host" --group "$$group" --ansible-host '{{ vault_host.ip }}'; \
+	echo "Scaffolded $(INVENTORY_DIR)/host_vars/$$host/ (edit main.yml; use 'make vault-edit HOST=$$host' for the encrypted vault.yml)"
 
 .PHONY: host-bootstrap
 host-bootstrap: vault-init agent-fallback ## Create the ansible service account on one host (HOST=<name>, default the management host); HOST_KEY=1 refreshes host keys first

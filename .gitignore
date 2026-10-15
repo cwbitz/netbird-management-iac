@@ -53,3 +53,7 @@ mise.local.toml
 # Only the shared editor settings are tracked; everything else is local.
 .vscode/*
 !.vscode/settings.json
+
+# Python bytecode caches (e.g. scripts/)
+__pycache__/
+*.py[cod]

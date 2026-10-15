@@ -11,10 +11,11 @@
   **前**确认。
 - 控制端：ansible-core（固定版本）、Python 3、`openssl`，以及 Galaxy collections：
   `make install`。
-- 主机条目：`make host-init HOST=<hostname>`（会脚手架并自动加密 `vault.yml`），
-  然后编辑 `inventory/hosts.yml`、`inventory/host_vars/<host>/main.yml`
-  （域名、ACME 邮箱），并用 `make vault-edit HOST=<host>` 编辑 vault
-  （IP、SSH 凭据、owner）。
+- 主机条目：`make host-init HOST=<hostname>` —— 脚手架 `host_vars/<host>/`
+  （无注释）并加密 `vault.yml`，同时把主机加入 inventory 分组（`GROUP`，默认
+  `netbird_management`；HOST 默认 `netbird-1`）。然后编辑
+  `inventory/host_vars/<host>/main.yml`（域名、ACME 邮箱），并用
+  `make vault-edit HOST=<host>` 编辑 vault（IP、SSH 凭据、owner）。
 - 以 root 创建非 root 服务账号（一次性）：`make host-bootstrap`，然后在 `vault.yml`
   指向它。除非 `host_allow_root_login=true`，否则部署拒绝以 root 运行。
 - vault 密码文件由 make 目标自动创建
