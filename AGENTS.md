@@ -7,30 +7,23 @@ version-controlled.
 
 This project deploys the **server**; the NetBird **client agent** lives in the
 sibling `docker-stack-iac` project. Tenant resources (users, groups, setup keys,
-policies, networks, DNS) are managed against the running server's REST API via
-the `community.ansible_netbird` collection; desired state lives in the per-host
-vars and is rendered by `playbooks/tenant.yml` (config-as-code). **Peers are
-enrolled devices, not codifiable state** — only their settings are managed;
-desired enrollment is expressed through groups/setup keys/policies.
+policies, networks, DNS) are managed against the running server's REST API via the
+`community.ansible_netbird` collection; desired state lives in the per-host vars
+and is rendered by `playbooks/tenant.yml` (config-as-code). **Peers are enrolled
+devices, not codifiable state** — only their settings are managed; desired
+enrollment is expressed through groups/setup keys/policies.
 
-Managed mesh nodes live in `inventory/hosts.yml` (local-only/gitignored;
-committed template `inventory/hosts.yml.example`) and are never hardcoded into
-docs, roles, or templates. **Node type is an inventory group** under the
-`netbird` umbrella, so `hosts:` play patterns and `group_vars/<group>/` are the
-single source of truth:
-
-- `netbird_management` — runs the server stack (`roles/management`); targeted by
-  `playbooks/site.yml`, `tenant.yml`, `backup.yml`, `restore.yml`.
-- `netbird_agent` — runs only the NetBird agent (`roles/agent`): both routing
-  nodes (a routed-network gateway / exit node) and plain endpoints live here;
-  they run the same role and differ only by `netbird_agent_routing`.
-
-The `netbird` parent group spans every managed node, so cross-cutting playbooks
+Managed hosts live in `inventory/hosts.yml` (local-only/gitignored; committed
+template `inventory/hosts.yml.example`) and are never hardcoded into docs, roles,
+or templates. The **node type is an inventory group** under the `netbird` umbrella,
+so `hosts:` play patterns and `group_vars/<group>/` are the single source of truth:
+`netbird_management` runs the self-hosted server stack (`roles/management`) and is
+targeted by `playbooks/site.yml`, `tenant.yml`, `backup.yml`, `restore.yml`. The
+`netbird` parent group spans every managed node, so cross-cutting playbooks
 (`bootstrap.yml`, `host_keys.yml`, `ssh_agent_load.yml`) address all of them.
 `make host-bootstrap` targets one host (`HOST=<name>`, default the single
-management node). Entry playbooks: `playbooks/site.yml` (server deploy),
-`playbooks/tenant.yml` (tenant config-as-code) and `playbooks/agent.yml`
-(`make agent`, the agent-only nodes).
+management node). Entry playbooks: `playbooks/site.yml` (server deploy) and
+`playbooks/tenant.yml` (tenant config-as-code).
 
 ## Integration contract (the mesh as a service)
 
@@ -57,18 +50,15 @@ this project's vars/vault. Rules:
   management URL and a service-user PAT. Per-peer `ip` / `dns_label` / `groups`
   come straight from `GET /api/peers`; nothing needs to be exported from here.
 
-**Supported platform**: Debian-family Linux with Docker Engine + Compose v2. When
-Docker is missing the preflight installs Docker CE via Docker's official install
-script (`https://get.docker.com`; disable with `install_docker: false`, which then
-fails with install guidance). Non-Debian support is best-effort; automatic install
-is Debian-only.
-
 ## Secrets and local-only files
 
+- `inventory/hosts.yml` — gitignored; holds each managed host's real name and
+  connection address/port (`ansible_host` / `ansible_port`). The committed
+  template `inventory/hosts.yml.example` carries the `CHANGE_ME_HOST_IP`
+  placeholder, and the site preflight rejects it until it is replaced.
 - `inventory/host_vars/<hostname>/vault.yml` — **gitignored, never committed**
   (even encrypted). The single per-host encrypted vault, holding everything:
-  values the user supplies (topology `vault_host.{ip,port}`, the public domain
-  `vault_domain_name`, the ACME email `vault_letsencrypt_email`, the SSH
+  values the user supplies (the ACME email `vault_letsencrypt_email`, the SSH
   identities `vault_root_*`/`vault_ansible_*`/`vault_host_admin_*`, the optional
   first-owner credentials `vault_owner_*`), values the control node generates
   when the user leaves them empty and passes TO the host
@@ -150,12 +140,16 @@ is Debian-only.
   single host when the inventory holds exactly one; the target list is printed
   when it is omitted and the inventory has several); a plaintext `vault.yml` is
   encrypted first.
-- `make host-init [HOST=<name>]` — scaffold `inventory/hosts.yml` and
-  `inventory/host_vars/<name>/` **comment-free** from the committed `example/`
-  template, encrypt the scaffolded `vault.yml`, and add the host to the inventory
-  group (`GROUP`, default `netbird_management`); HOST defaults to `netbird-1`.
-  Idempotent: existing files are kept and an already-present host leaves
-  `hosts.yml` untouched. Edit the vault with `make vault-edit HOST=<name>`.
+- `make host-init [HOST=<name>] [HOST_IP=<addr>] [HOST_PORT=<port>]` — scaffold
+  `inventory/hosts.yml` and `inventory/host_vars/<name>/` **comment-free** from the
+  committed `example/` template, encrypt the scaffolded `vault.yml`, and add the
+  host to the inventory group (`GROUP`, default `netbird_management`) with its
+  connection address/port (`HOST_IP` defaults to the `CHANGE_ME_HOST_IP`
+  placeholder the site preflight rejects until replaced; `HOST_PORT` is omitted
+  when unset). HOST defaults to `netbird-1`. Idempotent: existing files are kept,
+  and an already-present host is left unchanged unless `FORCE_IP=1`, which
+  overwrites a conflicting address/port. Edit the vault with
+  `make vault-edit HOST=<name>`.
 - `make host-bootstrap` — host init only: ensures Docker Engine + Compose v2
   (installing Docker CE when missing), sets APT/Docker mirrors for
   region-restricted hosts, and probes [ansible, admin, root] to create the
@@ -203,167 +197,51 @@ is Debian-only.
 
 ## Important gotchas
 
-- The public domain's A record must point at the host and TCP 80/443 plus UDP
-  3478 must be open **before** deploy, or Let's Encrypt (TLS-ALPN) and STUN will
-  not work.
-- `server.store.encryptionKey` in `config.yaml` **must keep base64 padding** (Go
-  `base64.StdEncoding`); `server.authSecret` (relay) has its padding stripped.
-  Losing the datastore key makes encrypted user data unrecoverable.
-- `/api/setup` is unauthenticated and only works while the instance has **no
-  accounts**. The owner-bootstrap tasks are skipped on later runs. On first setup
-  the role also bootstraps the tenant credential: it requests a short-lived owner
-  access token (`create_pat`, 7 days), creates an `admin` service user and a PAT
-  for it, persists it as `vault_admin_service_user_access_token`, then deletes the
-  owner token. The owner token is never written to disk or logged. With
-  `vault_owner_email` set and no owner password, a password is generated into
-  `vault.yml` (read it there; an existing non-empty value is preserved);
-  without an email the provided password is never applied and logs a warning
-  (onboard at `/setup` instead).
-- The startup readiness check hits
-  `https://<domain>/oauth2/.well-known/openid-configuration`, which drives the
-  first certificate issuance.
-- The dashboard image only publishes moving tags (`latest` / `sha-*` / `pr-*`),
-  so `dashboard_version` cannot be pinned; the server image is pinned and tracked
-  by Renovate.
-- **GeoLite2 at startup**: the server downloads MaxMind GeoLite2 DBs from
-  `pkgs.netbird.io` on first start and **blocks startup until they finish**;
-  `server.disableGeoliteUpdate` only disables updates, not the initial load. On
-  hosts where that CDN is slow, the readiness check times out (the container keeps
-  downloading and the DBs persist, so a later re-run succeeds). For such hosts,
-  pre-seed `GeoLite2-City_*.mmdb` + `geonames_*.db` into the volume (the geonames
-  file needs a real `geonames` table) and set `disable_geolite_update: true`.
-- A bind-mounted config change does **not** recreate the container, so the
-  `config.yaml` / `dashboard.env` template tasks notify the `[NetBird] Restart the
-  stack` handler.
+- The public domain's A record must point at the host and **TCP 80/443 + UDP 3478**
+  must be open **before** deploy, or Let's Encrypt (TLS-ALPN-01) and STUN will not
+  work. The full contract is in `docs/components/networking.md`.
 - The deploy **requires the non-root service account**: `playbooks/site.yml`
   asserts `host_ssh_user != root` (override with `host_allow_root_login=true`).
   `make host-bootstrap` probes [ansible, admin, root] and uses the first that
   works; when it is not `ansible` it creates `ansible`. Every explicitly set
   `vault_{root,ansible}_ssh_pubkey_file` / `vault_host_admin_ssh_pubkey_file` is
   authorized for the matching account (unset ignored, never generated); for
-  `ansible` a missing key falls back
-  to a password (`host_bootstrap_password`, else generated into
-  `vault_host_ansible_password`), while key mode omits the password. The optional human
-  `admin` account is created only when `host_admin_enabled` is set and always gets
-  a password (generated into `vault_host_admin_password` when empty) plus any configured
-  key. Passwords are hashed with a per-account random salt and applied with
-  `update_password: on_create`, so re-runs are idempotent and a host-side password
-  rotation is preserved. `ansible` gets passwordless sudo; `admin` gets password
-  sudo (`ALL=(ALL) ALL`).
+  `ansible` a missing key falls back to a password (`host_bootstrap_password`,
+  else generated into `vault_host_ansible_password`), while key mode omits the
+  password. The optional human `admin` account is created only when
+  `host_admin_enabled` is set and always gets a password (generated into
+  `vault_host_admin_password` when empty) plus any configured key. Passwords are
+  hashed with a per-account random salt and applied with `update_password: on_create`,
+  so re-runs are idempotent and a host-side password rotation is preserved.
+  `ansible` gets passwordless sudo; `admin` gets password sudo (`ALL=(ALL) ALL`).
 - The vault file must never stay plaintext: `write_vault` always encrypts, and a
   plaintext `vault.yml` (e.g. restored from backup) is re-encrypted on the next
   write by the vault helpers.
-- The built-in Traefik owns `172.30.0.10` in the `netbird` bridge network and is
-  the only address management trusts as a reverse proxy
-  (`reverseProxy.trustedHTTPProxies`).
-- The data volume uses an explicit name (`netbird_data`), stable regardless of the
-  compose project directory.
-- Config files are rendered to `{{ stack_dir }}` (`/opt/netbird` by default, in
-  `inventory/group_vars/netbird_management/main.yml`) and applied with
-  `community.docker.docker_compose_v2`. Rendering is the source of truth; never
-  edit the files on the target host.
-- `netbird_networks.routers` needs an enrolled peer, and `netbird_services` /
-  `netbird_service_domains` need a registered reverse-proxy cluster, which only
-  the self-hosted proxy software itself can create (BYOP); the collection can only
-  delete one. Unset options are skipped.
-- Setup keys: the collection preflight requires `expires_in > 0` (max 31536000),
-  so a **never-expiring** key (`expires_in: 0`) cannot be declared in
-  `netbird_setup_keys`; create one once out-of-band. Newly created key secrets are
-  persisted as `vault_setup_key_<name>`.
-- Routed networks bind their gateway by peer **group** (`routers[].peer_groups`,
-  e.g. `home-router`), not by an individual peer name. The group is created by the
-  tenant play and the client's setup key auto-assigns it, so a network is applied
-  on the **first** run (no chicken-and-egg); the client becomes its routing peer
-  automatically when it enrolls. No enrollment readiness gate is needed. An
-  individual peer name (`routers[].peer`) is still supported when a single
-  gateway must be pinned, but then the peer must already be enrolled.
-- Exit nodes: a `0.0.0.0/0` (and `::/0`) network resource routed via a peer IS the
-  exit node. It needs (a) `masquerade: true` on the router, (b) an accept policy
-  from the using group to the routing peer's group (declare an explicit one — the
-  built-in `Default` rule is removed by strict), and (c) IP forwarding on the
-  routing peer. **Auto Apply** (v0.55.0+, default on) is a Dashboard/client
-  setting the API/collection cannot express.
-- Edition boundaries (self-hosted): core (groups, policies, posture checks, DNS,
-  networks, setup keys, users, settings) is open source; SCIM/IdP provisioning,
-  audit/SIEM streaming, MDM/EDR, HA and MSP/multi-tenant require an Enterprise
-  license. Agent Network is a separate self-hosted deployment (not the management
-  container) and is not managed here.
+- Config files are rendered to `{{ stack_dir }}` and applied with
+  `community.docker.docker_compose_v2`. **Rendering is the source of truth**; never
+  edit the files on the target host (see `docs/components/roles.md`).
+- `vault_admin_service_user_access_token` expires (max 365 days) and cannot be
+  renewed — recreate it from the Dashboard when a tenant run reports it rejected
+  (see Secrets above).
 
-## Role layout
+## Ansible conventions: probe & bootstrap host targeting
 
-- `playbooks/site.yml` — server preflight + the `management` role.
-- `playbooks/bootstrap.yml` — **optional, opt-in** host tuning: APT mirror
-  (`host_apt_mirror`, security mirror derived) + Docker registry mirrors
-  (`docker_registry_mirrors`), ensures Docker Engine + Compose v2 (installing
-  Docker CE when missing), probes the SSH identities and creates the
-  least-privilege `ansible` service account when not already connected as it, plus
-  the `admin` account when `host_admin_enabled` is set (authorizes each identity's
-  `vault_*_ssh_pubkey_file` when set; otherwise a password, and the admin always
-  gets one) + NOPASSWD sudo for `ansible` and password sudo for `admin`. Never
-  runs as part of `site.yml`. Debian-family only for APT.
-- `playbooks/backup.yml` / `playbooks/restore.yml` — stop-container backup of the
-  `netbird_data` volume, and the paired restore (which needs the same datastore
-  key in `vault.yml`).
-- `playbooks/tenant.yml` — tenant config-as-code on `localhost` against the server
-  API using `vault_admin_service_user_access_token`. The collection's `configure`
-  role reads raw YAML (no templating), so the play renders the per-host variables
-  into a generated, gitignored directory (`.cache/tenant_config/<host>/`)
-  and passes it as `config_dir`; `commit`/`strict` come from
-  `tenant_commit`/`tenant_strict` (both default false = preview). Users/service
-  users use the separate `netbird_user` module and are applied afterward from
-  `netbird_users` / `netbird_service_users`, gated on commit (their `auto_groups`
-  take plain group names, resolved to IDs first).
-- Tenant desired state — Ansible variables in the per-host vars: non-secret in
-  `host_vars/<host>/main.yml`, secret/PII in `vault.yml`, using the collection's
-  native names (`netbird_settings`, `netbird_groups`, `netbird_posture_checks`,
-  `netbird_policies`, `netbird_dns_nameserver_groups`, `netbird_dns_zones`,
-  `netbird_dns_disabled_management_groups`, `netbird_networks`,
-  `netbird_setup_keys`, `netbird_services` + `netbird_service_domains`, and
-  `netbird_users` / `netbird_service_users`). Plain names are resolved to IDs.
-  The generated directory is never hand-edited. Exception: within
-  `netbird_settings` the peer expiry durations use the project convention
-  `peer_login_expire_seconds` / `peer_inactivity_expire_seconds`, which
-  `playbooks/tenant.yml` maps to the collection's `peer_login_expiration` /
-  `peer_inactivity_expiration` fields when rendering; the `*_expiration_enabled`
-  toggles keep the collection names.
-- `roles/helpers/` — a real role (no `tasks/main.yml`), always invoked via
-  `include_role` + `tasks_from`:
-  - `control_node_prereqs.yml` — openssl availability check.
-  - `install_docker.yml` — install Docker Engine + Compose v2 when missing
-    (`install_docker`, default true; false makes a missing Docker fatal).
-  - `read_vault.yml` / `write_vault.yml` — read/encrypt the per-host vault file.
-  - `dispatch_secrets.yml` / `generate_secrets.yml` /
-    `store_secret.yml` — per-host encrypted secret provisioning.
-- `roles/management/` — the deploy. `tasks/main.yml` runs preflight checks,
-  provisions secrets, renders `config.yaml` / `dashboard.env` /
-  `docker-compose.yml` from `templates/`, deploys with `docker_compose_v2`, waits
-  for TLS readiness, then optionally creates the first owner.
-  `defaults/main.yml` holds every image tag behind a `_version` var.
-- `roles/agent/` — joins an agent-only node to the overlay (the NetBird agent
-  container, in `agent_dir` = `/opt/netbird-agent`). Used by
-  `playbooks/agent.yml` (`make agent`, the `netbird_agent` group) and by
-  `roles/monitoring`. `peer_setup_key` (resolved from the management node's vault)
-  decides the peer's group; `netbird_agent_routing: true` enables IP forwarding
-  for a routed-network gateway / exit node.
-- `roles/monitoring/` — optional, opt-in (`make monitoring`). Apt-installs
-  `prometheus-node-exporter` + `crowdsec` + `crowdsec-firewall-bouncer` on a
-  Debian-family host and includes the `agent` role; skipped unless
-  `monitoring_enabled: true`. The play sets `gather_facts: false` and the role
-  gathers facts itself, so non-opted hosts are never contacted.
+Shared by the `*-iac` repos; keep this chain statically resolvable so
+`--syntax-check` stays clean:
 
-## Image version baseline
-
-Every tag is rendered only through role-default vars, each carrying a
-`# renovate: datasource=docker depName=<image>` annotation so Renovate keeps it
-current (see `renovate.json`).
-
-| Component | Registry | Version var |
-|---|---|---|
-| netbird-server | dockerhub | `server_version` |
-| netbird-dashboard | dockerhub | `dashboard_version` (upstream has no pinned tags) |
-| traefik | dockerhub | `traefik_version` |
-| netbird-agent | ghcr.io | `netbird_agent_version` |
-| alloy | dockerhub | `alloy_version` |
+- **Control-node-only plays** (preflight, the SSH probe, `host_keys`,
+  `ssh_agent_load`) use `hosts: localhost` + `connection: local` — never
+  `hosts: all` + `connection: local`.
+- **The action play that follows a probe** targets a host/group that resolves
+  from the static inventory. Never target a dynamic-only group: it forces either
+  an empty-group declaration in the inventory or a `--syntax-check`
+  "Could not match supplied host pattern" warning.
+- **Single-host bootstrap** targets the probed host **by name**, with a safe
+  default — `hosts: "{{ bootstrap_host | default(groups['<group>'] | default([]) | first | default('', true)) }}"` —
+  and `make <target> HOST=<name>` passes `-e bootstrap_host=<name>`.
+- **Multi-host bootstrap** targets the real inventory group. `add_host` only
+  injects the probed identity/vars onto a host already present in the inventory;
+  it never creates a play target.
 
 ## Scope
 
@@ -376,5 +254,20 @@ current (see `renovate.json`).
   managed; devices re-enroll with setup keys), local-user **passwords** (returned
   once at creation), setup-key/PAT **secret values** (returned once), IdP client
   secrets (store in vault), and **audit/events** (read-only).
-- **Out of scope (here)**: the client agent (`docker-stack-iac`) and optional
-  quickstart components (NetBird Proxy, CrowdSec, external reverse-proxy modes).
+- **Out of scope (here)**: the client agent (owned by `docker-stack-iac`) and the
+  NetBird Proxy / Agent Network quickstart components, plus external
+  reverse-proxy modes beyond `trusted_peers`.
+
+## Detailed documentation
+
+- `docs/components/server.md` — combined server container (management + signal +
+  relay + STUN), `config.yaml`, startup, first-owner bootstrap.
+- `docs/components/dashboard.md` — the dashboard container.
+- `docs/components/identity.md` — the embedded Dex IdP.
+- `docs/components/traefik.md` — the built-in reverse proxy / TLS.
+- `docs/components/networking.md` — network & port contract.
+- `docs/components/data-and-volumes.md` — volumes, encryption keys, backup.
+- `docs/components/tenant-config.md` — tenant config-as-code + collection gotchas.
+- `docs/components/roles.md` — playbooks/roles layout, platform, image baseline.
+- `docs/RUNBOOK.md` — operational procedures.
+- `docs/IDP.md` — external identity providers.

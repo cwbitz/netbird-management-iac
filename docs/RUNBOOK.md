@@ -1,29 +1,27 @@
 # Runbook
 
-[English](RUNBOOK.md) | [简体中文](RUNBOOK.zh-CN.md)
-
 Operational procedures for the self-hosted NetBird server. See `README.md` for
-the overview and `AGENTS.md` for design notes and gotchas.
+the overview, `docs/components/` for component design, and `AGENTS.md` for
+contracts, conventions and gotchas.
 
 ## 0. Prerequisites (once)
 
 - Public domain whose A record points at the host, with **TCP 80/443** and
   **UDP 3478** open — verify *before* the first deploy.
 - Control node: ansible-core (pinned), Python 3, `openssl`, and the Galaxy
-  collections: `make install`.
-- A host entry: `make host-init HOST=<hostname>` — scaffolds `host_vars/<host>/`
-  (comment-free) + an encrypted vault, and adds the host to the inventory group
-  (`GROUP`, default `netbird_management`; HOST defaults to `netbird-1`). Then edit
-  `inventory/host_vars/<host>/main.yml` (domain, ACME email) and the vault
-  (`make vault-edit HOST=<host>`) for IP, SSH creds and owner.
+  collections: `make install`. It also installs `sshpass` (only the
+  `host-bootstrap` password probe needs it) and the Keychain ssh-agent fallback.
+- A host entry: `make host-init HOST=<hostname> HOST_IP=<address> [HOST_PORT=22]`
+  — writes the connection address/port into `inventory/hosts.yml`, scaffolds
+  `host_vars/<host>/` (comment-free) and encrypts a vault. Then set `domain_name`
+  in `inventory/host_vars/<host>/main.yml` and the SSH creds / ACME email /
+  optional owner in the vault (`make vault-edit HOST=<host>`). The connection
+  address/port live in the inventory, not the vault.
 - Create the non-root service account (as root, once): `make host-bootstrap`,
   then point the connection at it in `vault.yml`. Deploys refuse root unless
   `host_allow_root_login=true`.
 - The vault password file is auto-created by the make targets
   (`~/.config/projects/netbird-iac/ansible_vault_password`); keep it safe.
-- `sshpass` is needed only by the `make host-bootstrap` password probe;
-  `make install` auto-installs it (passwordless `apt-get`, else rootless
-  into `~/.local/bin`).
 
 ## 1. Deploy
 
@@ -33,18 +31,20 @@ make deploy      # deploy the server, then apply the tenant state
                    # (TAGS=... keeps it server-only)
 ```
 
+`make deploy` is the one-shot entry point: it runs `bootstrap.yml` (host init),
+then the server deploy, then the tenant apply. It probes `ansible → admin → root`,
+creates the `ansible` service account when needed, ensures Docker Engine + Compose
+v2, generates missing secrets into the encrypted `vault.yml`, renders
+`config.yaml` / `dashboard.env` / `docker-compose.yml` to `{{ stack_dir }}`
+(`/opt/netbird`), starts the stack, waits for TLS, then optionally creates the
+first owner. `make host-bootstrap` does the host init alone (no deploy). Exact
+bootstrap rules (key vs. generated password, `host_admin_enabled`): `AGENTS.md`.
+
 `make lint` (syntax check + `ansible-lint`) is an internal CI check; it is hidden
 from `make help`, but developers can still run it locally.
 
 Focused tags: `netbird`, `netbird_preflight`, `netbird_config`,
 `netbird_deploy`, `netbird_owner` (`make deploy TAGS=<tag>`).
-
-The deploy asserts inputs and the non-root account, generates missing secrets
-into the encrypted `vault.yml` (user, control-generated and host-returned
-secrets all live there), renders
-`config.yaml` / `dashboard.env` /
-`docker-compose.yml` to `{{ stack_dir }}` (`/opt/netbird`), starts the stack,
-waits for TLS, then optionally creates the first owner.
 
 Verify:
 
@@ -94,15 +94,35 @@ make plan          # read-only diff (safe default)
 make apply         # apply desired state
 ```
 
+Desired state uses the `community.ansible_netbird` collection's native variables in
+`inventory/host_vars/<host>/main.yml` (secret/PII in `vault.yml`). The play renders
+a generated, gitignored directory (`.cache/tenant_config/<host>/`) and applies it.
+Requires a valid `vault_admin_service_user_access_token`. `make deploy` already
+applies the tenant state after the server deploy; use `apply` to change tenants
+without touching the server, or `TAGS=...` to keep `deploy` server-only.
+
 Strict mode (also remove unmanaged resources) is off by default; enable it per
 host with `tenant_strict: true` in `inventory/host_vars/<host>/main.yml` (or
 `-e tenant_strict=true`).
 
-Desired state uses the collection's native variables in
-`inventory/host_vars/<host>/main.yml` (secret/PII in `vault.yml`). The play
-renders a generated, gitignored directory
-(`.cache/tenant_config/<host>/`) and applies it. Requires a valid
-`vault_admin_service_user_access_token`.
+What you can codify:
+
+| Resource | Codifiable? | Variable |
+|---|---|---|
+| Groups, Policies (ACL), Posture checks | Yes | `netbird_groups`, `netbird_policies`, `netbird_posture_checks` |
+| Networks (routers/resources), DNS (nameservers/zones/settings) | Yes | `netbird_networks`, `netbird_dns_*` |
+| Account settings (Dashboard settings) | Yes | `netbird_settings` |
+| Services | Yes | `netbird_services`, `netbird_service_domains` |
+| Users / service users | Yes* | `netbird_users`, `netbird_service_users`; embedded-IdP passwords are one-time |
+| Setup keys | Yes* | `netbird_setup_keys`; expiry 1..31536000s (1 year max, never-expire not expressible); new secrets are persisted to `vault.yml` as `vault_setup_key_<name>` |
+| Identity providers (external IdP) | No | Dashboard / `POST /api/identity-providers` (see `docs/IDP.md`) |
+| Peers | No | enrolled devices: only settings are managed; devices re-enroll with setup keys |
+| Audit / events | No | read-only |
+
+`*` = the declaration is code, but a one-time secret is not reproducible; store it
+in a secret manager. Unset options are skipped; `netbird_networks.routers` needs an
+enrolled peer, and `netbird_services` / `netbird_service_domains` need a registered
+proxy cluster.
 
 Order for routed networks and exit nodes:
 
@@ -112,7 +132,43 @@ Order for routed networks and exit nodes:
    becomes the networks' routing peer automatically. No second `make apply` is
    needed for the networks to activate.
 
-## 5. Backup and restore
+## 5. Host monitoring & security (optional)
+
+```bash
+make monitoring
+```
+
+Opt-in per host with `monitoring_enabled: true` in
+`inventory/host_vars/<host>/main.yml` (default off). Installs
+`prometheus-node-exporter` and `crowdsec` (journald-based detection) plus the
+`crowdsec-firewall-bouncer` (nftables enforcement), and joins the host to the
+overlay through the `agent` role so a central Prometheus/Alloy can reach it with
+no public port. The agent uses the route-less `endpoint` setup key by default
+(`peer_setup_key`, resolved from the management node's vault); node_exporter binds
+`127.0.0.1:9100` plus the overlay address unless `node_exporter_listen_addr` is
+changed.
+
+```yaml
+# inventory/host_vars/<host>/main.yml
+monitoring_enabled: true
+alloy_enabled: true                            # ship host logs to a central Loki
+loki_url: "http://<loki-overlay-ip>:3100"
+```
+
+## 6. Mirrors for region-restricted hosts (optional)
+
+`make host-bootstrap` (also run by `make deploy`) can point a host at alternative
+package mirrors for hosts where the defaults are slow or blocked. It is a no-op
+unless the variables are set, and touches nothing in the deploy baseline:
+
+```yaml
+# inventory/host_vars/<host>/main.yml
+host_apt_mirror: "https://mirrors.tuna.tsinghua.edu.cn/debian"
+docker_registry_mirrors:
+  - "https://docker.1ms.run"
+```
+
+## 7. Backup and restore
 
 ```bash
 make backup                              # -> backup/<host>/<stamp>/
@@ -136,7 +192,7 @@ make restore FROM=backup/<host>/<stamp>
 
 Verify after restore: the OIDC discovery URL answers and users can log in.
 
-## 6. Upgrade and rollback
+## 8. Upgrade and rollback
 
 - **Upgrade**: let Renovate bump the pinned tags (or edit
   `roles/management/defaults/main.yml`), then `make deploy`.
@@ -146,7 +202,7 @@ Verify after restore: the OIDC discovery URL answers and users can log in.
 - **Config rollback**: `git revert` or edit the per-host vars, then `make
   deploy`.
 
-## 7. Troubleshooting
+## 9. Troubleshooting
 
 | Symptom | Check / action |
 |---|---|
@@ -166,7 +222,7 @@ ssh <host> 'cd /opt/netbird && docker compose logs -f netbird-server'
 ssh <host> 'cd /opt/netbird && docker compose ps'
 ```
 
-## 8. Secrets and safety
+## 10. Secrets and safety
 
 - Never commit `vault.yml` or `backup/` (all gitignored).
 - The vault password file is required to decrypt any vault.
