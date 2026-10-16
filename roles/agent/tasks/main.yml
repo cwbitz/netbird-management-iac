@@ -2,9 +2,8 @@
 # ==============================================================================
 # NetBird agent - mesh join (roles/agent/tasks)
 # ==============================================================================
-# Deploys the NetBird agent container so a host joins the overlay. A routing
-# node (netbird_agent_routing: true) additionally enables IP forwarding, the
-# host-side requirement for a routed-network gateway / exit node.
+# Deploys the NetBird agent container so the host joins the overlay. Used by the
+# monitoring role.
 # ==============================================================================
 
 - name: "[Agent] Assert a setup key for the overlay agent"
@@ -42,16 +41,16 @@
     group: root
     mode: "0700"
 
-# Migration: the overlay agent used to live inside the monitoring stack's compose
-# project. Move it to this role's project by removing an existing `netbird`
-# container owned by a DIFFERENT compose project (idempotent: ours is left alone).
+# The agent runs in this role's own compose project: a `netbird` container owned by
+# a DIFFERENT compose project is removed first (ours is left alone), so taking over
+# ownership converges.
 - name: "[Agent] Inspect any existing overlay container"
   community.docker.docker_container_info:
     name: netbird
   register: agent_existing_container
   failed_when: false
 
-- name: "[Agent] Remove a legacy overlay container owned by another compose project"
+- name: "[Agent] Remove an overlay container owned by another compose project"
   community.docker.docker_container:
     name: netbird
     state: absent

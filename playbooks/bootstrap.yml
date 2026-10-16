@@ -2,25 +2,19 @@
 # ==============================================================================
 # Host bootstrap (`make host-bootstrap`; never part of playbooks/site.yml).
 #
-# Optional, opt-in host tuning. Probes the SSH identities in order
-# [ansible, admin, root] and uses the first that works; if that is not `ansible`,
-# it (re)creates the least-privilege `ansible` service account. Can also set
-# package/registry mirrors and authorize configured SSH public keys.
+# Optional, opt-in host tuning: probes the SSH identities in order
+# [ansible, admin, root], uses the first that works, and (re)creates the
+# least-privilege `ansible` service account. The alias wiring lives in
+# inventory/group_vars/netbird_management/main.yml. Also sets package/registry
+# mirrors and authorizes configured SSH public keys (each a no-op unless set:
+# host_apt_mirror / host_apt_security_mirror / docker_registry_mirrors).
 #
-# Per identity (root/admin/ansible), vault.yml may set a password and/or a
-# private key file (SSH tries the key first). vault_<id>_ssh_pubkey_file is an
-# optional control-node path to the matching public key; when set it is
-# authorized for that account. Unset is ignored (keys are never generated).
-#
-# The `ansible` account uses key auth when vault_host_ansible_ssh_pubkey_file is set;
-# otherwise a password is set (host_bootstrap_password, else generated into
-# vault_host_ansible_password). Passwords are hashed with a per-account random salt
+# Per identity, vault.yml may set a password and/or a private key file (SSH tries
+# the key first); vault_<id>_ssh_pubkey_file is an optional control-node path to
+# the matching public key, authorized for that account when set (unset is ignored,
+# keys are never generated). Passwords are hashed with a per-account random salt
 # and applied with update_password=on_create, so re-runs are idempotent and a
-# host-side password rotation is preserved. If sshd disables password auth,
-# login fails (sshd config is out of scope).
-#
-# Mirrors (each a no-op unless set):
-#   host_apt_mirror / host_apt_security_mirror (derived) / docker_registry_mirrors
+# host-side password rotation is preserved. Password login needs sshd to allow it.
 # ==============================================================================
 
 - name: Probe the SSH identities (ansible -> admin -> root)

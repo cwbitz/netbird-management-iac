@@ -74,12 +74,12 @@ KEYCHAIN_ASSET   := $(KEYCHAIN_CACHE)/keychain-$(KEYCHAIN_VERSION).pyz
 KEYCHAIN_AGENT   := eval "$$($(KEYCHAIN_BIN) agent start --eval --quiet 2>/dev/null)"
 
 # ------------------------------------------------ shared ssh-agent runner ----
-# Identical across the 5 IaC projects: the generic scripts/run-with-ssh-agent.sh
-# is driven by the SSH_AGENT_* environment variables, so only the per-project
-# values below differ (the private-key hostvar names, and the inventory/playbook
-# paths already defined above). The agent is prepared proactively only when a
-# configured key has permissions OpenSSH would refuse (e.g. WSL /mnt/c), and the
-# runner retries once on a refused-key failure as a safety net.
+# Identical across the sibling IaC projects: the generic
+# scripts/run-with-ssh-agent.sh is driven by the SSH_AGENT_* environment
+# variables, so only the per-project values below differ (the private-key hostvar
+# names, and the inventory/playbook paths already defined above). The agent is
+# prepared proactively only when a configured key has permissions OpenSSH would
+# refuse (e.g. WSL /mnt/c), and the runner retries once on a refused-key failure.
 SSH_AGENT_ENV   ?= $(HOME)/.cache/iac/ssh-agent.env
 SSH_AGENT_RUN   ?= $(CURDIR)/scripts/run-with-ssh-agent.sh
 # Per-project fork: hostvars holding the control-node private-key paths.
@@ -115,7 +115,7 @@ define SSH_AGENT_PREPARE
 endef
 
 # (internal) Diagnostic probe: exit 0 when a configured private key would be
-# refused by OpenSSH. Shared across the 5 projects.
+# refused by OpenSSH. Shared across the sibling projects.
 agent-needed: vault-init
 	@$(SSH_AGENT_PROBE)
 
@@ -124,7 +124,8 @@ agent-fallback: ensure-keychain
 	$(SSH_AGENT_PREPARE)
 
 # (internal) Prepare the Keychain ssh-agent unconditionally. Unused by this
-# Ansible-only project, kept so the block is identical across the 5 projects.
+# Ansible-only project, kept so the block is identical across the sibling
+# projects.
 agent-ensure: ensure-keychain
 	$(SSH_AGENT_PREPARE)
 agent-ensure: SSH_AGENT_FORCE := 1

@@ -2,25 +2,18 @@
 # ==============================================================================
 # Apply the declarative NetBird tenant configuration (desired state as code).
 #
-# Desired state comes from the per-host vars (inventory/host_vars/<host>/main.yml
-# for non-secret values, vault.yml for secrets/PII). This play renders those
-# variables into a generated, gitignored directory and applies them to the
-# running server's REST API via community.ansible_netbird:
+# Desired state comes from the per-host vars (main.yml for non-secret values,
+# vault.yml for secrets/PII). This play renders them into a generated, gitignored
+# directory and applies them to the running server's REST API via
+# community.ansible_netbird:
 #
-#   inventory/host_vars/<host>/{main,vault}.yml
-#     -> .cache/tenant_config/<host>/  ->  NetBird API
+#   inventory/host_vars/<host>/{main,vault}.yml -> .cache/tenant_config/<host>/ -> NetBird API
 #
-# Preview by default; nothing changes unless tenant_commit=true:
-#   make plan          # read-only diff
-#   make apply         # apply
-#
-# Strict mode (also remove unmanaged resources) is off by default: an absent,
-# empty, or `false` tenant_strict means non-strict. Enable it by setting
-# `tenant_strict: true` in inventory/host_vars/<host>/main.yml (per host,
-# overridable) or passing -e tenant_strict=true.
-#
-# Requires vault_admin_service_user_access_token (created by the first-owner
-# bootstrap, or set in vault.yml).
+# Preview with `make plan` (read-only diff); apply with `make apply` (commits).
+# Strict mode (also removes unmanaged resources) is off unless `tenant_strict:
+# true` is set per host or passed with -e. Requires
+# vault_admin_service_user_access_token (created by the first-owner bootstrap, or
+# set in vault.yml).
 # ==============================================================================
 
 - name: Apply NetBird tenant configuration as code
@@ -87,11 +80,10 @@
           inventory/host_vars/{{ inventory_hostname }}/vault.yml and re-run.
 
     # --------------------------------------------------------------------------
-    # Routed networks bind their gateway by peer GROUP (routers[].peer_groups,
-    # e.g. "home-router"), not by an individual peer. That group exists as soon
-    # as this play creates it, so each network is applied on the first run; the
-    # client peer becomes its router automatically when it enrolls with the
-    # matching setup key (auto_groups). No enrollment readiness gate is needed.
+    # Routed networks bind their gateway by peer GROUP (routers[].peer_groups),
+    # not by an individual peer: the group exists once this play creates it, so
+    # each network applies on the first run and the client becomes its router when
+    # it enrolls with the matching setup key (auto_groups).
     # --------------------------------------------------------------------------
 
     # --------------------------------------------------------------------------

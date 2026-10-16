@@ -1,9 +1,8 @@
 ---
 # ==============================================================================
-# Role defaults (roles/management/defaults/main.yml)
+# Management (server) role defaults - container tags are pinned here and kept
+# current by Renovate (see the "# renovate:" annotation above each tag var).
 # ==============================================================================
-# Container tags are pinned here and kept current by Renovate (see the
-# "# renovate:" annotation above each var).
 
 # --- Container images --------------------------------------------------------
 server_image: "netbirdio/netbird-server"

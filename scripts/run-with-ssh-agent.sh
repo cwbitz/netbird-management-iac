@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# run-with-ssh-agent.sh — shared by the 5 IaC projects. DO NOT fork unless the
-# interface itself must change (then update all 5 together).
+# run-with-ssh-agent.sh — shared with sibling IaC projects. DO NOT fork unless
+# the interface itself must change (then update every consumer together).
 #
 # Run a command; if it fails because OpenSSH refused a private key, start the
 # Keychain ssh-agent, load the configured keys, and retry ONCE.

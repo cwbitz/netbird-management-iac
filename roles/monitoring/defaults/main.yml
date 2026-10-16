@@ -1,11 +1,12 @@
 ---
 # ==============================================================================
-# Role defaults (roles/monitoring/defaults/main.yml)
+# Host monitoring + host security role defaults
+# (roles/monitoring/defaults/main.yml)
 # ==============================================================================
-# Optional VPS host monitoring + host security (Debian-family, apt-based) plus
-# the NetBird overlay agent (roles/agent, included so a central Prometheus/Alloy
-# can reach the host over the overlay). Opt-in: set `monitoring_enabled: true` in
-# inventory/host_vars/<host>/main.yml. When false (default) the role is skipped.
+# Optional and opt-in: set `monitoring_enabled: true` in
+# inventory/host_vars/<host>/main.yml (false, the default, skips the role).
+# Debian-family and apt-based; includes the NetBird overlay agent (roles/agent) so
+# a central Prometheus/Alloy can reach the host over the overlay.
 
 monitoring_enabled: false
 

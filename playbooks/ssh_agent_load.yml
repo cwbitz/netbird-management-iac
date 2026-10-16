@@ -6,16 +6,14 @@
 # The SSH agent is key-based, not path-based: it holds private keys and the
 # target's authorized_keys decides which is accepted. This playbook loads the
 # private-key paths recorded in the per-host vault
-# (vault_{ansible,admin,root}_ssh_privkey_file), so the operator does not have
-# to remember the paths.
+# (vault_{ansible,admin,root}_ssh_privkey_file).
 #
-# Invoked by the shared agent fallback (Makefile `agent-fallback`) only when a
-# configured private key has unsafe permissions, or by `agent-load`. Both
-# start/reuse the pinned Keychain agent (`keychain agent start --eval`) in the
-# current shell first. Keys that OpenSSH rejects due to file permissions (e.g.
-# on the WSL /mnt/c mount, mode 0777) are loaded via stdin (`ssh-add - < key`),
-# which skips the permission check. This is why key loading lives here rather
-# than in Keychain.
+# Invoked by the shared agent fallback (Makefile `agent-fallback`) when a
+# configured key has unsafe permissions, or by `agent-load`; both start/reuse the
+# pinned Keychain agent in the current shell first. Keys OpenSSH rejects for
+# permissions (e.g. the WSL /mnt/c mount, mode 0777) are loaded via stdin
+# (`ssh-add - < key`), which skips the check - this is why key loading lives here
+# rather than in Keychain.
 # ==============================================================================
 
 - name: "Load the control-node private keys into the running SSH agent"

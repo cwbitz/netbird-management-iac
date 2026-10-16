@@ -1,19 +1,15 @@
 ---
 # ==============================================================================
-# Optional VPS host monitoring + host security.
-#
-#   make monitoring
+# Optional host monitoring + host security (`make monitoring`).
 #
 # Installs prometheus-node-exporter + CrowdSec (+ the nftables firewall bouncer)
-# and joins the host to the overlay through the shared agent role, so a central
-# Prometheus/Alloy can reach it over the overlay. Opt-in per host with
-# `monitoring_enabled: true` in inventory/host_vars/<host>/main.yml; when
+# and joins the host to the overlay via the shared agent role. Opt-in per host
+# with `monitoring_enabled: true` in inventory/host_vars/<host>/main.yml; when
 # unset/false the role is skipped WITHOUT connecting to the host (the play does
-# not gather facts), so a node that is not monitored need not be reachable here.
+# not gather facts).
 #
-# Metrics and CrowdSec events are meant to be visualized from the sibling
-# docker-stack-iac central stack (Prometheus/Grafana/Loki); this playbook only
-# installs the host-side agents. See roles/monitoring and roles/agent.
+# Metrics/events are visualized from a central Prometheus/Grafana/Loki stack;
+# this playbook installs only the host-side agents.
 # ==============================================================================
 
 - name: Optional host monitoring and host security
