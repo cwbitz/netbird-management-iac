@@ -1,11 +1,26 @@
-# netbird-iac
+<div align="center">
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+# NetBird IaC
 
 Ansible IaC that idempotently deploys the **self-hosted NetBird server** onto a
 public Debian-family VPS: the combined `Management + Signal + Relay + STUN`
 container, the NetBird dashboard, and a built-in Traefik reverse proxy that
 issues Let's Encrypt certificates automatically.
+
+Self-hosted NetBird, deployed as code
+
+[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
+</div>
+
+- **Embedded Dex IdP** — local users out of the box, no external IdP required.
+- **Pinned server image** (Renovate-tracked); the dashboard only ships moving tags
+  upstream, so it follows `latest`.
+- **Tenant as code** — groups, policies, networks, DNS, setup keys, users and more
+  applied to the server's REST API via `make plan` / `make apply`.
+
+Procedures live in [`docs/RUNBOOK.md`](docs/RUNBOOK.md); component design in
+[`docs/components/`](docs/components/) and project conventions, contracts and
+gotchas in [`AGENTS.md`](AGENTS.md).
 
 ## What it deploys
 
