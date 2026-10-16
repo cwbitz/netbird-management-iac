@@ -2,29 +2,19 @@
 # ==============================================================================
 # NetBird agent - mesh join (roles/agent/defaults/main.yml)
 # ==============================================================================
-# Runs the NetBird agent container so a host joins the mesh. Used by the
-# `netbird_agent` node type (routing peers + endpoints) and by the monitoring
-# role (so a central Prometheus/Alloy can reach the host over the overlay with no
-# public port). The management node runs the full stack instead
-# (roles/management).
+# Runs the NetBird agent container so the host joins the overlay. Used by the
+# monitoring role so a central Prometheus/Alloy can reach the host with no public
+# port.
 
 # Rendered docker-compose project directory for the agent.
 agent_dir: "/opt/netbird-agent"
 
 # Mesh setup key: decides which NetBird group the peer auto-joins, hence its role
-# in the mesh. Resolved from the MANAGEMENT node's vault (single source of truth:
-# the tenant apply creates it there), so an agent node keeps no copy of the
-# secret. Defaults to the route-less `vps` key (a node that is only observed); a
-# routing node overrides `peer_setup_key` in host_vars with its routing group's
-# key. `netbird_management_host` is defined in group_vars/all.
+# in the mesh. Resolved from the management node's vault (single source of truth),
+# so the host keeps no copy of the secret. Defaults to the route-less `endpoint`
+# key.
 peer_setup_key: >-
   {{ (hostvars[netbird_management_host] | default({})).vault_setup_key_endpoint_enrollment | default('', true) }}
-
-# Whether this peer routes traffic for a routed network / exit node. When true
-# the host enables IPv4/IPv6 forwarding. The routed-network resources and the
-# peer's group live in the management node's tenant config (netbird_networks);
-# the setup key above decides the group.
-netbird_agent_routing: false
 
 # Overlay agent image (Renovate-tracked).
 # renovate: datasource=docker depName=ghcr.io/netbirdio/netbird

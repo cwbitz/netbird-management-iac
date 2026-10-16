@@ -21,18 +21,6 @@
     name: helpers
     tasks_from: install_docker
 
-- name: "[Agent] Enable IP forwarding on a routing node"
-  ansible.posix.sysctl:
-    name: "{{ item }}"
-    value: "1"
-    sysctl_set: true
-    reload: true
-    state: present
-  loop:
-    - net.ipv4.ip_forward
-    - net.ipv6.conf.all.forwarding
-  when: netbird_agent_routing | bool
-
 - name: "[Agent] Ensure the agent stack directory exists"
   ansible.builtin.file:
     path: "{{ agent_dir }}"

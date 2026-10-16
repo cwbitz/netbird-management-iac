@@ -353,8 +353,7 @@ lint: vault-init
 	$(ANS_PLAY) --syntax-check playbooks/backup.yml
 	$(ANS_PLAY) --syntax-check playbooks/restore.yml
 	$(ANS_PLAY) --syntax-check playbooks/monitoring.yml
-	$(ANS_PLAY) --syntax-check playbooks/agent.yml
-	ansible-lint playbooks/site.yml playbooks/tenant.yml playbooks/bootstrap.yml playbooks/backup.yml playbooks/restore.yml playbooks/monitoring.yml playbooks/agent.yml
+	ansible-lint playbooks/site.yml playbooks/tenant.yml playbooks/bootstrap.yml playbooks/backup.yml playbooks/restore.yml playbooks/monitoring.yml
 
 # Transient-network retry for the tenant apply. The pinned collection does not
 # retry API calls, and a cross-region link can drop a small fraction of TLS
@@ -394,10 +393,6 @@ apply: vault-init agent-fallback ## Tenant config-as-code: apply desired state (
 .PHONY: monitoring
 monitoring: vault-init agent-fallback ## Optional host monitoring + host security (CrowdSec + node_exporter); opt-in via monitoring_enabled
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/monitoring.yml
-
-.PHONY: agent
-agent: vault-init agent-fallback ## Join routers/endpoints to the mesh (NetBird agent); routing enabled via netbird_agent_routing
-	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/agent.yml
 
 .PHONY: backup
 backup: vault-init agent-fallback ## Back up the netbird_data volume (key stays in vault.yml)
