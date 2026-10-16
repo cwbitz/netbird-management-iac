@@ -2,149 +2,68 @@
 # ==============================================================================
 # Per-host configuration template (inventory/host_vars/example/main.yml)
 # ==============================================================================
-# Copy to inventory/host_vars/<hostname>/main.yml for each host. Only example/ is
-# committed; real <hostname>/ directories are gitignored.
-#
-# This is the per-host file you maintain. Put secrets/PII in the encrypted
-# vault.yml next to it (user input, control-generated values, and host-returned
-# values all live there).
-
-# --- Topology ----------------------------------------------------------------
-# ansible_host comes from hosts.yml; the port from vault_host in vault.yml.
-host_ssh_port: "{{ vault_host.port | default(22) }}"
+# Copy to inventory/host_vars/<hostname>/main.yml for each host (real <hostname>/
+# directories are gitignored). Secrets/PII go in the encrypted vault.yml next to
+# it.
 
 # --- SSH connection identity -------------------------------------------------
-# `host-bootstrap` probes [ansible, admin, root] and uses the first that works;
-# normal runs always use `ansible`. Each identity may set a password and/or a
-# private key file (SSH tries the key first, then the password).
-#
-# `pubkey` is an optional control-node path to the matching public key; when set,
-# `host-bootstrap` authorizes it for that account. Empty is ignored (keys are
-# never auto-generated). Only paths, never raw strings.
-host_ssh_identities:
-  root:
-    user: "root"
-    password: "{{ vault_host_root_password | default('', true) }}"
-    privkey: "{{ vault_host_root_ssh_privkey_file | default('', true) }}"
-    pubkey: "{{ vault_host_root_ssh_pubkey_file | default('', true) }}"
-    become: false
-  admin:
-    user: "{{ vault_host_admin_user | default('admin') }}"
-    password: "{{ vault_host_admin_password | default('', true) }}"
-    privkey: "{{ vault_host_admin_ssh_privkey_file | default('', true) }}"
-    pubkey: "{{ vault_host_admin_ssh_pubkey_file | default('', true) }}"
-    become: true
-  ansible:
-    user: "{{ vault_host_ansible_user | default('ansible') }}"
-    password: "{{ vault_host_ansible_password | default('', true) }}"
-    privkey: "{{ vault_host_ansible_ssh_privkey_file | default('', true) }}"
-    pubkey: "{{ vault_host_ansible_ssh_pubkey_file | default('', true) }}"
-    become: true
+# The ansible/admin/root aliases are wired in
+# inventory/group_vars/netbird_management/main.yml; the user/password/key paths
+# live in vault.yml. `make host-bootstrap` probes [ansible, admin, root] and uses
+# the first that works.
 
-host_ssh_identity: "{{ host_ssh_identities['ansible'] }}"
-host_ssh_user: "{{ host_ssh_identity.user }}"
-host_ssh_password: "{{ host_ssh_identity.password }}"
-host_ssh_privkey_file: "{{ host_ssh_identity.privkey }}"
-host_ssh_become: "{{ host_ssh_identity.become }}"
-# Prefer key, then password, at the SSH layer (single password prompt max).
-host_ssh_common_args: "-o PreferredAuthentications=publickey,password -o NumberOfPasswordPrompts=1"
-
-# Ansible connection-plugin interface (sourced from host_ssh_*).
-ansible_port: "{{ host_ssh_port }}"
-ansible_user: "{{ host_ssh_user }}"
-ansible_password: "{{ host_ssh_password }}"
-ansible_ssh_private_key_file: "{{ host_ssh_privkey_file }}"
-ansible_become: "{{ host_ssh_become }}"
-ansible_ssh_common_args: "{{ host_ssh_common_args }}"
-
-# --- Public endpoint (aliases over vault) ------------------------------------
+# --- Public endpoint (per host, not a secret) --------------------------------
 # The FQDN the server is reachable at; its A record must point at this host and
-# ports 80/443 TCP + 3478 UDP must be open. Used as the OIDC issuer, the
-# dashboard host and the TLS certificate subject.
-domain_name: "{{ vault_domain_name }}"
+# ports 80/443 TCP + 3478 UDP must be open. The role refuses to deploy while this
+# is still the placeholder.
+domain_name: "netbird.example.com"
 letsencrypt_email: "{{ vault_letsencrypt_email }}"
 
 # --- Optional first-owner bootstrap ------------------------------------------
-# When owner_email is set the role creates the first owner via /api/setup (only
-# works while the instance has no accounts). If owner_password is empty one is
-# generated into vault.yml. Leave the email empty to onboard manually at
-# https://<domain>/setup (a password without an email is ignored with a warning).
-#
-# On that first setup the role also bootstraps tenant automation: it creates an
-# 'admin' service user and a PAT for it, and persists that token as
-# vault_admin_service_user_access_token in vault.yml.
+# Set owner_email to create the first owner via /api/setup (this also provisions
+# the tenant PAT into vault.yml); leave it empty to onboard manually at
+# https://<domain>/setup. An empty owner_password is generated into vault.yml.
 owner_email: "{{ vault_owner_email | default('', true) }}"
 owner_name: "{{ vault_owner_name | default('', true) }}"
 owner_password: "{{ vault_owner_password | default('', true) }}"
 
-# [OPTIONAL] Skip the startup GeoLite2 download (needs outbound access to
-# pkgs.netbird.io; set true on air-gapped/slow-CDN hosts — see AGENTS.md).
+# [OPTIONAL] Skip the GeoLite2 download at startup (needs pkgs.netbird.io; set
+# true on air-gapped or slow-CDN hosts).
 # disable_geolite_update: true
 
 # --- Optional host monitoring + host security (make monitoring) --------------
-# Installs prometheus-node-exporter + CrowdSec (+ the nftables firewall bouncer)
-# and runs a NetBird overlay agent (tenant `vps` group, no exit/LAN routes) so a
-# central Prometheus/Alloy reaches the host with no public port. Opt-in
-# (default off). node_exporter is localhost-only plus the overlay address;
-# widen the local address only when a trusted scraper must reach it.
+# Opt-in (default off): installs prometheus-node-exporter + CrowdSec (+ the
+# nftables firewall bouncer) and joins the host to the overlay via the agent role.
 # monitoring_enabled: true
-# node_exporter_listen_addr: "127.0.0.1:9100"
-# The overlay agent's peer_setup_key is resolved from the management node's
-# vault (the route-less `vps` key by default); then optionally ship host logs to
-# a central Loki reachable over the overlay.
-# alloy_enabled: true
+# node_exporter_listen_addr: "127.0.0.1:9100"   # localhost + the overlay address
+# alloy_enabled: true                           # ship host logs to a central Loki
 # loki_url: "http://<loki-overlay-ip>:3100"
 
 # --- Node type (inventory group) ---------------------------------------------
-# A host's node type is its inventory group (inventory/hosts.yml):
-#   * netbird_management - runs the server stack (this template's deploy path).
-#   * netbird_agent      - agent-only: a routing peer or a plain endpoint.
-# Agent nodes are brought up with `make agent` (playbooks/agent.yml, roles/agent).
-# They need the management FQDN; peer_setup_key is resolved from the management
-# node's vault (single source of truth), and a routing node also enables IP
-# forwarding:
-# domain_name: "{{ vault_domain_name }}"
-# peer_setup_key: "{{ (hostvars[netbird_management_host] | default({})).vault_setup_key_home_router_enrollment }}"
-# netbird_agent_routing: true
+# This host runs the server stack (the `netbird_management` inventory group). It
+# joins the NetBird overlay only when monitoring is enabled (see above).
 
 # --- Optional host bootstrap (make host-bootstrap) ---------------------------
-# Region-specific mirrors for hosts where the defaults are slow/blocked (e.g.
-# China-based VPS). This playbook is opt-in and NOT part of make deploy.
-# Debian-family APT mirror (security mirror derived automatically; override
-# with host_apt_security_mirror if your mirror doesn't follow the pattern):
+# Region-specific mirrors for hosts where the defaults are slow or blocked;
+# opt-in and NOT part of make deploy.
 # host_apt_mirror: "https://mirrors.tuna.tsinghua.edu.cn/debian"
-# Docker Hub registry mirrors (tried in order):
 # docker_registry_mirrors:
 #   - "https://docker.1ms.run"
-# make host-bootstrap probes [ansible, admin, root] and creates the 'ansible'
-# service account when not already connected as it. Each configured
-# vault_<id>_ssh_pubkey_file is authorized for its account; unset is ignored. The
-# ansible pubkey switches the account to key auth, otherwise a password is set
-# (host_bootstrap_password, else generated into the encrypted vault); passwords
-# use a per-account random salt with update_password=on_create. Private key paths
-# go in vault.yml (vault_<id>_ssh_privkey_file).
-#
 # The optional human 'admin' account is created only when enabled here; it always
-# gets a password (generated into vault.yml when empty) and any configured key.
+# gets a password (generated into vault.yml when empty) plus any configured key.
 # host_admin_enabled: true
 
 # ==============================================================================
 # Tenant configuration (playbooks/tenant.yml)
 # ==============================================================================
-# Desired state for the NetBird account (users, groups, policies, networks,
-# DNS, account settings, ...), applied against the running server's REST API via
-# community.ansible_netbird. Define non-secret values here, secret/PII in
-# vault.yml; the play renders them into .cache/tenant_config/<host>/.
-#
-# Preview by default: `make plan`; apply with `make apply`. Strict mode (remove
-# unmanaged resources) is off unless `tenant_strict: true` is set here (per host)
-# or passed with -e; absent, empty, or `false` all mean non-strict. Unset
-# variables are left untouched unless strict mode removes unmanaged resources.
-#
+# Desired state for the NetBird account (users, groups, policies, networks, DNS,
+# settings, ...), applied to the running server's REST API via
+# community.ansible_netbird. `make plan` previews; `make apply` commits.
+# tenant_strict: true additionally removes unmanaged resources (off by default).
+
 # --- Account settings (settings.yml) -----------------------------------------
-# Account-wide settings (API /api/accounts). Each option is shown with its
-# default; uncomment to change. Group lists accept plain names (resolved to IDs).
-# ENTERPRISE-gated options are marked.
+# Account-wide settings, each shown with its default; group lists accept plain
+# names (resolved to IDs). ENTERPRISE-gated options are marked.
 # netbird_settings:
 #   # Authentication
 #   peer_login_expiration_enabled: true        # require periodic SSO re-auth (setup-key peers exempt)
@@ -176,6 +95,8 @@ owner_password: "{{ vault_owner_password | default('', true) }}"
 #   peer_expose_enabled: false
 #   peer_expose_groups: []
 #
+tenant_strict: false
+
 # --- Groups (access_control/groups.yml) --------------------------------------
 # Do NOT list the auto-managed "All" group.
 # netbird_groups:
@@ -203,9 +124,8 @@ owner_password: "{{ vault_owner_password | default('', true) }}"
 #
 # --- Networks (networks.yml) -------------------------------------------------
 # A routed network binds its gateway by peer GROUP (routers[].peer_groups), not
-# by an individual peer name. Declare the group (netbird_groups) and have the
-# client's setup key auto-assign it, so the network can be created on the first
-# run and the enrolling client becomes its routing peer automatically.
+# by an individual peer; the client's setup key auto-assigns that group, so the
+# network can be created on the first run.
 # netbird_networks: []
 #
 # --- DNS (dns/nameservers.yml, dns/zones.yml, dns/settings.yml) --------------
@@ -214,10 +134,9 @@ owner_password: "{{ vault_owner_password | default('', true) }}"
 # netbird_dns_disabled_management_groups: []
 #
 # --- Setup keys (setup_keys.yml) ---------------------------------------------
-# The secret is returned only at creation; after `apply` it is persisted
-# to vault.yml as vault_setup_key_<name> (non-alphanumerics -> '_').
-# expires_in is seconds, 1..31536000 (1 year max). A never-expiring key
-# (expires_in: 0) is not expressible here; create it once via the API instead.
+# The secret is returned only at creation and then persisted to vault.yml as
+# vault_setup_key_<name>. expires_in is seconds, 1..31536000; a never-expiring key
+# (expires_in: 0) is not expressible here (create it once via the API instead).
 # netbird_setup_keys: []
 #   - name: "server-enrollment"
 #     key_type: "reusable"          # one-off | reusable
@@ -229,16 +148,14 @@ owner_password: "{{ vault_owner_password | default('', true) }}"
 #
 # --- Services (services.yml) -------------------------------------------------
 # Services and custom domains need a registered proxy cluster, which only the
-# self-hosted proxy software itself can create (BYOP); the collection can delete
-# a cluster (netbird_proxy_cluster, state=absent) but not create one.
+# self-hosted proxy software itself can create.
 # netbird_services: []
 # netbird_service_domains: []
 #
 # --- Users / service users (applied directly, not via a config file) ---------
-# Local-user passwords are generated and returned once (not persisted); prefer
-# invites, and put emails in vault.yml if they are sensitive. auto_groups take
-# plain names (resolved to IDs before the API call). IdP-driven provisioning
-# (SCIM/IdP sync) is Enterprise; manual users are Community.
+# Local-user passwords are returned once (not persisted); prefer invites, and put
+# sensitive emails in vault.yml. IdP-driven provisioning (SCIM/IdP sync) is
+# Enterprise; manual users are Community.
 # netbird_users:
 #   - email: "alice@example.com"
 #     name: "Alice"
@@ -250,3 +167,7 @@ owner_password: "{{ vault_owner_password | default('', true) }}"
 #     role: "admin"
 #     auto_groups: []
 #     state: present
+
+# --- Host bootstrap (make host-bootstrap) -------------------------------------
+# Optional per-host APT security mirror (empty = the distro default).
+host_apt_security_mirror: ""

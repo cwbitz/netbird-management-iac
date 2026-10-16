@@ -1,109 +1,75 @@
 # ==============================================================================
 # Per-host secrets schema (inventory/host_vars/example/vault.yml.example)
 # ==============================================================================
-# Preferred: `make host-init HOST=<hostname>` copies and encrypts this schema
-# into inventory/host_vars/<hostname>/vault.yml, then edit it with
-# `make vault-edit HOST=<hostname>`. To do it by hand instead:
-#
-#   cp inventory/host_vars/example/vault.yml.example \
-#      inventory/host_vars/<hostname>/vault.yml
-#   ansible-vault encrypt inventory/host_vars/<hostname>/vault.yml
-#
-# The real vault.yml is gitignored and NEVER committed (even encrypted). It is the
-# single per-host vault: user-supplied values, control-generated values passed TO
-# the host (the crypto keys and the owner/ansible passwords), and secrets returned
-# BY the host (the admin PAT and setup-key secrets). The vault password is read from
-# ~/.config/projects/netbird-iac/ansible_vault_password (see ansible.cfg;
-# `make vault-init` creates one).
+# make host-init copies this schema into host_vars/<hostname>/vault.yml and
+# encrypts it; edit it with `make vault-edit HOST=<hostname>`. The real file is
+# gitignored and NEVER committed (even encrypted). It is the single per-host
+# vault: user-supplied values, control-generated values passed TO the host, and
+# secrets returned BY the host. The vault password lives outside the repo
+# (ansible.cfg; `make vault-init` creates it).
 # ==============================================================================
 
-# --- Topology (single host; referenced from inventory/hosts.yml) --------------
-vault_host:
-  ip: "203.0.113.10"
-  port: 22
-
 # --- SSH connection identity -------------------------------------------------
-# `make host-bootstrap` probes [ansible, admin, root] and uses the first that
-# works; normal runs always use `ansible`. Each identity may set a password
-# and/or a private key file (SSH prefers the key, then the password). There are
-# no become/sudo-password vars: the ansible account gets NOPASSWD sudo.
-#
-# vault_*_ssh_privkey_file is the control-node private key for that identity.
-# vault_*_ssh_pubkey_file is an optional control-node path to the matching public
-# key; when set, `make host-bootstrap` authorizes it for that account. Empty is
-# ignored (nothing is generated). Only paths, never raw key strings.
-#
-# Key-first: when vault_host_ansible_ssh_pubkey_file is set the ansible account is
-# key-only (no password). Otherwise a password is set — host_bootstrap_password
-# if given, else generated into this file — hashed with a per-account random
-# salt and applied with update_password=on_create, so a password rotated on the
-# host is preserved.
+# host-bootstrap probes [ansible, admin, root] and connects as the first that
+# works. Each identity may set a password and/or a private key file (SSH prefers
+# the key). vault_*_ssh_pubkey_file is an optional control-node path to the
+# matching public key; when set it is authorized for that account (empty is
+# ignored; keys are never generated). Only paths, never raw key strings.
 vault_host_root_password: ""
 vault_host_root_ssh_privkey_file: "~/.ssh/id_ed25519"
 vault_host_root_ssh_pubkey_file: ""
 # The optional human 'admin' operator account is created only when
-# `host_admin_enabled: true` is set in main.yml. It always gets a password
-# (generated into this file when left empty) for console login and sudo; a
-# configured public key is installed additionally.
+# host_admin_enabled is true in main.yml; it always gets a password (generated
+# here when left empty) plus any configured key.
 vault_host_admin_user: "admin"
 vault_host_admin_password: ""
 vault_host_admin_ssh_privkey_file: ""
 vault_host_admin_ssh_pubkey_file: ""
-# The ansible identity is the service account host-bootstrap creates/repairs;
-# its public key (when set) also switches the account to key auth instead of a
-# generated password.
+# The `ansible` service account uses key auth when its public key is set,
+# otherwise a password (host_bootstrap_password, else generated here).
 vault_host_ansible_user: "ansible"
 vault_host_ansible_password: ""
 vault_host_ansible_ssh_privkey_file: "~/.ssh/id_ed25519_ansible"
 vault_host_ansible_ssh_pubkey_file: ""
 
 # --- Public endpoint ---------------------------------------------------------
-vault_domain_name: "netbird.example.com"
+# Email used for Let's Encrypt certificate issuance.
 vault_letsencrypt_email: "admin@example.com"
 
 # --- Optional first-owner bootstrap ------------------------------------------
-# The owner is a local user; the email must be valid (it need not match the
-# deployment domain). Set it to auto-create the first owner via /api/setup; leave
-# it empty to onboard manually at https://<domain>/setup. The password is
-# optional: leave it empty to generate one into this file. A password
-# without an email is ignored with a warning.
+# Set the email to auto-create the first owner via /api/setup (and provision the
+# tenant token below); leave it empty to onboard manually at
+# https://<domain>/setup. The password is optional (empty => generated here) and
+# is ignored without an email.
 vault_owner_email: ""
 vault_owner_name: ""
 vault_owner_password: ""
 
 # --- Tenant config-as-code access token --------------------------------------
-# The 'admin' service-user PAT used by playbooks/tenant.yml is host-returned, so
-# it is written into vault.yml, not set here (see the section below).
+# vault_admin_service_user_access_token is host-returned; it is written below,
+# not set here.
 
 # ==============================================================================
-# Host-returned secrets (written to vault.yml; do not set them here)
+# Secrets managed automatically (do not set these by hand)
 # ==============================================================================
-# Generated BY the NetBird host and returned to the control node:
+# Returned BY the NetBird host (fill-if-empty; never rotated):
 #   vault_admin_service_user_access_token   'admin' service-user PAT (expires;
 #                                           recreate it from the Dashboard)
 #   vault_setup_key_<name>                  per new setup key (returned only at
-#                                           creation; '_' replaces non-alphanumerics)
-# Existing non-empty values are preserved (never rotated).
-#
-# Also managed automatically when left empty here, but kept IN THIS FILE (they are
-# control-generated inputs passed to the host):
-#   vault_datastore_encryption_key          at-rest data encryption key. KEEP/back
-#                                           it up: it is NOT in the backup archive
-#                                           and a restore MUST reuse the same value,
-#                                           else the encrypted user data is lost.
-#   vault_session_cookie_encryption_key     session cookie encryption key. Auto-
-#                                           generated internal — do NOT edit:
-#                                           regenerating it only logs users out
-#                                           (it must match across instances only for
-#                                           HA/multi-replica, out of scope here).
-#   vault_relay_auth_secret                 relay auth secret (base64). Auto-generated
-#                                           internal — do NOT edit: it lives inside
-#                                           the combined management+relay container
-#                                           (shared only with an external relay).
+#                                           creation; non-alphanumerics become '_')
+# Generated by the control node when left empty and passed TO the host:
+#   vault_datastore_encryption_key          data-at-rest key. KEEP AND BACK IT UP:
+#                                           it is NOT in the backup archive and a
+#                                           restore MUST reuse the same value, or
+#                                           the encrypted user data is lost.
+#   vault_session_cookie_encryption_key     session cookie key (auto-generated
+#                                           internal; leave unedited)
+#   vault_relay_auth_secret                 relay auth secret (auto-generated
+#                                           internal; leave unedited)
 #   vault_owner_password                    first owner password
 #   vault_host_ansible_password             service account password (only when
 #                                           no public key is given)
 #   vault_host_admin_password               admin password (only when
 #                                           host_admin_enabled is true)
-# Ownership is disjoint: a key lives in exactly one file. Back up BOTH files; only
-# vault_datastore_encryption_key is unrecoverable if lost.
+# Back up both this file and the host data; only vault_datastore_encryption_key is
+# unrecoverable if lost.
