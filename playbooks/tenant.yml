@@ -12,7 +12,7 @@
 # Preview with `make plan` (read-only diff); apply with `make apply` (commits).
 # Strict mode (also removes unmanaged resources) is off unless `tenant_strict:
 # true` is set per host or passed with -e. Requires
-# vault_admin_service_user_access_token (created by the first-owner bootstrap, or
+# vault_service_admin_access_token (created by the first-owner bootstrap, or
 # set in vault.yml).
 # ==============================================================================
 
@@ -25,7 +25,7 @@
     tenant_build_dir: "{{ playbook_dir }}/../.cache/tenant_config/{{ inventory_hostname }}"
     config_dir: "{{ tenant_build_dir }}"
     netbird_api_url: "https://{{ domain_name }}"
-    netbird_api_token: "{{ vault_admin_service_user_access_token | default('', true) }}"
+    netbird_api_token: "{{ vault_service_admin_access_token | default('', true) }}"
     netbird_validate_certs: true
     tenant_commit: false
     # tenant_strict is NOT set here: it is a host-level knob (host_vars/<host>/
@@ -42,7 +42,7 @@
         that:
           - netbird_api_token | length > 0
         fail_msg: >-
-          Set vault_admin_service_user_access_token in
+          Set vault_service_admin_access_token in
           inventory/host_vars/<host>/vault.yml. On a fresh deploy it is created
           automatically during the first-owner bootstrap; otherwise create an
           'admin' service user and its Access Token in the NetBird Dashboard
@@ -76,7 +76,7 @@
           once invalid. Recreate one: log in to the Dashboard as the owner
           ({{ netbird_api_url }}), open Team -> Service Users -> 'admin' ->
           Access Tokens -> Create Access Token, then store it as
-          vault_admin_service_user_access_token in
+          vault_service_admin_access_token in
           inventory/host_vars/{{ inventory_hostname }}/vault.yml and re-run.
 
     # --------------------------------------------------------------------------
@@ -162,7 +162,7 @@
 
     # --------------------------------------------------------------------------
     # A setup key's secret is returned only at creation. Persist each newly
-    # created key as vault_setup_key_<name> in vault.yml.
+    # created key as vault_<name> in vault.yml (the key name already ends in _setup_key).
     # --------------------------------------------------------------------------
     - name: "[Tenant] Persist newly created setup key values in the vault"
       ansible.builtin.include_role:
@@ -173,7 +173,7 @@
         # key_result.item is the original setup-key spec recorded by the
         # community.ansible_netbird configure role (its loop uses the default
         # `item` loop var, so the nested key stays `item`).
-        secret_store_var: "vault_setup_key_{{ key_result.item.name | regex_replace('[^A-Za-z0-9_]', '_') }}"
+        secret_store_var: "vault_{{ key_result.item.name | regex_replace('[^A-Za-z0-9_]', '_') }}"
         secret_store_value: "{{ key_result.setup_key.key }}"
       loop: "{{ (netbird_setup_key_results | default({'results': []})).results }}"
       loop_control:

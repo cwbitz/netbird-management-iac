@@ -135,7 +135,8 @@ tenant_strict: false
 #
 # --- Setup keys (setup_keys.yml) ---------------------------------------------
 # The secret is returned only at creation and then persisted to vault.yml as
-# vault_setup_key_<name>. expires_in is seconds, 1..31536000; a never-expiring key
+# vault_<setup-key-name> (e.g. docker_host_setup_key ->
+# vault_docker_host_setup_key). expires_in is seconds, 1..31536000; a never-expiring key
 # (expires_in: 0) is not expressible here (create it once via the API instead).
 # netbird_setup_keys: []
 #   - name: "server-enrollment"

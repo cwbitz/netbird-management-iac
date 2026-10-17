@@ -14,7 +14,7 @@ agent_dir: "/opt/netbird-agent"
 # so the host keeps no copy of the secret. Defaults to the route-less `endpoint`
 # key.
 peer_setup_key: >-
-  {{ (hostvars[netbird_management_host] | default({})).vault_setup_key_endpoint_enrollment | default('', true) }}
+  {{ (hostvars[netbird_management_host] | default({})).vault_endpoint_setup_key | default('', true) }}
 
 # Overlay agent image (Renovate-tracked).
 # renovate: datasource=docker depName=ghcr.io/netbirdio/netbird

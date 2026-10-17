@@ -64,10 +64,10 @@ GeoLite2 DBs from `pkgs.netbird.io`. If the readiness wait times out, re-run
 - With `vault_owner_email` set, the first owner is created automatically via
   `/api/setup` (works only while the instance has no accounts). The same run
   creates an `admin` service user and its PAT, stored as
-  `vault_admin_service_user_access_token`.
+  `vault_service_admin_access_token`.
 - Without an email, open `https://<domain>/setup` and create the owner; then
   create an `admin` service user and an Access Token (Team → Service Users) and
-  set `vault_admin_service_user_access_token` in `vault.yml`.
+  set `vault_service_admin_access_token` in `vault.yml`.
 - PATs expire (max 365 days). When a tenant run reports the token rejected,
   recreate it in the Dashboard and update the vault.
 - **Host reinstalled/reimaged**: the host-returned secrets in `vault.yml` are stale
@@ -97,7 +97,7 @@ make apply         # apply desired state
 Desired state uses the `community.ansible_netbird` collection's native variables in
 `inventory/host_vars/<host>/main.yml` (secret/PII in `vault.yml`). The play renders
 a generated, gitignored directory (`.cache/tenant_config/<host>/`) and applies it.
-Requires a valid `vault_admin_service_user_access_token`. `make deploy` already
+Requires a valid `vault_service_admin_access_token`. `make deploy` already
 applies the tenant state after the server deploy; use `apply` to change tenants
 without touching the server, or `TAGS=...` to keep `deploy` server-only.
 
@@ -114,7 +114,7 @@ What you can codify:
 | Account settings (Dashboard settings) | Yes | `netbird_settings` |
 | Services | Yes | `netbird_services`, `netbird_service_domains` |
 | Users / service users | Yes* | `netbird_users`, `netbird_service_users`; embedded-IdP passwords are one-time |
-| Setup keys | Yes* | `netbird_setup_keys`; expiry 1..31536000s (1 year max, never-expire not expressible); new secrets are persisted to `vault.yml` as `vault_setup_key_<name>` |
+| Setup keys | Yes* | `netbird_setup_keys`; expiry 1..31536000s (1 year max, never-expire not expressible); new secrets are persisted to `vault.yml` as `vault_<setup-key-name>` |
 | Identity providers (external IdP) | No | Dashboard / `POST /api/identity-providers` (see `docs/IDP.md`) |
 | Peers | No | enrolled devices: only settings are managed; devices re-enroll with setup keys |
 | Audit / events | No | read-only |

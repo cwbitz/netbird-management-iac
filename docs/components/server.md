@@ -55,6 +55,6 @@ Keys come from the encrypted per-host vault (`vault_relay_auth_secret`,
 accounts**, so the owner-bootstrap tasks run on the first deploy and are skipped
 afterwards. With `owner_email` set the role requests a short-lived owner token
 (`create_pat`, 7 days), creates the `admin` service user and a PAT for it
-(`vault_admin_service_user_access_token`), then deletes the owner token. The owner
+(`vault_service_admin_access_token`), then deletes the owner token. The owner
 token is never written to disk or logged. Without `owner_email`, onboard manually
 at `https://<domain>/setup`.

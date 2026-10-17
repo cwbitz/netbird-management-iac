@@ -26,7 +26,7 @@ names.
 `peer_inactivity_expiration` fields when rendering; the `*_expiration_enabled`
 toggles keep the collection names.
 
-Requires a valid `vault_admin_service_user_access_token` (see `AGENTS.md`).
+Requires a valid `vault_service_admin_access_token` (see `AGENTS.md`).
 
 ## Collection gotchas
 
@@ -37,7 +37,7 @@ Requires a valid `vault_admin_service_user_access_token` (see `AGENTS.md`).
 - Setup keys: the collection preflight requires `expires_in > 0` (max `31536000`),
   so a **never-expiring** key (`expires_in: 0`) cannot be declared in
   `netbird_setup_keys`; create one once out-of-band. New secrets are persisted as
-  `vault_setup_key_<name>`.
+  `vault_<setup-key-name>`.
 - Routed networks bind their gateway by peer **group** (`routers[].peer_groups`,
   e.g. `home-router`), not by an individual peer name. The group is created by the
   tenant play and the client's setup key auto-assigns it, so a network applies on

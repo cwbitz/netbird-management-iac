@@ -150,7 +150,7 @@
 # instance has no accounts, so this runs on the first deploy and is skipped
 # afterwards. With owner_email set it creates the owner, mints a short-lived owner
 # token, creates the 'admin' service user and a PAT for it (persisted as
-# vault_admin_service_user_access_token), then deletes the owner token; without
+# vault_service_admin_access_token), then deletes the owner token; without
 # owner_email, onboard manually at https://<domain>/setup.
 # ------------------------------------------------------------------------------
 - name: "[NetBird] Provision an owner password (email set, no password supplied)"
@@ -176,7 +176,7 @@
       https://{{ domain_name }}/setup in a browser (that page only works while
       the instance has no accounts), then create an 'admin' service user and an
       Access Token under Team -> Service Users and set
-      vault_admin_service_user_access_token in vault.yml.
+      vault_service_admin_access_token in vault.yml.
   when:
     - owner_email | default('', true) | length == 0
 
@@ -304,8 +304,8 @@
           Authorization: "Token {{ owner_access_token }}"
         body_format: json
         body:
-          name: "netbird-iac"
-          expires_in: "{{ admin_service_user_access_token_expire_days | int }}"
+          name: "admin"
+          expires_in: "{{ service_admin_access_token_expire_days | int }}"
         validate_certs: true
         return_content: true
         status_code: [200]
@@ -319,7 +319,7 @@
         tasks_from: store_secret
       vars:
         secret_store_file: "vault.yml"
-        secret_store_var: "vault_admin_service_user_access_token"
+        secret_store_var: "vault_service_admin_access_token"
         secret_store_value: "{{ admin_service_user_token.json.plain_token }}"
 
     - name: "[NetBird] List the owner's access tokens"
