@@ -25,16 +25,18 @@
     # The host to bootstrap: the Makefile passes HOST= as -e bootstrap_host.
     # Defaults to the single netbird_management node (the usual `make deploy`
     # case); pass it explicitly for a router/endpoint or when several
-    # management nodes exist.
-    bootstrap_host: "{{ bootstrap_host | default(groups['netbird_management'] | default([]) | first | default('', true)) }}"
-    netbird_target: "{{ hostvars[bootstrap_host] | default({}) }}"
+    # management nodes exist. `bootstrap_host` stays the pure `-e` input;
+    # resolving it into `bootstrap_target` here — instead of into a var that
+    # references its own name — avoids an Ansible self-reference recursion.
+    bootstrap_target: "{{ bootstrap_host | default(groups['netbird_management'] | default([]) | first | default('', true)) }}"
+    netbird_target: "{{ hostvars[bootstrap_target] | default({}) }}"
     probe_host: "{{ netbird_target.ansible_host | default('') }}"
     probe_port: "{{ netbird_target.ansible_port | default(22) }}"
   tasks:
     - name: "[Probe] Assert a bootstrap target was resolved"
       ansible.builtin.assert:
         that:
-          - bootstrap_host | default('', true) | length > 0
+          - bootstrap_target | default('', true) | length > 0
           - probe_host | default('', true) | length > 0
         fail_msg: >-
           No bootstrap target resolved. Pass one explicitly with
@@ -103,7 +105,7 @@
 
     - name: "[Probe] Register the probed identity on the target host"
       ansible.builtin.add_host:
-        name: "{{ bootstrap_host }}"
+        name: "{{ bootstrap_target }}"
         probe_identity: "{{ probe.stdout | trim }}"
 
     - name: "[Probe] Report the working identity"
