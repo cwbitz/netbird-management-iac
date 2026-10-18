@@ -231,7 +231,7 @@
     # fallback.
     - name: "[Bootstrap] Resolve the service account settings"
       ansible.builtin.set_fact:
-        bootstrap_service_user: "{{ host_bootstrap_user | default('ansible') }}"
+        bootstrap_service_user: "ansible"
         bootstrap_use_key: "{{ vault_host_ansible_ssh_pubkey_file | default('', true) | length > 0 }}"
 
     - name: "[Bootstrap] Provision a service-account password (no key supplied)"

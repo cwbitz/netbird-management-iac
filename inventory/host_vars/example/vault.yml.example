@@ -25,9 +25,9 @@ vault_host_admin_user: "admin"
 vault_host_admin_password: ""
 vault_host_admin_ssh_privkey_file: ""
 vault_host_admin_ssh_pubkey_file: ""
-# The `ansible` service account uses key auth when its public key is set,
-# otherwise a password (host_bootstrap_password, else generated here).
-vault_host_ansible_user: "ansible"
+# The `ansible` service account name is fixed (`ansible`); it uses key auth when
+# its public key is set, otherwise a password (host_bootstrap_password, else
+# generated here).
 vault_host_ansible_password: ""
 vault_host_ansible_ssh_privkey_file: "~/.ssh/id_ed25519_ansible"
 vault_host_ansible_ssh_pubkey_file: ""
