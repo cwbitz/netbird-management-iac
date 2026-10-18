@@ -33,11 +33,11 @@ $(foreach v,HOST HOST_IP HOST_PORT,$(if $(filter environment,$(origin $(v))),$(w
 # Inventory group host-init adds the new host to (the management server).
 GROUP ?= netbird_management
 FROM ?=
-# Refresh SSH host keys before connecting (HOST_KEY=1). Useful after a managed
+# Refresh SSH host keys before connecting (REFRESH=1). Useful after a managed
 # host is rebuilt: its new host key would otherwise fail the "host key changed"
 # check. hostkey-init scans every inventory host and (re)writes its key into the
 # control node's known_hosts; deploy/dry-run/host-bootstrap call it when set.
-HOST_KEY ?=
+REFRESH ?=
 KNOWN_HOSTS ?= $(HOME)/.ssh/known_hosts
 
 # Ansible Vault password file (outside the repo), exported under Ansible's own
@@ -260,15 +260,15 @@ host-init: vault-init ## Scaffold host_vars/<HOST> + the inventory entry (HOST d
 	echo "      verify: make print HOST=$$host"
 
 .PHONY: host-bootstrap
-host-bootstrap: vault-init agent-fallback ## Create the ansible service account on one host (HOST=<name>, default the management host); HOST_KEY=1 refreshes host keys first
-	@if [ -n "$(HOST_KEY)" ]; then $(MAKE) --no-print-directory hostkey-init; fi; \
+host-bootstrap: vault-init agent-fallback ## Create the ansible service account on one host (HOST=<name>, default the management host); REFRESH=1 refreshes host keys first
+	@if [ -n "$(REFRESH)" ]; then $(MAKE) --no-print-directory hostkey-init; fi; \
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml $(if $(HOST),-e bootstrap_host=$(HOST),)
 
-# (internal) Scan every inventory host and (re)write its SSH host key into the
-# control node's known_hosts (removing any stale entry first). Invoked by
-# deploy/dry-run/host-bootstrap when HOST_KEY=1, and usable standalone.
+# Refresh every managed host's SSH host key in the control node's known_hosts
+# (removing any stale entry first). Also run automatically when REFRESH=1 is set
+# on deploy / dry-run / host-bootstrap.
 .PHONY: hostkey-init
-hostkey-init: vault-init
+hostkey-init: vault-init ## Refresh every managed host's SSH host key in known_hosts
 	@set -e; \
 	nh="$(KNOWN_HOSTS)"; mkdir -p "$$(dirname "$$nh")"; tmp=$$(mktemp); \
 	$(ANS_PLAY) -i $(INVENTORY) playbooks/host_keys.yml -e host_keys_out="$$tmp" >/dev/null; \
@@ -364,13 +364,13 @@ TENANT_RETRY_MAX   ?= 5
 TENANT_RETRY_DELAY ?= 8
 
 .PHONY: dry-run
-dry-run: vault-init agent-fallback ## Dry-run (--check --diff); HOST_KEY=1 refreshes host keys first
-	@if [ -n "$(HOST_KEY)" ]; then $(MAKE) --no-print-directory hostkey-init; fi; \
+dry-run: vault-init agent-fallback ## Dry-run (--check --diff); REFRESH=1 refreshes host keys first
+	@if [ -n "$(REFRESH)" ]; then $(MAKE) --no-print-directory hostkey-init; fi; \
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) $(PLAYBOOK) --check --diff $(if $(TAGS),--tags $(TAGS),)
 
 .PHONY: deploy
-deploy: vault-init agent-fallback ## One-shot: bootstrap the host, deploy the server, then apply the tenant state; TAGS=... runs only the server; HOST_KEY=1 refreshes host keys first
-	@if [ -n "$(HOST_KEY)" ]; then $(MAKE) --no-print-directory hostkey-init; fi
+deploy: vault-init agent-fallback ## One-shot: bootstrap the host, deploy the server, then apply the tenant state; TAGS=... runs only the server; REFRESH=1 refreshes host keys first
+	@if [ -n "$(REFRESH)" ]; then $(MAKE) --no-print-directory hostkey-init; fi
 	@echo "==> Bootstrapping the host (playbooks/bootstrap.yml: service account, Docker)..."
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml $(if $(HOST),-e bootstrap_host=$(HOST),)
 	@echo "==> Deploying the NetBird server (playbooks/site.yml)..."
