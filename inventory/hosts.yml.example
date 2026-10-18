@@ -2,33 +2,23 @@
 # ==============================================================================
 # Ansible inventory template (inventory/hosts.yml.example)
 # ==============================================================================
-# Copy to inventory/hosts.yml and edit the host names; the real file is
-# gitignored. Each managed host's connection address/port lives here as
-# ansible_host / ansible_port. The `netbird_management` group (under the `netbird`
-# umbrella) runs the self-hosted NetBird server stack; cross-cutting playbooks
-# (bootstrap, host keys, ssh-agent) address the umbrella. Per-host settings live
-# in inventory/host_vars/<hostname>/. Replace CHANGE_ME_HOST_IP with the real
-# address; the site preflight rejects the placeholder until you do.
+# `make host-init HOST=<name> HOST_IP=<addr> [HOST_PORT=<port>]` scaffolds this
+# file and the matching host_vars entry. With no arguments it scaffolds the
+# default host `netbird-1` with a CHANGE_ME_HOST_IP placeholder.
+#
+# Each host's connection address/port lives here as ansible_host / ansible_port.
+# This file carries topology only — the project-owned baseline variables live in
+# the committed inventory/group_vars/all/main.yml. The `netbird_management` group
+# is the play target for every playbook; per-host settings live in
+# inventory/host_vars/<hostname>/. A missing or CHANGE_ME ansible_host is rejected
+# by the site preflight.
+#
+# Example entry:
+#   netbird_management:
+#     hosts:
+#       netbird-1:
+#         ansible_host: "203.0.113.10"
 # ==============================================================================
 
-all:
-  vars:
-    # Supported ansible-core range; the preflight asserts [min, max) and permits a
-    # newer engine when ansible_core_allow_untested is true.
-    ansible_core_min_version: "2.19.0"
-
-    # Bootstrap account names; the per-host host_ssh_identities aliases fall back
-    # to these when the vault leaves them empty.
-    ansible_service_user: ansible
-    bootstrap_admin_user: admin
-    ansible_core_max_version: "2.20.0"
-    ansible_core_allow_untested: false
-
-  children:
-    netbird:
-      children:
-        # Server node: the public VPS running the self-hosted NetBird server.
-        netbird_management:
-          hosts:
-            netbird-1:
-              ansible_host: "CHANGE_ME_HOST_IP"
+netbird_management:
+  hosts:

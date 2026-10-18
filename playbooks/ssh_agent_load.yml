@@ -21,7 +21,7 @@
   gather_facts: false
   become: false
   vars:
-    agent_load_hosts: "{{ groups['netbird'] | default([]) }}"
+    agent_load_hosts: "{{ groups['netbird_management'] | default([]) }}"
   tasks:
     - name: "[SSHAgent] Assert the Keychain ssh-agent is reachable in this shell"
       ansible.builtin.assert:

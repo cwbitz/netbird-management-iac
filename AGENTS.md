@@ -14,16 +14,16 @@ devices, not codifiable state** — only their settings are managed; desired
 enrollment is expressed through groups/setup keys/policies.
 
 Managed hosts live in `inventory/hosts.yml` (local-only/gitignored; committed
-template `inventory/hosts.yml.example`) and are never hardcoded into docs, roles,
-or templates. The **node type is an inventory group** under the `netbird` umbrella,
-so `hosts:` play patterns and `group_vars/<group>/` are the single source of truth:
-`netbird_management` runs the self-hosted server stack (`roles/management`) and is
-targeted by `playbooks/site.yml`, `tenant.yml`, `backup.yml`, `restore.yml`. The
-`netbird` parent group spans every managed node, so cross-cutting playbooks
-(`bootstrap.yml`, `host_keys.yml`, `ssh_agent_load.yml`) address all of them.
-`make host-bootstrap` targets one host (`HOST=<name>`, default the single
-management node). Entry playbooks: `playbooks/site.yml` (server deploy) and
-`playbooks/tenant.yml` (tenant config-as-code).
+template `inventory/hosts.yml.example`, topology only) and are never hardcoded
+into docs, roles, or templates; the project-owned baseline for every managed host
+(engine range) is committed in `inventory/group_vars/all/main.yml`. The
+`netbird_management` inventory group is the single source of truth: it runs the
+self-hosted server stack (`roles/management`) and is the play target for every
+playbook (`site.yml`, `tenant.yml`, `backup.yml`, `restore.yml`, `bootstrap.yml`,
+`host_keys.yml`, `ssh_agent_load.yml`). `make host-bootstrap` targets one host
+(`HOST=<name>`, default the single management node). Entry playbooks:
+`playbooks/site.yml` (server deploy) and `playbooks/tenant.yml` (tenant
+config-as-code).
 
 ## Integration contract (the mesh as a service)
 

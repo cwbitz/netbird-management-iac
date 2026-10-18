@@ -13,7 +13,7 @@
 # ==============================================================================
 
 - name: Optional host monitoring and host security
-  hosts: netbird
+  hosts: netbird_management
   gather_facts: false
   roles:
     - role: monitoring

@@ -74,9 +74,11 @@ in the [runbook](docs/RUNBOOK.md).
 ## Node type
 
 The host runs the self-hosted server stack; its inventory group
-(`netbird_management`, under the `netbird` umbrella) is the single source of truth
-for `hosts:` play patterns and `group_vars/<group>/`. `make host-bootstrap
-HOST=<name>` targets one host, defaulting to the single management node.
+`netbird_management` is the single source of truth for `hosts:` play patterns and
+`group_vars/<group>/`. The project-owned baseline for every managed host (engine
+range) lives in the committed `inventory/group_vars/all/main.yml`, so `hosts.yml`
+carries topology only. `make host-bootstrap HOST=<name>` targets one host,
+defaulting to the single management node.
 
 ## Features
 
@@ -91,7 +93,7 @@ HOST=<name>` targets one host, defaulting to the single management node.
 ## Layout
 
 ```
-inventory/           # hosts.yml(.example), group_vars/netbird_management, host_vars/example
+inventory/           # hosts.yml(.example), group_vars/{all,netbird_management}, host_vars/example
 playbooks/site.yml   # server preflight + management role
 playbooks/tenant.yml # tenant config-as-code (community.ansible_netbird)
 roles/management     # defaults (image pins), tasks, templates/
