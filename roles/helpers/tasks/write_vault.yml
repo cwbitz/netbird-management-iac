@@ -3,10 +3,11 @@
 # Write a per-host vault file (roles/helpers/tasks/write_vault.yml)
 # ==============================================================================
 # Renders write_vault_data as YAML and encrypts it into
-# <write_vault_dir>/<write_vault_file> (mode 0600); keys are sorted so every
-# rewrite is deterministic. Always writes through a throwaway plaintext temp file
-# and reports changed, so the file is never left unencrypted and callers can gate
-# on the result.
+# <write_vault_dir>/<write_vault_file> (mode 0600). Keys are written in
+# alphabetical order (sort_keys), so every rewrite produces the same deterministic
+# layout. Always writes through a throwaway plaintext temp file and reports
+# changed, so the file is never left unencrypted and callers can gate on the
+# result.
 #
 # Params (include vars):
 #   write_vault_dir   Absolute directory holding the vault file (see read_vault.yml)
@@ -59,7 +60,7 @@
     - name: "[VaultWrite] Encrypt into the vault file"
       ansible.builtin.command:
         argv:
-          - ansible-vault
+          - "{{ helper_ansible_vault_bin }}"
           - encrypt
           - --vault-password-file
           - "{{ helper_vault_password_file }}"
