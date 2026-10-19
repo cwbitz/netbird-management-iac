@@ -59,12 +59,12 @@
     - name: "[Preflight] Require the service account (not root) for the deploy"
       ansible.builtin.assert:
         that:
-          - (host_ssh_user | default('root')) != 'root' or (host_allow_root_login | default(false) | bool)
+          - (ssh_user | default('root')) != 'root' or (allow_root_login | default(false) | bool)
         fail_msg: >-
           The deploy must run as the non-root `ansible` service account, not
           root. Run `make host-bootstrap` once as root to create it, then set its
           key/password in inventory/host_vars/<host>/vault.yml. Override
-          deliberately with host_allow_root_login=true if you accept running as
+          deliberately with allow_root_login=true if you accept running as
           root.
 
 - name: Deploy the NetBird self-hosted server
@@ -72,3 +72,16 @@
   gather_facts: true
   roles:
     - role: management
+    # Default-deny inbound base firewall (a dedicated nftables table): keeps the
+    # server's public surface to the mesh contract (TCP 80/443, UDP 3478) plus
+    # SSH and the overlay. Opt-in; the declared ports are re-verified after
+    # applying.
+    - role: firewall
+      tags: [firewall]
+      when: firewall_enabled | default(false) | bool
+    # Key-only SSH administration (drop-in, opt-in). Requires the `ansible`
+    # account to reach the host with its key: the role proves that and rolls
+    # itself back otherwise, so an un-keyed host keeps password login.
+    - role: sshd
+      tags: [sshd]
+      when: sshd_hardening_enabled | default(false) | bool

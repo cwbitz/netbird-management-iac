@@ -1,0 +1,43 @@
+---
+# ==============================================================================
+# Host firewall - role defaults (roles/firewall/defaults/main.yml)
+# ==============================================================================
+# Default-deny inbound for the NetBird server host. The server stack's public
+# surface is only the mesh contract (docs/components/networking.md): TCP 80/443
+# (Traefik: ACME TLS-ALPN, HTTP->HTTPS redirect, dashboard, REST API/gRPC,
+# OAuth2, relay WebSocket) and UDP 3478 (STUN/TURN). Everything else — including
+# the management API's container ports, which Traefik proxies — is reachable over
+# the overlay only.
+#
+# Applied through a DEDICATED nftables table (never `flush ruleset`), so it
+# coexists with Docker (ip filter/nat), CrowdSec (ip crowdsec) and NetBird
+# (ip netbird). The FORWARD path is left alone (Docker/NetBird own it).
+#
+# Opt-in per host: set `firewall_enabled: true` in
+# inventory/host_vars/<host>/main.yml. OFF by default because it is the one role
+# that can take the mesh off the internet if the port matrix is wrong; when it is
+# on, the declared ports are re-verified from the control node after applying.
+
+firewall_enabled: false
+
+# The overlay interface and its WireGuard port are properties of the NetBird
+# client, not of this project: the agent container is started with the client's
+# own defaults (the role passes neither `--interface` nor `--wireguard-port`), so
+# both are role constants in vars/main.yml rather than operator knobs.
+
+# The SSH port to keep open. Defaults to the inventory's ansible_port, then 22.
+firewall_ssh_port: "{{ ansible_port | default(22) | int }}"
+
+# Public ports the server must serve beyond the overlay. These mirror the mesh
+# contract (`docs/components/networking.md`) and the ports the stack publishes
+# (roles/management): Traefik binds 80 literally (ACME + redirect) and
+# `exposed_port` for HTTPS; the server binds `stun_port` over UDP. Keep them in
+# step when you change either.
+firewall_public_tcp_ports:
+  - 80
+  - "{{ exposed_port | default(443) }}"
+firewall_public_udp_ports:
+  - "{{ stun_port | default(3478) }}"
+
+# Accept ICMP/ICMPv6 (path-MTU discovery, diagnostics).
+firewall_allow_icmp: true
