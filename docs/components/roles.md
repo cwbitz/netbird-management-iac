@@ -20,7 +20,7 @@
   `_version` var.
 - `roles/agent/` — runs the NetBird agent container (`agent_dir` =
   `/opt/netbird-agent`) so the host joins the overlay; used by `roles/monitoring`
-  (no standalone playbook). `peer_setup_key` decides the peer's group.
+  (no standalone playbook). `netbird_peer_setup_key` decides the peer's group.
 - `roles/monitoring/` — optional, opt-in (`make monitoring`): apt-installs
   `prometheus-node-exporter` + `crowdsec` + `crowdsec-firewall-bouncer` on a
   Debian-family host and includes the `agent` role; skipped unless

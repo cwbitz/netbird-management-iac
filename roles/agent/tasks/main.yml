@@ -9,12 +9,12 @@
 - name: "[Agent] Assert a setup key for the overlay agent"
   ansible.builtin.assert:
     that:
-      - (peer_setup_key | default('', true) | length) > 0
+      - (netbird_peer_setup_key | default('', true) | length) > 0
     fail_msg: >-
-      An agent node requires a setup key so it joins the mesh. peer_setup_key is
+      An agent node requires a setup key so it joins the mesh. netbird_peer_setup_key is
       resolved from the management node's vault (netbird_management_host); run
       the tenant apply there first (it creates the setup keys), or set
-      peer_setup_key explicitly in host_vars.
+      netbird_peer_setup_key explicitly in host_vars.
 
 - name: "[Agent] Ensure Docker Engine and the Compose v2 plugin are present"
   ansible.builtin.include_role:
@@ -88,5 +88,5 @@
       - (overlay_ip | default('')) | length > 0
     fail_msg: >-
       The NetBird overlay agent did not obtain an address on wt0 within the
-      timeout. Check the setup key (peer_setup_key), the management URL
+      timeout. Check the setup key (netbird_peer_setup_key), the management URL
       (domain_name), and `docker logs netbird`.

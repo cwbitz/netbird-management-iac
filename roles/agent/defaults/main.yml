@@ -4,18 +4,20 @@
 # ==============================================================================
 # Runs the NetBird agent container so the host joins the overlay. Used by the
 # monitoring role so a central Prometheus/Alloy can reach the host with no public
-# port.
-
-# Rendered docker-compose project directory for the agent.
-agent_dir: "/opt/netbird-agent"
+# port. The rendered compose dir and the pinned image (agent_dir,
+# netbird_agent_version) are role constants in vars/main.yml.
 
 # Mesh setup key: decides which NetBird group the peer auto-joins, hence its role
 # in the mesh. Resolved from the management node's vault (single source of truth),
 # so the host keeps no copy of the secret. Defaults to the route-less `endpoint`
 # key.
-peer_setup_key: >-
+netbird_peer_setup_key: >-
   {{ (hostvars[netbird_management_host] | default({})).vault_endpoint_setup_key | default('', true) }}
 
-# Overlay agent image (Renovate-tracked).
-# renovate: datasource=docker depName=ghcr.io/netbirdio/netbird
-netbird_agent_version: "0.77.0"
+# NetBird DNS management: the agent is the host's resolver for the netbird zone
+# (`<peer>.netbird.selfhosted`). It applies that through the host's
+# systemd-resolved over D-Bus, so the D-Bus socket must be visible INSIDE the
+# container — without this the zone does not resolve on the host, nor inside
+# containers that forward to the host stub (e.g. a central Prometheus). Set false
+# only on a host whose resolver the agent should not touch.
+netbird_dns_manage: true

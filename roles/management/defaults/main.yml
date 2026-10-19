@@ -1,31 +1,12 @@
 ---
 # ==============================================================================
-# Management (server) role defaults - container tags are pinned here and kept
-# current by Renovate (see the "# renovate:" annotation above each tag var).
+# Management (server) role defaults — operator knobs only.
+# (roles/management/defaults/main.yml)
 # ==============================================================================
+# Container images, the internal network and the fixed public scheme are
+# role-internal constants (Renovate-pinned / derived) and live in vars/main.yml.
 
-# --- Container images --------------------------------------------------------
-server_image: "netbirdio/netbird-server"
-# renovate: datasource=docker depName=netbirdio/netbird-server
-server_version: "0.79.0"
-
-dashboard_image: "netbirdio/dashboard"
-# Upstream only ships moving dashboard tags (latest / sha-* / pr-*), so there is
-# no immutable version to pin; Renovate cannot track it.
-dashboard_version: "latest"
-
-traefik_image: "traefik"
-# renovate: datasource=docker depName=traefik
-traefik_version: "v3.7.13"
-
-# --- Network -----------------------------------------------------------------
-network_name: "netbird"
-network_subnet: "172.30.0.0/24"
-network_gateway: "172.30.0.1"
-traefik_ip: "172.30.0.10"
-
-# --- Ports / endpoint --------------------------------------------------------
-http_protocol: "https"
+# --- Public endpoint ---------------------------------------------------------
 exposed_port: 443
 stun_port: 3478
 

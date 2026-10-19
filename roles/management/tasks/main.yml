@@ -17,10 +17,10 @@
       - domain_name is defined and (domain_name | string | trim) | length > 0
       - domain_name != 'netbird.example.com'
       - domain_name is not match('^https?://')
-      - letsencrypt_email is defined and (letsencrypt_email | string | trim) | length > 0
+      - acme_email is defined and (acme_email | string | trim) | length > 0
     fail_msg: >-
       Set domain_name (an FQDN whose A record points at this host, without a
-      scheme) and letsencrypt_email in
+      scheme) and acme_email in
       inventory/host_vars/<hostname>/main.yml / vault.yml. See
       inventory/host_vars/example/.
   run_once: true

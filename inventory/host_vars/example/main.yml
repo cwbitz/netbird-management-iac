@@ -12,12 +12,28 @@
 # live in vault.yml. `make host-bootstrap` probes [ansible, admin, root] and uses
 # the first that works.
 
+# `make host-init` copies this file (comment-free) to
+# inventory/host_vars/<hostname>/main.yml, so the values below ARE the defaults a
+# new host starts with: they mirror the effective project defaults (group_vars
+# wins over the role default) and every operator knob is present. Change what you
+# need; nothing else is required.
+#
+# Only example/ is committed (real <hostname>/ directories are gitignored).
+# Secrets/PII go in the encrypted vault.yml next to it.
+#
+# A knob whose absence is meaningful (its default is derived from another
+# variable at run time — see apt_security_mirror) is documented here but
+# stays commented out, so the derivation still applies. The tenant section at the
+# end is desired state, not a knob: it stays commented so a scaffolded host never
+# widens the tenant config by accident. `scripts/audit_example_knobs.py` enforces
+# all of this (run by `make lint`).
+
 # --- Public endpoint (per host, not a secret) --------------------------------
 # The FQDN the server is reachable at; its A record must point at this host and
 # ports 80/443 TCP + 3478 UDP must be open. The role refuses to deploy while this
 # is still the placeholder.
 domain_name: "netbird.example.com"
-letsencrypt_email: "{{ vault_letsencrypt_email }}"
+acme_email: "{{ vault_acme_email }}"
 
 # --- Optional first-owner bootstrap ------------------------------------------
 # Set owner_email to create the first owner via /api/setup (this also provisions
@@ -27,31 +43,98 @@ owner_email: "{{ vault_owner_email | default('', true) }}"
 owner_name: "{{ vault_owner_name | default('', true) }}"
 owner_password: "{{ vault_owner_password | default('', true) }}"
 
-# [OPTIONAL] Skip the GeoLite2 download at startup (needs pkgs.netbird.io; set
-# true on air-gapped or slow-CDN hosts).
-# disable_geolite_update: true
+# --- Server (roles/management) -----------------------------------------------
+# The public endpoint the server advertises, its STUN/TURN port and the log
+# level. Keep exposed_port/stun_port in step with the published ports (and with
+# the firewall's public lists below). The scheme is always https (Traefik + ACME;
+# see docs/components/networking.md).
+exposed_port: 443
+stun_port: 3478
+log_level: "info"
+# Skip the GeoLite2 download at startup (needs pkgs.netbird.io; set true on
+# air-gapped or slow-CDN hosts; disables geo-based posture checks).
+disable_geolite_update: false
+# Extra management addresses trusted as a reverse proxy (external proxy
+# setups); Traefik is covered by traefik_ip. Example: ["203.0.113.20/32"].
+trusted_peers: []
+# Lifetime (days) of the 'admin' service-user PAT minted by the first-owner
+# bootstrap (NetBird caps PATs at 365 days).
+service_admin_access_token_expire_days: 365
 
-# --- Optional host monitoring + host security (make monitoring) --------------
+# --- Host monitoring + host security (make monitoring) -----------------------
 # Opt-in (default off): installs prometheus-node-exporter + CrowdSec (+ the
 # nftables firewall bouncer) and joins the host to the overlay via the agent role.
-# monitoring_enabled: true
-# node_exporter_listen_addr: "127.0.0.1:9100"   # localhost + the overlay address
-# alloy_enabled: true                           # ship host logs to a central Loki
-# loki_url: "http://<loki-overlay-ip>:3100"
+# node_exporter has no knob: it binds the overlay address only (a central
+# Prometheus scrapes it over the mesh; nothing listens locally or publicly).
+monitoring_enabled: false
+node_exporter_enabled: true
+crowdsec_enabled: true
+alloy_enabled: false                          # ship host logs to a central Loki
+loki_push_url: ""
+
+# Journal sources Alloy ships to the central Loki (see
+# roles/monitoring/defaults/main.yml). Raw extra matches go in
+# alloy_journal_extra_matches.
+alloy_log_presets: [ssh, security, kernel, services]
+alloy_journal_extra_matches: []
+# [AUTO — leave commented] The agent's enrollment key is resolved from the
+# management host's vault (vault_endpoint_setup_key); an explicit value here
+# overrides that lookup.
+# netbird_peer_setup_key: ""
+# The agent also serves the netbird DNS zone on the host (through
+# systemd-resolved over D-Bus); leave true unless the host's resolver must not be
+# touched.
+netbird_dns_manage: true
+
+# --- Host firewall (roles/firewall) ------------------------------------------
+# Default-deny inbound, opt-in (make deploy TAGS=firewall). The server's public
+# surface stays at the mesh contract — TCP 80/443 (Traefik: ACME + dashboard/API)
+# and UDP 3478 (STUN/TURN) — plus SSH and, when the agent runs, the overlay. The
+# declared public ports are re-verified from the control node after applying;
+# everything else is reachable over the overlay only.
+firewall_enabled: false
+firewall_ssh_port: "{{ ansible_port | default(22) | int }}"
+firewall_public_tcp_ports: [80, "{{ exposed_port | default(443) }}"]
+firewall_public_udp_ports: ["{{ stun_port | default(3478) }}"]
+firewall_allow_icmp: true
+
+# --- SSH hardening (roles/sshd) ----------------------------------------------
+# Key-only SSH administration, opt-in (make deploy TAGS=sshd): closes password
+# login (plus the PAM keyboard-interactive and empty-password paths), applied as
+# a drop-in in /etc/ssh/sshd_config.d/. Only safe once a keyed login survives it
+# — the `ansible` account's key (vault_host_ansible_ssh_pubkey_file), or root's
+# key on a root-administered host — which the role proves and rolls itself back
+# (failing the run) otherwise. The optional human `admin` account keeps its
+# password for the console; give it vault_host_admin_ssh_pubkey_file to keep SSH.
+sshd_hardening_enabled: false
+# Root SSH policy, independent of the toggle above: "no" disables root SSH;
+# "prohibit-password" keeps root reachable by public key only (needed on a host
+# administered only through root).
+sshd_permit_root_login: "no"
 
 # --- Node type (inventory group) ---------------------------------------------
 # This host runs the server stack (the `netbird_management` inventory group). It
 # joins the NetBird overlay only when monitoring is enabled (see above).
 
-# --- Optional host bootstrap (make host-bootstrap) ---------------------------
-# Region-specific mirrors for hosts where the defaults are slow or blocked;
-# opt-in and NOT part of make deploy.
-# host_apt_mirror: "https://mirrors.tuna.tsinghua.edu.cn/debian"
-# docker_registry_mirrors:
-#   - "https://docker.1ms.run"
+# --- Host bootstrap (make host-bootstrap) ------------------------------------
+# install_docker false requires a preinstalled Docker. Region-specific mirrors for
+# hosts where the defaults are slow or blocked; the security mirror is derived
+# from apt_mirror, and Docker Hub registry mirrors are tried in order.
+install_docker: true
+apt_mirror: ""
+docker_registry_mirrors: []
+# [DERIVED — leave commented] Defaults to the security repo derived from
+# apt_mirror; setting it (even empty) disables that derivation.
+# apt_security_mirror: "https://security.debian.org/debian-security"
 # The optional human 'admin' account is created only when enabled here; it always
 # gets a password (generated into vault.yml when empty) plus any configured key.
-# host_admin_enabled: true
+# Escape hatches: run the deploy as root instead of the service account (not
+# recommended); pin the service-account password instead of generating one; grant
+# the automation account passwordless sudo.
+create_admin_account: false
+allow_root_login: false
+bootstrap_password: ""
+bootstrap_sudo_nopasswd: true
 
 # ==============================================================================
 # Tenant configuration (playbooks/tenant.yml)
@@ -59,6 +142,8 @@ owner_password: "{{ vault_owner_password | default('', true) }}"
 # Desired state for the NetBird account (users, groups, policies, networks, DNS,
 # settings, ...), applied to the running server's REST API via
 # community.ansible_netbird. `make plan` previews; `make apply` commits.
+# Everything below stays COMMENTED: it is desired state, not a host knob, and a
+# scaffolded host must never widen (or, under tenant_strict, prune) the account.
 # tenant_strict: true additionally removes unmanaged resources (off by default).
 
 # --- Account settings (settings.yml) -----------------------------------------
@@ -170,5 +255,5 @@ tenant_strict: false
 #     state: present
 
 # --- Host bootstrap (make host-bootstrap) -------------------------------------
-# Optional per-host APT security mirror (empty = the distro default).
-host_apt_security_mirror: ""
+# The APT security mirror is derived from apt_mirror; leave it unset (see the
+# DERIVED note in the bootstrap section above).

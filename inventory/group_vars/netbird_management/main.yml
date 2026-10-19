@@ -1,7 +1,7 @@
 ---
 netbird_management_host: "{{ groups['netbird_management'] | default([]) | first | default('', true) }}"
 
-host_ssh_identities:
+ssh_identities:
   root:
     user: "root"
     password: "{{ vault_host_root_password | default('', true) }}"
@@ -21,21 +21,27 @@ host_ssh_identities:
     pubkey: "{{ vault_host_ansible_ssh_pubkey_file | default('', true) }}"
     become: true
 
-host_ssh_identity: "{{ host_ssh_identities['ansible'] }}"
-host_ssh_user: "{{ host_ssh_identity.user }}"
-host_ssh_password: "{{ host_ssh_identity.password }}"
-host_ssh_privkey_file: "{{ host_ssh_identity.privkey }}"
-host_ssh_become: "{{ host_ssh_identity.become }}"
-host_ssh_common_args: "-o PreferredAuthentications=publickey,password -o NumberOfPasswordPrompts=1"
+ssh_identity: "{{ ssh_identities['ansible'] }}"
+ssh_user: "{{ ssh_identity.user }}"
+ssh_password: "{{ ssh_identity.password }}"
+ssh_privkey_file: "{{ ssh_identity.privkey }}"
+ssh_become: "{{ ssh_identity.become }}"
+ssh_common_args: "-o PreferredAuthentications=publickey,password -o NumberOfPasswordPrompts=1"
 
-ansible_user: "{{ host_ssh_user }}"
-ansible_password: "{{ host_ssh_password }}"
-ansible_ssh_private_key_file: "{{ host_ssh_privkey_file }}"
-ansible_become: "{{ host_ssh_become }}"
-ansible_ssh_common_args: "{{ host_ssh_common_args }}"
+ansible_user: "{{ ssh_user }}"
+ansible_password: "{{ ssh_password }}"
+ansible_ssh_private_key_file: "{{ ssh_privkey_file }}"
+ansible_become: "{{ ssh_become }}"
+ansible_ssh_common_args: "{{ ssh_common_args }}"
 
 install_docker: true
 
-host_admin_enabled: false
+create_admin_account: false
+
+# Host security (both OFF by default, opt in per host in host_vars/<host>/main.yml).
+# The firewall enforces the mesh port contract (TCP 80/443, UDP 3478); SSH
+# hardening closes password login and root SSH (key-only administration).
+firewall_enabled: false
+sshd_hardening_enabled: false
 
 stack_dir: "/opt/netbird"

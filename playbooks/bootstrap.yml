@@ -7,7 +7,7 @@
 # least-privilege `ansible` service account. The alias wiring lives in
 # inventory/group_vars/netbird_management/main.yml. Also sets package/registry
 # mirrors and authorizes configured SSH public keys (each a no-op unless set:
-# host_apt_mirror / host_apt_security_mirror / docker_registry_mirrors).
+# apt_mirror / apt_security_mirror / docker_registry_mirrors).
 #
 # Per identity, vault.yml may set a password and/or a private key file (SSH tries
 # the key first); vault_<id>_ssh_pubkey_file is an optional control-node path to
@@ -81,15 +81,15 @@
       args:
         executable: /bin/bash
       environment:
-        PROBE_ANSIBLE_USER: "{{ netbird_target.host_ssh_identities.ansible.user }}"
-        PROBE_ANSIBLE_PW: "{{ netbird_target.host_ssh_identities.ansible.password }}"
-        PROBE_ANSIBLE_KEY: "{{ netbird_target.host_ssh_identities.ansible.privkey }}"
-        PROBE_ADMIN_USER: "{{ netbird_target.host_ssh_identities.admin.user }}"
-        PROBE_ADMIN_PW: "{{ netbird_target.host_ssh_identities.admin.password }}"
-        PROBE_ADMIN_KEY: "{{ netbird_target.host_ssh_identities.admin.privkey }}"
-        PROBE_ROOT_USER: "{{ netbird_target.host_ssh_identities.root.user }}"
-        PROBE_ROOT_PW: "{{ netbird_target.host_ssh_identities.root.password }}"
-        PROBE_ROOT_KEY: "{{ netbird_target.host_ssh_identities.root.privkey }}"
+        PROBE_ANSIBLE_USER: "{{ netbird_target.ssh_identities.ansible.user }}"
+        PROBE_ANSIBLE_PW: "{{ netbird_target.ssh_identities.ansible.password }}"
+        PROBE_ANSIBLE_KEY: "{{ netbird_target.ssh_identities.ansible.privkey }}"
+        PROBE_ADMIN_USER: "{{ netbird_target.ssh_identities.admin.user }}"
+        PROBE_ADMIN_PW: "{{ netbird_target.ssh_identities.admin.password }}"
+        PROBE_ADMIN_KEY: "{{ netbird_target.ssh_identities.admin.privkey }}"
+        PROBE_ROOT_USER: "{{ netbird_target.ssh_identities.root.user }}"
+        PROBE_ROOT_PW: "{{ netbird_target.ssh_identities.root.password }}"
+        PROBE_ROOT_KEY: "{{ netbird_target.ssh_identities.root.privkey }}"
       register: probe
       changed_when: false
       no_log: true
@@ -109,7 +109,7 @@
         probe_identity: "{{ probe.stdout | trim }}"
     - name: "[Probe] Resolve the chosen connection settings"
       ansible.builtin.set_fact:
-        probe_chosen: "{{ netbird_target.host_ssh_identities[probe_identity | lower] }}"
+        probe_chosen: "{{ netbird_target.ssh_identities[probe_identity | lower] }}"
 
     - name: "[Probe] Register the probed identity on the target host"
       ansible.builtin.add_host:
@@ -146,6 +146,43 @@
 
   tasks:
     # --------------------------------------------------------------------------
+    # Hostname resolution (loopback alias)
+    # --------------------------------------------------------------------------
+    # A cloud image can set a hostname that /etc/hosts does not map: the name then
+    # falls through nsswitch to DNS and everything that resolves the local name
+    # waits for a resolver timeout — `sudo` does it on EVERY task, ~2s per become
+    # task on a deploy. Map it to the standard loopback alias (the Debian
+    # installer's own layout), but ONLY when it does not resolve already, so a
+    # host whose name is in DNS (or already in /etc/hosts) is left untouched.
+    - name: "[Bootstrap] Read the effective hostname"
+      ansible.builtin.command:
+        argv: [hostname]
+      register: bootstrap_hostname
+      changed_when: false
+
+    - name: "[Bootstrap] Check whether the hostname already resolves"
+      ansible.builtin.command:
+        argv: [getent, hosts, "{{ bootstrap_hostname.stdout }}"]
+      register: bootstrap_hostname_lookup
+      changed_when: false
+      failed_when: false
+
+    - name: "[Bootstrap] Map an unresolvable hostname to the loopback alias"
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        # The full name first (what gethostname()/sudo resolve), then the short
+        # name when it differs (Debian's own cloud-image layout).
+        line: >-
+          {{ ('127.0.1.1 ' ~ bootstrap_hostname.stdout ~ ' ' ~ bootstrap_hostname_short)
+             if bootstrap_hostname_short != bootstrap_hostname.stdout
+             else ('127.0.1.1 ' ~ bootstrap_hostname.stdout) }}
+        insertafter: "^127\\.0\\.0\\.1"
+        state: present
+      vars:
+        bootstrap_hostname_short: "{{ bootstrap_hostname.stdout.split('.') | first }}"
+      when: bootstrap_hostname_lookup.rc | default(1) != 0
+
+    # --------------------------------------------------------------------------
     # APT mirror (Debian-family)
     # --------------------------------------------------------------------------
     - name: "[Bootstrap] Validate the APT mirror settings"
@@ -153,9 +190,9 @@
         that:
           - ansible_os_family == 'Debian'
         fail_msg: >-
-          host_apt_mirror is set, but the host is not Debian-family.
-          Example: host_apt_mirror: https://mirrors.tuna.tsinghua.edu.cn/debian
-      when: host_apt_mirror | default('', true) | length > 0
+          apt_mirror is set, but the host is not Debian-family.
+          Example: apt_mirror: https://mirrors.tuna.tsinghua.edu.cn/debian
+      when: apt_mirror | default('', true) | length > 0
 
     - name: "[Bootstrap] Back up the current APT sources (once)"
       ansible.builtin.copy:
@@ -164,7 +201,7 @@
         remote_src: true
         force: false
         mode: "0644"
-      when: host_apt_mirror | default('', true) | length > 0
+      when: apt_mirror | default('', true) | length > 0
 
     - name: "[Bootstrap] Render the APT sources from the mirror"
       ansible.builtin.template:
@@ -174,13 +211,13 @@
         group: root
         mode: "0644"
       register: apt_sources
-      when: host_apt_mirror | default('', true) | length > 0
+      when: apt_mirror | default('', true) | length > 0
 
     - name: "[Bootstrap] Refresh the APT cache"
       ansible.builtin.apt:
         update_cache: true
       when:
-        - host_apt_mirror | default('', true) | length > 0
+        - apt_mirror | default('', true) | length > 0
         - apt_sources.changed | default(false)
 
     # --------------------------------------------------------------------------
@@ -255,13 +292,13 @@
             length: 18
       when:
         - not (bootstrap_use_key | bool)
-        - (host_bootstrap_password | default('', true) | length) == 0
+        - (bootstrap_password | default('', true) | length) == 0
 
     - name: "[Bootstrap] Resolve the effective service-account password"
       ansible.builtin.set_fact:
-        host_bootstrap_password_final: >-
-          {{ host_bootstrap_password
-             if (host_bootstrap_password | default('', true) | length > 0)
+        bootstrap_password_final: >-
+          {{ bootstrap_password
+             if (bootstrap_password | default('', true) | length > 0)
              else (vault_host_ansible_password | default('', true)) }}
       when: not (bootstrap_use_key | bool)
 
@@ -278,14 +315,14 @@
         create_home: true
         state: present
         password: >-
-          {{ (host_bootstrap_password_final | password_hash('sha512'))
+          {{ (bootstrap_password_final | password_hash('sha512'))
              if not (bootstrap_use_key | bool) else omit }}
         update_password: on_create
       no_log: true
       when: probe_identity | lower != 'ansible'
 
     # --------------------------------------------------------------------------
-    # Admin identity (optional, opt-in via host_admin_enabled). This is a HUMAN
+    # Admin identity (optional, opt-in via create_admin_account). This is a HUMAN
     # operator account, so it always gets a password (generated into vault.yml
     # when left empty) for console login and sudo; a configured public key is
     # installed additionally. Root is never created; the service account is
@@ -293,8 +330,8 @@
     # --------------------------------------------------------------------------
     - name: "[Bootstrap] Resolve the admin identity settings"
       ansible.builtin.set_fact:
-        bootstrap_admin: "{{ host_ssh_identities.admin }}"
-        bootstrap_admin_defined: "{{ host_admin_enabled | default(false) | bool }}"
+        bootstrap_admin: "{{ ssh_identities.admin }}"
+        bootstrap_admin_defined: "{{ create_admin_account | default(false) | bool }}"
 
     - name: "[Bootstrap] Provision the admin password (enabled, none supplied)"
       ansible.builtin.include_role:
@@ -333,7 +370,7 @@
       ansible.builtin.set_fact:
         bootstrap_pubkey_specs: >-
           {%- set ns = namespace(specs=[]) -%}
-          {%- for id, ident in host_ssh_identities.items() -%}
+          {%- for id, ident in ssh_identities.items() -%}
           {%-   if (id != 'admin' or (bootstrap_admin_defined | default(false) | bool))
                  and (ident.pubkey | default('', true) | string | trim) | length > 0 -%}
           {%-     set ns.specs = ns.specs + [{'id': id, 'user': ident.user, 'path': ident.pubkey}] -%}
@@ -441,7 +478,7 @@
         mode: "0440"
         validate: "visudo -cf %s"
       loop: "{{ bootstrap_sudo_nopasswd_users }}"
-      when: host_bootstrap_sudo_nopasswd | default(true) | bool
+      when: bootstrap_sudo_nopasswd | default(true) | bool
 
     - name: "[Bootstrap] Grant the admin account password sudo"
       ansible.builtin.copy:

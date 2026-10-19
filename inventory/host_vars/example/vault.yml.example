@@ -19,14 +19,14 @@ vault_host_root_password: ""
 vault_host_root_ssh_privkey_file: "~/.ssh/id_ed25519"
 vault_host_root_ssh_pubkey_file: ""
 # The optional human 'admin' operator account is created only when
-# host_admin_enabled is true in main.yml; it always gets a password (generated
+# create_admin_account is true in main.yml; it always gets a password (generated
 # here when left empty) plus any configured key.
 vault_host_admin_user: "admin"
 vault_host_admin_password: ""
 vault_host_admin_ssh_privkey_file: ""
 vault_host_admin_ssh_pubkey_file: ""
 # The `ansible` service account name is fixed (`ansible`); it uses key auth when
-# its public key is set, otherwise a password (host_bootstrap_password, else
+# its public key is set, otherwise a password (bootstrap_password, else
 # generated here).
 vault_host_ansible_password: ""
 vault_host_ansible_ssh_privkey_file: "~/.ssh/id_ed25519_ansible"
@@ -34,7 +34,7 @@ vault_host_ansible_ssh_pubkey_file: ""
 
 # --- Public endpoint ---------------------------------------------------------
 # Email used for Let's Encrypt certificate issuance.
-vault_letsencrypt_email: "admin@example.com"
+vault_acme_email: "admin@example.com"
 
 # --- Optional first-owner bootstrap ------------------------------------------
 # Set the email to auto-create the first owner via /api/setup (and provision the
@@ -70,6 +70,6 @@ vault_owner_password: ""
 #   vault_host_ansible_password             service account password (only when
 #                                           no public key is given)
 #   vault_host_admin_password               admin password (only when
-#                                           host_admin_enabled is true)
+#                                           create_admin_account is true)
 # Back up both this file and the host data; only vault_datastore_encryption_key is
 # unrecoverable if lost.
