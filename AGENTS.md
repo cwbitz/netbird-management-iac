@@ -58,13 +58,13 @@ this project's vars/vault. Rules:
   placeholder, and the site preflight rejects it until it is replaced.
 - `inventory/host_vars/<hostname>/vault.yml` — **gitignored, never committed**
   (even encrypted). The single per-host encrypted vault, holding everything:
-  values the user supplies (the ACME email `vault_letsencrypt_email`, the SSH
+  values the user supplies (the ACME email `vault_acme_email`, the SSH
   identities `vault_root_*`/`vault_ansible_*`/`vault_host_admin_*`, the optional
   first-owner credentials `vault_owner_*`), values the control node generates
   when the user leaves them empty and passes TO the host
   (`vault_datastore_encryption_key`, `vault_session_cookie_encryption_key`,
   `vault_relay_auth_secret`, `vault_owner_password`, `vault_host_ansible_password`,
-  `vault_host_admin_password` (only when `host_admin_enabled` is set)), and the
+  `vault_host_admin_password` (only when `create_admin_account` is set)), and the
   secrets the host returns (see below).
   Of the crypto keys, only `vault_datastore_encryption_key` is user-critical: it is
   **not** in the backup archive and a restore must reuse the same value, or the
@@ -139,7 +139,7 @@ this project's vars/vault. Rules:
 - `make vault-edit [HOST=<name>]` — edit one host's `vault.yml` (HOST, or the
   single host when the inventory holds exactly one; the target list is printed
   when it is omitted and the inventory has several); a plaintext `vault.yml` is
-  encrypted first.
+  encrypted first, and the keys are re-sorted alphabetically on save.
 - `make host-init [HOST=<name>] [HOST_IP=<addr>] [HOST_PORT=<port>]` — scaffold
   `inventory/hosts.yml` and `inventory/host_vars/<name>/` **comment-free** from the
   committed `example/` template, encrypt the scaffolded `vault.yml`, and add the
@@ -153,19 +153,26 @@ this project's vars/vault. Rules:
 - `make host-bootstrap` — host init only: ensures Docker Engine + Compose v2
   (installing Docker CE when missing), sets APT/Docker mirrors for
   region-restricted hosts, and probes [ansible, admin, root] to create the
-  `ansible` service account plus the `admin` account when `host_admin_enabled`
+  `ansible` service account plus the `admin` account when `create_admin_account`
   is set. Run standalone
   to init a host without deploying; `make deploy` runs it automatically first
   (so a fresh/rebuilt host gets its service account before `site.yml` connects).
   The mirror parts are no-ops unless their vars are set.
-- The internal `make lint` (`--syntax-check` + `ansible-lint`) is run by CI and
-  hidden from `make help` (developers can still invoke it).
+- The internal `make lint` (`--syntax-check` + `ansible-lint` +
+  `scripts/audit_example_knobs.py`) is run by CI and hidden from `make help`
+  (developers can still invoke it). The audit keeps `host_vars/example/main.yml`
+  a complete, value-accurate mirror of every operator knob.
 - `make dry-run` / `make deploy` — dry-run / deploy. `deploy` is the one-shot
   entry point: it runs `bootstrap.yml` (host init), then the server playbook,
   then applies the tenant state (`tenant.yml -e tenant_commit=true`); add
   `TAGS=...` to skip the tenant apply and run only the server. Tags:
   `netbird`, `netbird_preflight`, `netbird_config`, `netbird_deploy`,
-  `netbird_owner`.
+  `netbird_owner`. Two opt-in host-security roles live in the same playbook and
+  have their own tags: `firewall` (default-deny inbound base firewall, see
+  `docs/components/firewall.md`) and `sshd` (key-only SSH,
+  `docs/components/sshd-hardening.md`) — `make deploy TAGS=firewall` / `TAGS=sshd`
+  runs only one of them. Both are off until enabled per host
+  (`firewall_enabled` / `sshd_hardening_enabled`).
 - `make plan` — tenant config-as-code, **read-only diff** (safe default).
 - `make apply` — apply the tenant desired state. Requires
   `vault_service_admin_access_token`. Use it to change tenants without
@@ -184,13 +191,14 @@ this project's vars/vault. Rules:
   the `crowdsec-firewall-bouncer` (nftables enforcement), and joins the host to
   the overlay through the shared `agent` role. Opt-in per host with
   `monitoring_enabled: true` in
-  `host_vars/<host>/main.yml`; default off. node_exporter listens on
-  `127.0.0.1:9100` plus the overlay address unless `node_exporter_listen_addr`
-  is changed. The agent resolves its setup key (`peer_setup_key`) from the
+  `host_vars/<host>/main.yml`; default off. node_exporter binds the overlay
+  address only (no local or public listener; a boot drop-in waits for the overlay
+  so the bind survives a reboot). The agent resolves its setup key
+  (`netbird_peer_setup_key`) from the
   management node's vault (single source of truth; the route-less `endpoint` key by
   default, which grants no exit/LAN routes) and the exporters bind the overlay
   address; with `alloy_enabled: true`
-  + `loki_url` an Alloy container ships journald SSH events to a central Loki
+  + `loki_push_url` an Alloy container ships journald SSH events to a central Loki
   over the overlay.
 - `make print [HOST=<name>]` — resolved host vars incl. decrypted vault; HOST
   is auto-detected when the inventory has a single host.
@@ -199,17 +207,28 @@ this project's vars/vault. Rules:
 
 - The public domain's A record must point at the host and **TCP 80/443 + UDP 3478**
   must be open **before** deploy, or Let's Encrypt (TLS-ALPN-01) and STUN will not
-  work. The full contract is in `docs/components/networking.md`.
+  work. The full contract is in `docs/components/networking.md`. The optional host
+  firewall (`firewall_enabled`) enforces exactly that contract rather than
+  replacing it — it defaults to the same three ports and re-verifies them from the
+  control node after applying.
+- SSH hardening (`sshd_hardening_enabled`, `roles/sshd`) is **opt-in and
+  self-protecting**: it closes password login, so it refuses to run unless a
+  keyed login survives it — the `ansible` account's key, or root's key with
+  `sshd_permit_root_login: prohibit-password` — and it reverts itself when a
+  verification fails. Enable it only after `make host-bootstrap` has authorized
+  the key. The human `admin` account keeps
+  its password for the console only; give it a public key
+  (`vault_host_admin_ssh_pubkey_file`) to keep SSH access.
 - The deploy **requires the non-root service account**: `playbooks/site.yml`
-  asserts `host_ssh_user != root` (override with `host_allow_root_login=true`).
+  asserts `ssh_user != root` (override with `allow_root_login=true`).
   `make host-bootstrap` probes [ansible, admin, root] and uses the first that
   works; when it is not `ansible` it creates `ansible`. Every explicitly set
   `vault_{root,ansible}_ssh_pubkey_file` / `vault_host_admin_ssh_pubkey_file` is
   authorized for the matching account (unset ignored, never generated); for
-  `ansible` a missing key falls back to a password (`host_bootstrap_password`,
+  `ansible` a missing key falls back to a password (`bootstrap_password`,
   else generated into `vault_host_ansible_password`), while key mode omits the
   password. The optional human `admin` account is created only when
-  `host_admin_enabled` is set and always gets a password (generated into
+  `create_admin_account` is set and always gets a password (generated into
   `vault_host_admin_password` when empty) plus any configured key. Passwords are
   hashed with a per-account random salt and applied with `update_password: on_create`,
   so re-runs are idempotent and a host-side password rotation is preserved.
@@ -255,7 +274,9 @@ Shared by the `*-iac` repos; keep this chain statically resolvable so
   IdP (local users), optional first-owner bootstrap (which also provisions the
   `admin` service-user PAT for tenant automation), tenant/ACL config-as-code
   (`playbooks/tenant.yml` + per-host vars), optional host monitoring/host
-  security (`playbooks/monitoring.yml`), and backup/restore.
+  security (`playbooks/monitoring.yml`), optional host base firewall and key-only
+  SSH hardening (`roles/firewall` / `roles/sshd`, both opt-in per host), and
+  backup/restore.
 - **Not codifiable** (inherent): **peers** are enrolled devices (only settings are
   managed; devices re-enroll with setup keys), local-user **passwords** (returned
   once at creation), setup-key/PAT **secret values** (returned once), IdP client
@@ -272,6 +293,8 @@ Shared by the `*-iac` repos; keep this chain statically resolvable so
 - `docs/components/identity.md` — the embedded Dex IdP.
 - `docs/components/traefik.md` — the built-in reverse proxy / TLS.
 - `docs/components/networking.md` — network & port contract.
+- `docs/components/firewall.md` — the base firewall (port matrix, verification).
+- `docs/components/sshd-hardening.md` — key-only SSH (configurable root policy, rollback).
 - `docs/components/data-and-volumes.md` — volumes, encryption keys, backup.
 - `docs/components/tenant-config.md` — tenant config-as-code + collection gotchas.
 - `docs/components/roles.md` — playbooks/roles layout, platform, image baseline.

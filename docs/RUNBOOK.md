@@ -19,7 +19,10 @@ contracts, conventions and gotchas.
   address/port live in the inventory, not the vault.
 - Create the non-root service account (as root, once): `make host-bootstrap`,
   then point the connection at it in `vault.yml`. Deploys refuse root unless
-  `host_allow_root_login=true`.
+  `allow_root_login=true`.
+- Host security is opt-in per host and safe to add later: enable the base
+  firewall (the mesh contract stays open) and key-only SSH hardening only after
+  `make host-bootstrap` has authorized the `ansible` key — see §5b.
 - The vault password file is auto-created by the make targets
   (`~/.config/projects/netbird-iac/ansible_vault_password`); keep it safe.
 
@@ -38,13 +41,14 @@ v2, generates missing secrets into the encrypted `vault.yml`, renders
 `config.yaml` / `dashboard.env` / `docker-compose.yml` to `{{ stack_dir }}`
 (`/opt/netbird`), starts the stack, waits for TLS, then optionally creates the
 first owner. `make host-bootstrap` does the host init alone (no deploy). Exact
-bootstrap rules (key vs. generated password, `host_admin_enabled`): `AGENTS.md`.
+bootstrap rules (key vs. generated password, `create_admin_account`): `AGENTS.md`.
 
 `make lint` (syntax check + `ansible-lint`) is an internal CI check; it is hidden
 from `make help`, but developers can still run it locally.
 
 Focused tags: `netbird`, `netbird_preflight`, `netbird_config`,
-`netbird_deploy`, `netbird_owner` (`make deploy TAGS=<tag>`).
+`netbird_deploy`, `netbird_owner` (`make deploy TAGS=<tag>`), plus the opt-in host
+security roles `firewall` and `sshd`.
 
 Verify:
 
@@ -144,16 +148,60 @@ Opt-in per host with `monitoring_enabled: true` in
 `crowdsec-firewall-bouncer` (nftables enforcement), and joins the host to the
 overlay through the `agent` role so a central Prometheus/Alloy can reach it with
 no public port. The agent uses the route-less `endpoint` setup key by default
-(`peer_setup_key`, resolved from the management node's vault); node_exporter binds
-`127.0.0.1:9100` plus the overlay address unless `node_exporter_listen_addr` is
-changed.
+(`netbird_peer_setup_key`, resolved from the management node's vault); node_exporter
+binds the overlay address only (no local or public listener), and a boot drop-in
+waits for the overlay so the bind survives a reboot.
 
 ```yaml
 # inventory/host_vars/<host>/main.yml
 monitoring_enabled: true
 alloy_enabled: true                            # ship host logs to a central Loki
-loki_url: "http://<loki-overlay-ip>:3100"
+loki_push_url: "http://<loki-overlay-ip>:3100"
 ```
+
+node_exporter has no listen-address knob: it binds the host's **overlay address
+only** — there is no local or public listener, and the central Prometheus scrapes
+it over the mesh. A systemd drop-in
+(`/etc/systemd/system/prometheus-node-exporter.service.d/10-overlay-wait.conf`)
+makes that bind survive a reboot: the overlay address is created by the agent
+container *after* systemd has started the unit, so the drop-in waits for the
+address and retries instead of failing with `cannot assign requested address`.
+
+## 5b. Host firewall & SSH hardening (optional)
+
+Both are off by default and enabled per host in
+`inventory/host_vars/<host>/main.yml`; both run inside `site.yml` (so `make
+deploy` keeps them converged) and have their own tag:
+
+```bash
+make deploy TAGS=firewall   # default-deny inbound (roles/firewall)
+make deploy TAGS=sshd       # key-only SSH (roles/sshd)
+```
+
+```yaml
+# inventory/host_vars/<host>/main.yml
+firewall_enabled: true
+sshd_hardening_enabled: true     # only after host-bootstrap keyed `ansible`
+```
+
+- **Firewall**: enforces the mesh contract (TCP 80/443, UDP 3478 —
+  [`components/networking.md`](components/networking.md)) plus SSH and the
+  overlay; everything else is reachable over the overlay only. The declared
+  public TCP ports are re-verified from the control node after applying (skipped
+  while the stack is not running). Details:
+  [`components/firewall.md`](components/firewall.md).
+- **SSH hardening**: closes password login (plus the PAM keyboard-interactive and
+  empty-password paths) and applies `sshd_permit_root_login` (default `no`). It
+  proves a key-only login as the chosen identity (`ansible`, or root when allowed)
+  first and rolls itself back on any failed verification. The human `admin`
+  account keeps its password for the **console** only — set
+  `vault_host_admin_ssh_pubkey_file` to keep SSH for it. Details:
+  [`components/sshd-hardening.md`](components/sshd-hardening.md).
+- Rollback (or console recovery):
+  `ssh <host> 'systemctl disable --now firewall && nft delete table inet basefw'`
+  for the firewall;
+  `rm /etc/ssh/sshd_config.d/00-sshd-hardening.conf && systemctl reload ssh`
+  for SSH — then disable the matching knob so a later deploy does not re-apply it.
 
 ## 6. Mirrors for region-restricted hosts (optional)
 
@@ -163,7 +211,7 @@ unless the variables are set, and touches nothing in the deploy baseline:
 
 ```yaml
 # inventory/host_vars/<host>/main.yml
-host_apt_mirror: "https://mirrors.tuna.tsinghua.edu.cn/debian"
+apt_mirror: "https://mirrors.tuna.tsinghua.edu.cn/debian"
 docker_registry_mirrors:
   - "https://docker.1ms.run"
 ```
@@ -201,6 +249,12 @@ Verify after restore: the OIDC discovery URL answers and users can log in.
   `vault.yml`).
 - **Config rollback**: `git revert` or edit the per-host vars, then `make
   deploy`.
+- **Firewall rollback**: `systemctl disable --now firewall && nft delete
+  table inet basefw` (provider console if SSH is affected), then set
+  `firewall_enabled: false` and re-run.
+- **SSH hardening rollback**: `rm /etc/ssh/sshd_config.d/00-sshd-hardening.conf
+  && systemctl reload ssh` (provider console), then set
+  `sshd_hardening_enabled: false` and re-run.
 
 ## 9. Troubleshooting
 
@@ -208,6 +262,10 @@ Verify after restore: the OIDC discovery URL answers and users can log in.
 |---|---|
 | TLS / OIDC not answering | Domain A record resolves to the host; TCP 80/443 open; `docker logs netbird-traefik`. |
 | STUN / relay clients fail | UDP 3478 open; Traefik owns `172.30.0.10`. |
+| `prometheus-node-exporter` failed after a reboot | The overlay address was never created: the drop-in waits ~90s then gives up (5 retries). Check `docker ps` / `ip -br addr show wt0` / `journalctl -u prometheus-node-exporter`. A manual `systemctl start prometheus-node-exporter` clears it once the overlay is up. |
+| Dashboard/API answer locally but not from the internet (firewall applied) | `nft list table inet basefw` — the declared TCP ports must be there (the NetBird agent adds one extra `iifname "wt0" counter … accept` rule of its own; that is expected). `make deploy TAGS=firewall` re-verifies them from the control node. Roll back with `systemctl disable --now firewall && nft delete table inet basefw`. |
+| `make deploy TAGS=sshd` failed and the host kept password login | Expected: the role reverted the drop-in and failed. Read the failing task (the key-only login probe is the usual one): the `ansible` key must be authorized by `make host-bootstrap` and accepted by OpenSSH (`make agent-load` for a `/mnt/c` key). |
+| No usable SSH login after enabling hardening | Recover from the provider console: `rm /etc/ssh/sshd_config.d/00-sshd-hardening.conf && systemctl reload ssh`, then set `sshd_hardening_enabled: false` and re-run. |
 | Readiness times out on first deploy | GeoLite2 download (§1); re-run or pre-seed the DBs. |
 | Tenant run: token rejected | PAT expired — recreate it for the `admin` service user and update the vault (§2). |
 | Host reinstalled / reimaged | `vault.yml` holds stale host-returned secrets — delete those keys before deploying so a fresh PAT/setup keys are written (§2). |

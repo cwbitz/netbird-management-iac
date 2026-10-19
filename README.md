@@ -86,7 +86,9 @@ defaulting to the single management node.
 |---|---|---|
 | Tenant config-as-code (groups, policies, networks, DNS, setup keys, users, ...) | per-host vars | [Runbook §4](docs/RUNBOOK.md) |
 | Host monitoring & security (node_exporter, CrowdSec, Alloy) | `monitoring_enabled: true` | [Runbook §5](docs/RUNBOOK.md) |
-| Region-restricted APT / Docker mirrors | `host_apt_mirror`, `docker_registry_mirrors` | [Runbook §6](docs/RUNBOOK.md) |
+| Host firewall (default-deny inbound; mesh contract 80/443/tcp, 3478/udp) | `firewall_enabled: true` | [Runbook §5b](docs/RUNBOOK.md) |
+| SSH hardening (key-only admin; root policy via `sshd_permit_root_login`) | `sshd_hardening_enabled: true` | [Runbook §5b](docs/RUNBOOK.md) |
+| Region-restricted APT / Docker mirrors | `apt_mirror`, `docker_registry_mirrors` | [Runbook §6](docs/RUNBOOK.md) |
 | Backup & restore | — | [Runbook §7](docs/RUNBOOK.md) |
 | External identity providers (OIDC) | Dashboard / API | [`docs/IDP.md`](docs/IDP.md) |
 
@@ -99,6 +101,8 @@ playbooks/tenant.yml # tenant config-as-code (community.ansible_netbird)
 roles/management     # defaults (image pins), tasks, templates/
 roles/agent          # NetBird agent container (overlay join for monitoring)
 roles/monitoring     # optional host security + exporters (+ the agent role)
+roles/firewall       # optional base firewall (nftables; the mesh port contract)
+roles/sshd           # optional key-only SSH (sshd drop-in)
 roles/helpers/       # shared vault-secret provisioning
 docs/RUNBOOK.md      # operations runbook (deploy, backup/restore, rollback)
 docs/IDP.md          # external identity providers (runtime, not managed here)
