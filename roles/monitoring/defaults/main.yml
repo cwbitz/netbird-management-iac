@@ -7,28 +7,33 @@
 # inventory/host_vars/<host>/main.yml (false, the default, skips the role).
 # Debian-family and apt-based; includes the NetBird overlay agent (roles/agent) so
 # a central Prometheus/Alloy can reach the host over the overlay.
+# The rendered compose dir and the pinned Alloy image (monitoring_dir,
+# alloy_version) are role constants in vars/main.yml.
 
 monitoring_enabled: false
-
-# Stack directory for the rendered monitoring Docker services (the optional
-# Alloy log shipper). The overlay agent has its own directory (agent_dir in
-# roles/agent).
-monitoring_dir: "/opt/monitoring"
 
 # Components (each independently disableable). Node exporter and CrowdSec; the
 # nftables firewall bouncer ships with CrowdSec.
 node_exporter_enabled: true
 crowdsec_enabled: true
 
-# node_exporter listen address. Localhost-only by default; the role ALSO binds
-# the overlay address, so a central Prometheus can scrape it without any public
-# port.
-node_exporter_listen_addr: "127.0.0.1:9100"
+# node_exporter binds exactly ONE address: the host's overlay address on the
+# standard port (roles/monitoring/vars/main.yml). There is no local or public
+# listener — a central Prometheus scrapes it over the mesh — so the address is a
+# run-time fact (overlay_ip) and deliberately not an operator knob.
 
 # --- Log shipping to a central Loki over the overlay (optional) ---------------
-# Requires a central Loki reachable at loki_url over the overlay
+# Requires a central Loki reachable at loki_push_url over the overlay
 # (e.g. "http://100.125.0.5:3100").
 alloy_enabled: false
-loki_url: ""
-# renovate: datasource=docker depName=grafana/alloy
-alloy_version: "v1.18.1"
+loki_push_url: ""
+
+# Curated journal presets to ship to the central Loki:
+#   ssh      - sshd/ssh auth events (login attempts, brute force)
+#   security - CrowdSec decisions + sudo/su usage
+#   kernel   - kernel messages (OOM killer, disk/network errors, link flaps)
+#   services - every unit's err/warning lines (PRIORITY 3 and 4)
+alloy_log_presets: [ssh, security, kernel, services]
+# Raw extra journal matches (FIELD=VALUE, AND-combined), e.g.:
+#   - "_SYSTEMD_UNIT=docker.service"
+alloy_journal_extra_matches: []
