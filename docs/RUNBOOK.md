@@ -158,7 +158,7 @@ waits for the overlay so the bind survives a reboot.
 # inventory/host_vars/<host>/main.yml
 monitoring_enabled: true
 alloy_enabled: true                            # ship host logs to a central Loki
-loki_push_url: "http://<loki-overlay-ip>:3100"
+loki_push_url: "http://<central-peer>.netbird.selfhosted:3100"   # or "<overlay-ip>:3100"
 ```
 
 node_exporter has no listen-address knob: it binds the host's **overlay address

@@ -203,7 +203,8 @@ this project's vars/vault. Rules:
   default, which grants no exit/LAN routes) and the exporters bind the overlay
   address; with `alloy_enabled: true`
   + `loki_push_url` an Alloy container ships journald SSH events to a central Loki
-  over the overlay.
+  over the overlay (an overlay IP, or preferably the central peer's NetBird name
+  `<peer>.netbird.selfhosted`, resolved by the container through the agent).
 - `make print [HOST=<name>]` — resolved host vars incl. decrypted vault; HOST
   is auto-detected when the inventory has a single host.
 
