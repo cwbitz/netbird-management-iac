@@ -3,21 +3,11 @@
 # Ansible inventory template (inventory/hosts.yml.example)
 # ==============================================================================
 # `make host-init HOST=<name> HOST_IP=<addr> [HOST_PORT=<port>]` scaffolds this
-# file and the matching host_vars entry. With no arguments it scaffolds the
-# default host `netbird-1` with a CHANGE_ME_HOST_IP placeholder.
-#
-# Each host's connection address/port lives here as ansible_host / ansible_port.
-# This file carries topology only — the project-owned baseline variables live in
-# the committed inventory/group_vars/all/main.yml. The `netbird_management` group
-# is the play target for every playbook; per-host settings live in
-# inventory/host_vars/<hostname>/. A missing or CHANGE_ME ansible_host is rejected
-# by the site preflight.
-#
-# Example entry:
-#   netbird_management:
-#     hosts:
-#       netbird-1:
-#         ansible_host: "203.0.113.10"
+# file and the matching host_vars entry (default host `netbird-1`, placeholder
+# address). Topology only: ansible_host/ansible_port per host; baseline variables
+# in inventory/group_vars/all/main.yml and per-host settings in
+# inventory/host_vars/<hostname>/. The `netbird_management` group is every
+# playbook's target; a missing or CHANGE_ME ansible_host fails the preflight.
 # ==============================================================================
 
 netbird_management:

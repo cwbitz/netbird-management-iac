@@ -11,9 +11,9 @@ new host and must carry every operator knob with its project default. This audit
   represented in the example.
 * **Value** — its example value must equal the EFFECTIVE default (group_vars wins
   over the role default), so scaffolding a host is behaviour-neutral.
-* **Derived knobs** — a knob whose ABSENCE is meaningful (its value is derived
-  from another variable at run time, e.g. ``x | default(<derived>)``) must be
-  documented but COMMENTED OUT, otherwise the derivation is defeated.
+* **Derived knobs** — a knob whose value is derived from another variable at run
+  time (e.g. ``x | default(<derived>)``) is NOT an operator knob: it must be
+  omitted from the example (setting it, even empty, defeats the derivation).
 * Not per-host knobs (skipped): the SSH connection wiring, the control-node
   baseline, role-internal constants and vault-bound secrets — see the explicit
   sets below. Playbook-level knobs are presence-checked through ``EXTRA``.
@@ -57,11 +57,11 @@ INTERNAL = {
 }
 # Vault-bound inputs: the example references the vault variable while the role
 # default adds a `| default('', true)` guard, so the texts differ by design.
-VAULT_BOUND = {"netbird_peer_setup_key"}
-# Knobs whose ABSENCE is meaningful. They must be documented in the example but
-# stay COMMENTED OUT: setting them (even to "") disables the run-time derivation.
-# netbird_peer_setup_key is auto-resolved from the management host's vault
-# (vault_endpoint_setup_key); an explicit value here overrides that lookup.
+VAULT_BOUND: set[str] = set()
+# Values derived at run time from another setting: not per-host knobs, so they
+# are absent from the example (setting one, even empty, defeats the derivation).
+# apt_security_mirror derives from apt_mirror; netbird_peer_setup_key is resolved
+# from the management host's vault (vault_endpoint_setup_key).
 DERIVED = {"apt_security_mirror", "netbird_peer_setup_key"}
 # Playbook-level knobs (declared as play vars, not in group_vars/defaults):
 # presence as an ACTIVE line required; the values are the documented defaults.
@@ -181,13 +181,11 @@ def main(argv: list[str]) -> int:
         if key in WIRING or key in INTERNAL:
             continue
         if key in DERIVED:
-            if key not in commented:
+            if key in active or key in commented:
                 problems.append(
-                    f"{key}: documented (commented) entry missing — setting it, even "
-                    f"empty, defeats its run-time derivation ({source})"
+                    f"{key}: must be omitted from the example — its value is derived "
+                    f"at run time from another setting ({source})"
                 )
-            elif key in active:
-                problems.append(f"{key}: must not be an ACTIVE line (derived on absence)")
             continue
         if key not in active:
             problems.append(f"{key}: missing from the example (default {default!r} in {source})")

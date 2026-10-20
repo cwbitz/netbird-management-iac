@@ -1,12 +1,11 @@
 # ==============================================================================
 # Per-host secrets schema (inventory/host_vars/example/vault.yml.example)
 # ==============================================================================
-# make host-init copies this schema into host_vars/<hostname>/vault.yml and
-# encrypts it; edit it with `make vault-edit HOST=<hostname>`. The real file is
-# gitignored and NEVER committed (even encrypted). It is the single per-host
-# vault: user-supplied values, control-generated values passed TO the host, and
-# secrets returned BY the host. The vault password lives outside the repo
-# (ansible.cfg; `make vault-init` creates it).
+# `make host-init` copies this schema into host_vars/<hostname>/vault.yml and
+# encrypts it; edit with `make vault-edit HOST=<hostname>`. Gitignored, never
+# committed. Holds operator-set values, control-generated values passed to the
+# host, and host-returned secrets; the vault password lives outside the repo
+# (`make vault-init`).
 # ==============================================================================
 
 # --- SSH connection identity -------------------------------------------------
@@ -26,8 +25,8 @@ vault_host_admin_password: ""
 vault_host_admin_ssh_privkey_file: ""
 vault_host_admin_ssh_pubkey_file: ""
 # The `ansible` service account name is fixed (`ansible`); it uses key auth when
-# its public key is set, otherwise a password (bootstrap_password, else
-# generated here).
+# its public key is set, otherwise a password from vault_host_ansible_password
+# (generated here when left empty).
 vault_host_ansible_password: ""
 vault_host_ansible_ssh_privkey_file: "~/.ssh/id_ed25519_ansible"
 vault_host_ansible_ssh_pubkey_file: ""
@@ -44,10 +43,6 @@ vault_acme_email: "admin@example.com"
 vault_owner_email: ""
 vault_owner_name: ""
 vault_owner_password: ""
-
-# --- Tenant config-as-code access token --------------------------------------
-# vault_service_admin_access_token is host-returned; it is written below,
-# not set here.
 
 # ==============================================================================
 # Secrets managed automatically (do not set these by hand)
