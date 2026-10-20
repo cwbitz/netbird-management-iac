@@ -197,7 +197,8 @@ sshd_hardening_enabled: true     # only after host-bootstrap keyed `ansible`
   proves a key-only login as the chosen identity (`ansible`, or root when allowed)
   first and rolls itself back on any failed verification. The human `admin`
   account keeps its password for the **console** only — set
-  `vault_host_admin_ssh_pubkey_file` to keep SSH for it. Details:
+  `host_admin_ssh_pubkey_file` (in the host's main.yml) to keep SSH for it.
+  Details:
   [`components/sshd-hardening.md`](components/sshd-hardening.md).
 - Rollback (or console recovery):
   `ssh <host> 'systemctl disable --now firewall && nft delete table inet basefw'`
@@ -272,7 +273,7 @@ Verify after restore: the OIDC discovery URL answers and users can log in.
 | Tenant run: token rejected | PAT expired — recreate it for the `admin` service user and update the vault (§2). |
 | Host reinstalled / reimaged | `vault.yml` holds stale host-returned secrets — delete those keys before deploying so a fresh PAT/setup keys are written (§2). |
 | A vault file is unreadable | It must be ansible-vault encrypted; the helpers re-encrypt a plaintext file on the next run. |
-| SSH refuses the private key (`UNPROTECTED PRIVATE KEY FILE`, `are too open`) | The shared `scripts/run-with-ssh-agent.sh` starts the pinned Keychain agent, loads the vault keys and retries once automatically. If it still fails, check the `vault_*_ssh_privkey_file` paths and run `make agent-load`. |
+| SSH refuses the private key (`UNPROTECTED PRIVATE KEY FILE`, `are too open`) | The shared `scripts/run-with-ssh-agent.sh` starts the pinned Keychain agent, loads the configured keys and retries once automatically. If it still fails, check the `host_*_ssh_privkey_file` paths in the host's `main.yml` and run `make agent-load`. |
 
 Useful commands:
 

@@ -6,6 +6,17 @@
 # Every knob is listed below with its default. Secrets and PII live in the
 # vault.yml next to it.
 
+# --- SSH connection identities ------------------------------------------------
+# Account name and key paths are non-secret (passwords stay in vault.yml).
+# The optional human `admin` account may be renamed; `ansible` is a fixed name.
+host_admin_username: "admin"
+host_ansible_ssh_pubkey_file: ""
+host_ansible_ssh_privkey_file: ""
+host_admin_ssh_pubkey_file: ""
+host_admin_ssh_privkey_file: ""
+host_root_ssh_pubkey_file: ""
+host_root_ssh_privkey_file: ""
+
 # --- Public endpoint (per host, not a secret) --------------------------------
 # The FQDN the server is reachable at; its A record must point at this host, with
 # TCP 80/443 and UDP 3478 open. The placeholder fails the deploy.

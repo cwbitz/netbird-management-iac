@@ -10,26 +10,19 @@
 
 # --- SSH connection identity -------------------------------------------------
 # host-bootstrap probes [ansible, admin, root] and connects as the first that
-# works. Each identity may set a password and/or a private key file (SSH prefers
-# the key). vault_*_ssh_pubkey_file is an optional control-node path to the
-# matching public key; when set it is authorized for that account (empty is
-# ignored; keys are never generated). Only paths, never raw key strings.
+# works. Account names and key paths are non-secret and live in the main.yml next
+# to this file (host_admin_username, host_<id>_ssh_{pub,priv}key_file); this file
+# holds only the passwords. An identity becomes key-only once its public-key path
+# is set there (empty is ignored; keys are never generated).
 vault_host_root_password: ""
-vault_host_root_ssh_privkey_file: "~/.ssh/id_ed25519"
-vault_host_root_ssh_pubkey_file: ""
 # The optional human 'admin' operator account is created only when
 # create_admin_account is true in main.yml; it always gets a password (generated
 # here when left empty) plus any configured key.
-vault_host_admin_user: "admin"
 vault_host_admin_password: ""
-vault_host_admin_ssh_privkey_file: ""
-vault_host_admin_ssh_pubkey_file: ""
 # The `ansible` service account name is fixed (`ansible`); it uses key auth when
 # its public key is set, otherwise a password from vault_host_ansible_password
 # (generated here when left empty).
 vault_host_ansible_password: ""
-vault_host_ansible_ssh_privkey_file: "~/.ssh/id_ed25519_ansible"
-vault_host_ansible_ssh_pubkey_file: ""
 
 # --- Public endpoint ---------------------------------------------------------
 # Email used for Let's Encrypt certificate issuance.

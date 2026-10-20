@@ -58,9 +58,10 @@ this project's vars/vault. Rules:
   placeholder, and the site preflight rejects it until it is replaced.
 - `inventory/host_vars/<hostname>/vault.yml` — **gitignored, never committed**
   (even encrypted). The single per-host encrypted vault, holding everything:
-  values the user supplies (the ACME email `vault_acme_email`, the SSH
-  identities `vault_root_*`/`vault_ansible_*`/`vault_host_admin_*`, the optional
-  first-owner credentials `vault_owner_*`), values the control node generates
+  values the user supplies (the ACME email `vault_acme_email`, the SSH identity
+  passwords (`vault_host_ansible_password` / `vault_host_admin_password` /
+  `vault_host_root_password`), the optional first-owner credentials
+  `vault_owner_*`), values the control node generates
   when the user leaves them empty and passes TO the host
   (`vault_datastore_encryption_key`, `vault_session_cookie_encryption_key`,
   `vault_relay_auth_secret`, `vault_owner_password`, `vault_host_ansible_password`,
@@ -72,8 +73,9 @@ this project's vars/vault. Rules:
   `vault_relay_auth_secret` are auto-generated internals — leave them unedited
   (regenerating them only drops sessions / re-auths the relay; they must match
   across instances only for HA or an external relay, both out of scope here).
-  Each identity may set a password and/or a private key file; SSH prefers the key,
-  then the password. An optional public key file (`vault_*_ssh_pubkey_file`) is
+  Each identity may set a password (here) and/or a private key path (non-secret,
+  in `main.yml`); SSH prefers the key, then the password. An optional public key
+  file (`host_*_ssh_pubkey_file`, also in `main.yml`) is
   authorized for that account by `make host-bootstrap` when set. Because these are
   inputs, set them here to bring your own value (e.g. a datastore key on restore).
   Schema reference: `inventory/host_vars/example/vault.yml.example`.
@@ -223,12 +225,13 @@ this project's vars/vault. Rules:
   verification fails. Enable it only after `make host-bootstrap` has authorized
   the key. The human `admin` account keeps
   its password for the console only; give it a public key
-  (`vault_host_admin_ssh_pubkey_file`) to keep SSH access.
+  (`host_admin_ssh_pubkey_file`) to keep SSH access.
 - The deploy **requires the non-root service account**: `playbooks/site.yml`
   asserts `ssh_user != root` (override with `allow_root_login=true`).
   `make host-bootstrap` probes [ansible, admin, root] and uses the first that
   works; when it is not `ansible` it creates `ansible`. Every explicitly set
-  `vault_{root,ansible}_ssh_pubkey_file` / `vault_host_admin_ssh_pubkey_file` is
+  `host_root_ssh_pubkey_file` / `host_ansible_ssh_pubkey_file` /
+  `host_admin_ssh_pubkey_file` is
   authorized for the matching account (unset ignored, never generated); for
   `ansible` a missing key falls back to a password from
   `vault_host_ansible_password` (generated when empty), while key mode omits the
