@@ -25,19 +25,11 @@ firewall_enabled: false
 # own defaults (the role passes neither `--interface` nor `--wireguard-port`), so
 # both are role constants in vars/main.yml rather than operator knobs.
 
-# The SSH port to keep open. Defaults to the inventory's ansible_port, then 22.
-firewall_ssh_port: "{{ ansible_port | default(22) | int }}"
-
-# Public ports the server must serve beyond the overlay. These mirror the mesh
-# contract (`docs/components/networking.md`) and the ports the stack publishes
-# (roles/management): Traefik binds 80 literally (ACME + redirect) and
-# `exposed_port` for HTTPS; the server binds `stun_port` over UDP. Keep them in
-# step when you change either.
-firewall_public_tcp_ports:
-  - 80
-  - "{{ exposed_port | default(443) }}"
-firewall_public_udp_ports:
-  - "{{ stun_port | default(3478) }}"
+# The SSH port and the public port matrix are fixed by the mesh contract
+# (docs/components/networking.md): this project always serves exactly TCP 80,
+# `exposed_port` and `stun_port`/UDP. Deriving them in vars/main.yml (role vars
+# win over host vars) keeps a host from drifting off the contract, so they are
+# not operator knobs.
 
 # Accept ICMP/ICMPv6 (path-MTU discovery, diagnostics).
 firewall_allow_icmp: true

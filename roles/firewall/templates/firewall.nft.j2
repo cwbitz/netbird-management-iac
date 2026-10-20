@@ -50,15 +50,16 @@ table inet {{ firewall_table }} {
 		# SSH (CrowdSec's firewall bouncer handles the brute force when
 		# monitoring_enabled).
 		tcp dport {{ firewall_ssh_port | int }} accept
-{% if firewall_public_tcp_ports | length > 0 %}
+{% if firewall_public_tcp_specs | length > 0 %}
 
 		# The mesh contract: Traefik (ACME TLS-ALPN + redirect + dashboard/API).
-		tcp dport { {{ firewall_public_tcp_ports | map('int') | join(', ') }} } accept
+		# Entries may be single ports or `start-end` ranges (nftables intervals).
+		tcp dport { {{ firewall_public_tcp_specs | join(', ') }} } accept
 {% endif %}
-{% if firewall_public_udp_ports | length > 0 %}
+{% if firewall_public_udp_specs | length > 0 %}
 
 		# The mesh contract: STUN/TURN of the signal/relay service.
-		udp dport { {{ firewall_public_udp_ports | map('int') | join(', ') }} } accept
+		udp dport { {{ firewall_public_udp_specs | join(', ') }} } accept
 {% endif %}
 
 		# Everything else inbound: dropped (counted, for debugging).

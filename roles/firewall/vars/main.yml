@@ -21,6 +21,18 @@ firewall_service_path: "/etc/systemd/system/firewall.service"
 firewall_overlay_iface: "wt0"
 firewall_netbird_wg_port: 51820
 
+# The SSH port and the public port matrix are fixed by the mesh contract
+# (docs/components/networking.md), not per-host choices: this project always
+# serves exactly TCP 80, `exposed_port` and `stun_port`/UDP. They are derived
+# here (role vars win over host vars) so a host cannot drift off the contract;
+# they still follow `ansible_port`, `exposed_port` and `stun_port`.
+firewall_ssh_port: "{{ ansible_port | default(22) | int }}"
+firewall_public_tcp_ports:
+  - 80
+  - "{{ exposed_port | default(443) }}"
+firewall_public_udp_ports:
+  - "{{ stun_port | default(3478) }}"
+
 # Files installed by earlier releases under a project-named unit/ruleset. They are
 # removed so exactly one firewall unit and one table are ever active (two units
 # would fight over the table and the boot order would decide the policy).

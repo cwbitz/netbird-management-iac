@@ -32,10 +32,14 @@ re-verified from the control node after applying.
 | `stun_port` (3478) | UDP | STUN/TURN of the signal/relay service |
 | ICMP/ICMPv6 | — | path-MTU discovery, diagnostics (`firewall_allow_icmp`) |
 
-The public lists are knobs (`firewall_public_tcp_ports` /
-`..._udp_ports`) defaulting to that contract; `exposed_port` and `stun_port` come
-from the server role (`roles/management/defaults/main.yml`), and Traefik's 80 is
-literal in the compose template — keep them in step when you change either.
+The SSH port and the public lists are role constants
+(`roles/firewall/vars/main.yml`): `firewall_ssh_port` follows the inventory's
+`ansible_port` (then 22), while `firewall_public_tcp_ports` /
+`firewall_public_udp_ports` derive from `exposed_port` / `stun_port`
+(`roles/management/defaults/main.yml`), with Traefik's 80 literal in the compose
+template. Because they live in `vars/`, a host var cannot override them: the host
+always enforces the mesh contract, and changing `exposed_port` / `stun_port` (or
+`ansible_port`) moves the matrix with it.
 
 ## How
 
