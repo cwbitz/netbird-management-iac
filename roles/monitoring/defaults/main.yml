@@ -33,7 +33,7 @@ loki_push_url: ""
 #   security - CrowdSec decisions + sudo/su usage
 #   kernel   - kernel messages (OOM killer, disk/network errors, link flaps)
 #   services - every unit's err/warning lines (PRIORITY 3 and 4)
-alloy_log_presets: [ssh, security, kernel, services]
+alloy_journal_presets: [ssh, security, kernel, services]
 # Raw extra journal matches (FIELD=VALUE, AND-combined), e.g.:
 #   - "_SYSTEMD_UNIT=docker.service"
-alloy_journal_extra_matches: []
+alloy_journal_extra: []

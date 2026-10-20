@@ -61,12 +61,12 @@
 - name: "[Monitoring] Assert the log presets are known"
   ansible.builtin.assert:
     that:
-      - (alloy_log_presets | default([]) | difference(['ssh', 'security', 'kernel', 'services']) | length) == 0
+      - (alloy_journal_presets | default([]) | difference(['ssh', 'security', 'kernel', 'services']) | length) == 0
     fail_msg: >-
-      Unknown alloy_log_presets: {{
-        alloy_log_presets | default([]) | difference(['ssh', 'security', 'kernel', 'services']) | join(', ')
+      Unknown alloy_journal_presets: {{
+        alloy_journal_presets | default([]) | difference(['ssh', 'security', 'kernel', 'services']) | join(', ')
       }}. Known presets: ssh, security, kernel, services (raw journal matches go in
-      alloy_journal_extra_matches).
+      alloy_journal_extra).
   when: alloy_enabled | bool
 
 - name: "[Monitoring] Ensure the monitoring stack directory exists"
