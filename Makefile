@@ -371,6 +371,8 @@ lint: vault-init
 	# The example main.yml is the template host-init copies: it must carry every
 	# operator knob with its project default (stdlib-only script).
 	python3 scripts/audit_example_knobs.py
+	# The tenant value gate runs in every plan/apply; keep it importable.
+	python3 -m py_compile scripts/validate_tenant_config.py
 
 # Transient-network retry for the tenant apply. The pinned collection does not
 # retry API calls, and a cross-region link can drop a small fraction of TLS

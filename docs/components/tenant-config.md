@@ -28,6 +28,23 @@ toggles keep the collection names.
 
 Requires a valid `vault_service_admin_access_token` (see `AGENTS.md`).
 
+## Value gate
+
+Before rendering, the play dumps the effective variables (after templating) to
+`.cache/tenant_config/<host>/_validate.json` and runs
+`scripts/validate_tenant_config.py` against them. Plan and apply both fail with
+a per-field report when a value is unusable:
+
+- wrong types (e.g. a boolean written as `"true"`), unknown `netbird_settings`
+  keys (typos), non-positive durations, non-bool flags;
+- invalid CIDR / IPv6 / domain / email / IP syntax, ports and port ranges,
+  enum values (protocol, action, role, key type, nameserver type, service mode,
+  record type);
+- duplicate resource names and the reserved `All` group.
+
+Cross-resource references that depend on the live account (enrolled peers,
+IdP-synced groups) stay the collection's own preflight, not this gate.
+
 ## Collection gotchas
 
 - `netbird_networks.routers` needs an enrolled peer, and `netbird_services` /

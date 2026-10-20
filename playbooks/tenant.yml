@@ -11,7 +11,9 @@
 #
 # Preview with `make plan` (read-only diff); apply with `make apply` (commits).
 # Strict mode (also removes unmanaged resources) is off unless `tenant_strict:
-# true` is set per host or passed with -e. Requires
+# true` is set per host or passed with -e. The desired state is validated
+# locally (scripts/validate_tenant_config.py) before rendering, so an unusable
+# value fails before anything is rendered or applied. Requires
 # vault_service_admin_access_token (created by the first-owner bootstrap, or
 # set in vault.yml).
 # ==============================================================================
@@ -103,6 +105,45 @@
         - "."
         - "access_control"
         - "dns"
+
+    # --------------------------------------------------------------------------
+    # Value gate: validate the effective desired state before rendering or
+    # calling the API. Local and stdlib-only; references that need the live
+    # account (peers, IdP-synced groups) stay the collection's own preflight.
+    # --------------------------------------------------------------------------
+    - name: "[Tenant] Write the effective desired state for the value gate"
+      ansible.builtin.copy:
+        dest: "{{ tenant_build_dir }}/_validate.json"
+        content: >-
+          {{ {
+               'netbird_settings': netbird_settings | default({}),
+               'netbird_groups': netbird_groups | default([]),
+               'netbird_policies': netbird_policies | default([]),
+               'netbird_posture_checks': netbird_posture_checks | default([]),
+               'netbird_networks': netbird_networks | default([]),
+               'netbird_dns_nameserver_groups': netbird_dns_nameserver_groups | default([]),
+               'netbird_dns_zones': netbird_dns_zones | default([]),
+               'netbird_dns_disabled_management_groups': netbird_dns_disabled_management_groups | default([]),
+               'netbird_setup_keys': netbird_setup_keys | default([]),
+               'netbird_services': netbird_services | default([]),
+               'netbird_service_domains': netbird_service_domains | default([]),
+               'netbird_users': netbird_users | default([]),
+               'netbird_service_users': netbird_service_users | default([])
+             } | to_json }}
+        mode: "0600"
+
+    - name: "[Tenant] Run the value gate"
+      ansible.builtin.command:
+        argv:
+          - "{{ ansible_playbook_python }}"
+          - "{{ playbook_dir }}/../scripts/validate_tenant_config.py"
+          - "{{ tenant_build_dir }}/_validate.json"
+      changed_when: false
+
+    - name: "[Tenant] Remove the value-gate input"
+      ansible.builtin.file:
+        path: "{{ tenant_build_dir }}/_validate.json"
+        state: absent
 
     # netbird_settings uses the collection's native field names, except the peer
     # expiry DURATIONS, which follow the project convention (*_expire_<unit>);

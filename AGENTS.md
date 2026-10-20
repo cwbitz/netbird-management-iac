@@ -176,7 +176,11 @@ this project's vars/vault. Rules:
 - `make plan` — tenant config-as-code, **read-only diff** (safe default).
 - `make apply` — apply the tenant desired state. Requires
   `vault_service_admin_access_token`. Use it to change tenants without
-  redeploying the server. Strict mode (also remove unmanaged resources) is off by
+  redeploying the server. Both plan and apply first run the local value gate
+  (`scripts/validate_tenant_config.py`) over the effective desired state and fail
+  with a per-field report before rendering or applying it when a value is
+  unusable. Strict
+  mode (also remove unmanaged resources) is off by
   default — absent, empty, or `false` `tenant_strict` means non-strict; only
   `tenant_strict: true` in `inventory/host_vars/<host>/main.yml` (or
   `-e tenant_strict=true`) enables it. The apply (and `deploy`'s tenant step) is
