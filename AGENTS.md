@@ -230,8 +230,8 @@ this project's vars/vault. Rules:
   works; when it is not `ansible` it creates `ansible`. Every explicitly set
   `vault_{root,ansible}_ssh_pubkey_file` / `vault_host_admin_ssh_pubkey_file` is
   authorized for the matching account (unset ignored, never generated); for
-  `ansible` a missing key falls back to a password (`bootstrap_password`,
-  else generated into `vault_host_ansible_password`), while key mode omits the
+  `ansible` a missing key falls back to a password from
+  `vault_host_ansible_password` (generated when empty), while key mode omits the
   password. The optional human `admin` account is created only when
   `create_admin_account` is set and always gets a password (generated into
   `vault_host_admin_password` when empty) plus any configured key. Passwords are

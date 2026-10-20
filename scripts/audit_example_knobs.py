@@ -67,7 +67,6 @@ DERIVED = {"apt_security_mirror", "netbird_peer_setup_key"}
 # presence as an ACTIVE line required; the values are the documented defaults.
 EXTRA = {
     "apt_mirror", "docker_registry_mirrors", "allow_root_login",
-    "bootstrap_password", "bootstrap_sudo_nopasswd",
     # per-host values documented by the example (not declared in defaults/, they
     # are consumed by the management role / tenant play directly)
     "domain_name", "acme_email", "owner_email", "owner_name",
