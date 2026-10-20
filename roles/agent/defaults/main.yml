@@ -13,11 +13,3 @@
 # key.
 netbird_peer_setup_key: >-
   {{ (hostvars[netbird_management_host] | default({})).vault_endpoint_setup_key | default('', true) }}
-
-# NetBird DNS management: the agent is the host's resolver for the netbird zone
-# (`<peer>.netbird.selfhosted`). It applies that through the host's
-# systemd-resolved over D-Bus, so the D-Bus socket must be visible INSIDE the
-# container — without this the zone does not resolve on the host, nor inside
-# containers that forward to the host stub (e.g. a central Prometheus). Set false
-# only on a host whose resolver the agent should not touch.
-netbird_dns_manage: true
