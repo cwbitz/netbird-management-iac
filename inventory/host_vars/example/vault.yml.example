@@ -9,7 +9,7 @@
 # ==============================================================================
 
 # --- SSH connection identity -------------------------------------------------
-# host-bootstrap probes [ansible, admin, root] and connects as the first that
+# host-bootstrap probes [iac, admin, root] and connects as the first that
 # works. Account names and key paths are non-secret and live in the main.yml next
 # to this file (host_admin_username, host_<id>_ssh_{pub,priv}key_file); this file
 # holds only the passwords. An identity becomes key-only once its public-key path
@@ -19,22 +19,14 @@ vault_host_root_password: ""
 # create_admin_account is true in main.yml; it always gets a password (generated
 # here when left empty) plus any configured key.
 vault_host_admin_password: ""
-# The `ansible` service account name is fixed (`ansible`); it uses key auth when
-# its public key is set, otherwise a password from vault_host_ansible_password
+# The `iac` automation account name is fixed (`iac`); it uses key auth when
+# its public key is set, otherwise a password from vault_host_iac_password
 # (generated here when left empty).
-vault_host_ansible_password: ""
-
-# --- Public endpoint ---------------------------------------------------------
-# Email used for Let's Encrypt certificate issuance.
-vault_acme_email: "admin@example.com"
+vault_host_iac_password: ""
 
 # --- Optional first-owner bootstrap ------------------------------------------
-# Set the email to auto-create the first owner via /api/setup (and provision the
-# tenant token below); leave it empty to onboard manually at
-# https://<domain>/setup. The password is optional (empty => generated here) and
-# is ignored without an email.
-vault_owner_email: ""
-vault_owner_name: ""
+# The owner email/name live in main.yml; this is only the first owner's password
+# (empty => generated here, ignored while the email is empty).
 vault_owner_password: ""
 
 # ==============================================================================
@@ -55,7 +47,7 @@ vault_owner_password: ""
 #   vault_relay_auth_secret                 relay auth secret (auto-generated
 #                                           internal; leave unedited)
 #   vault_owner_password                    first owner password
-#   vault_host_ansible_password             service account password (only when
+#   vault_host_iac_password             service account password (only when
 #                                           no public key is given)
 #   vault_host_admin_password               admin password (only when
 #                                           create_admin_account is true)

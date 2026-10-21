@@ -10,7 +10,7 @@ same indentation as the existing entries (or ``hosts:`` + 2 spaces when the grou
 has none yet).
 
 Usage:
-    ensure_inventory_host.py <inventory.yml> <host> [--group netbird_management]
+    ensure_inventory_host.py <inventory.yml> <host> [--group management]
 
 Uses only the standard library, so the control node's (possibly minimal)
 toolchain ``python3`` is enough.
@@ -21,7 +21,7 @@ import argparse
 import re
 import sys
 
-DEFAULT_GROUP = "netbird_management"
+DEFAULT_GROUP = "management"
 DEFAULT_ANSIBLE_HOST = "CHANGE_ME_HOST_IP"
 
 

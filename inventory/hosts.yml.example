@@ -6,9 +6,9 @@
 # file and the matching host_vars entry (default host `netbird-1`, placeholder
 # address). Topology only: ansible_host/ansible_port per host; baseline variables
 # in inventory/group_vars/all/main.yml and per-host settings in
-# inventory/host_vars/<hostname>/. The `netbird_management` group is every
+# inventory/host_vars/<hostname>/. The `management` group is every
 # playbook's target; a missing or CHANGE_ME ansible_host fails the preflight.
 # ==============================================================================
 
-netbird_management:
+management:
   hosts:

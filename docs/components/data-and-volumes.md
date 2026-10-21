@@ -1,7 +1,7 @@
 # Data & volumes
 
-Config files are rendered to `{{ stack_dir }}` (`/opt/netbird`, set in
-`inventory/group_vars/netbird_management/main.yml`). Two named Docker
+Config files are rendered to `{{ stack_dir }}` (`/opt/netbird`, set per host
+in `inventory/host_vars/<hostname>/main.yml`). Two named Docker
 volumes hold state (explicit names keep them stable regardless of the compose
 project directory):
 

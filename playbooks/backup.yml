@@ -1,22 +1,6 @@
 ---
-# ==============================================================================
-# Back up the NetBird server data volume to the control node.
-#
-#   make backup            # -> backup/<host>/<timestamp>/
-#
-# Captures netbird_data.tgz: the Docker volume (store.db / idp.db / events.db +
-# geo DBs), archived with the container STOPPED so the SQLite files are
-# consistent.
-#
-# The generated encryption keys are NOT in this archive — they live on the
-# control node in inventory/host_vars/<host>/vault.yml, which must be kept
-# separately. Losing vault_datastore_encryption_key makes the archived data
-# unrecoverable. The backup contains sensitive data (user PII, hashed
-# credentials) and is gitignored — never commit it.
-# ==============================================================================
-
 - name: Back up the NetBird server state
-  hosts: netbird_management
+  hosts: management
   gather_facts: false
   vars:
     backup_dir: "{{ playbook_dir }}/../backup"

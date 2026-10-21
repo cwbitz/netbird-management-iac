@@ -1,18 +1,11 @@
 ---
-# ==============================================================================
-# NetBird agent - mesh join (roles/agent/tasks)
-# ==============================================================================
-# Deploys the NetBird agent container so the host joins the overlay. Used by the
-# monitoring role.
-# ==============================================================================
-
 - name: "[Agent] Assert a setup key for the overlay agent"
   ansible.builtin.assert:
     that:
       - (netbird_peer_setup_key | default('', true) | length) > 0
     fail_msg: >-
       An agent node requires a setup key so it joins the mesh. netbird_peer_setup_key is
-      resolved from the management node's vault (netbird_management_host); run
+      resolved from the management node's vault (management_host); run
       the tenant apply there first (it creates the setup keys), or set
       netbird_peer_setup_key explicitly in host_vars.
 

@@ -1,29 +1,10 @@
 ---
-# ==============================================================================
-# Load the control-node private keys into the running SSH agent
-# (playbooks/ssh_agent_load.yml)
-# ==============================================================================
-# The SSH agent is key-based, not path-based: it holds private keys and the
-# target's authorized_keys decides which is accepted. This playbook loads the
-# private-key paths recorded in the per-host configuration
-# (host_{ansible,admin,root}_ssh_privkey_file in
-# inventory/host_vars/<host>/main.yml), so the operator does not have to
-# remember the paths.
-#
-# Invoked by the shared agent fallback (Makefile `agent-fallback`) when a
-# configured key has unsafe permissions, or by `agent-load`; both start/reuse the
-# pinned Keychain agent in the current shell first. Keys OpenSSH rejects for
-# permissions (e.g. the WSL /mnt/c mount, mode 0777) are loaded via stdin
-# (`ssh-add - < key`), which skips the check - this is why key loading lives here
-# rather than in Keychain.
-# ==============================================================================
-
 - name: "Load the control-node private keys into the running SSH agent"
   hosts: localhost
   gather_facts: false
   become: false
   vars:
-    agent_load_hosts: "{{ groups['netbird_management'] | default([]) }}"
+    agent_load_hosts: "{{ groups['management'] | default([]) }}"
   tasks:
     - name: "[SSHAgent] Assert the Keychain ssh-agent is reachable in this shell"
       ansible.builtin.assert:
@@ -37,7 +18,7 @@
       ansible.builtin.set_fact:
         agent_privkey_files: >-
           {{ (agent_privkey_files | default([])) +
-             [ hostvars[item].host_ansible_ssh_privkey_file | default('', true),
+             [ hostvars[item].host_iac_ssh_privkey_file | default('', true),
                hostvars[item].host_admin_ssh_privkey_file | default('', true),
                hostvars[item].host_root_ssh_privkey_file | default('', true) ] }}
       loop: "{{ agent_load_hosts }}"

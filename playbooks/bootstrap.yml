@@ -1,35 +1,10 @@
 ---
-# ==============================================================================
-# Host bootstrap (`make host-bootstrap`; never part of playbooks/site.yml).
-#
-# Optional, opt-in host tuning: probes the SSH identities in order
-# [ansible, admin, root], uses the first that works, and (re)creates the
-# least-privilege `ansible` service account. The alias wiring lives in
-# inventory/group_vars/netbird_management/main.yml. Also sets package/registry
-# mirrors and authorizes configured SSH public keys (each a no-op unless set:
-# apt_mirror / apt_security_mirror / docker_registry_mirrors).
-#
-# Per identity, main.yml may set a private key path and vault.yml a password (SSH
-# tries the key first); host_<id>_ssh_pubkey_file is an optional control-node path
-# to the matching public key, authorized for that account when set (unset is
-# ignored, keys are never generated). Passwords are hashed with a per-account
-# random salt and applied with update_password=on_create, so re-runs are
-# idempotent and a host-side password rotation is preserved. Password login needs
-# sshd to allow it.
-# ==============================================================================
-
-- name: Probe the SSH identities (ansible -> admin -> root)
+- name: Probe the SSH identities (iac -> admin -> root)
   hosts: localhost
   connection: local
   gather_facts: false
   vars:
-    # The host to bootstrap: the Makefile passes HOST= as -e bootstrap_host.
-    # Defaults to the single netbird_management node (the usual `make deploy`
-    # case); pass it explicitly for a router/endpoint or when several
-    # management nodes exist. `bootstrap_host` stays the pure `-e` input;
-    # resolving it into `bootstrap_target` here — instead of into a var that
-    # references its own name — avoids an Ansible self-reference recursion.
-    bootstrap_target: "{{ bootstrap_host | default(groups['netbird_management'] | default([]) | first | default('', true)) }}"
+    bootstrap_target: "{{ bootstrap_host | default(groups['management'] | default([]) | first | default('', true)) }}"
     netbird_target: "{{ hostvars[bootstrap_target] | default({}) }}"
     probe_host: "{{ netbird_target.ansible_host | default('') }}"
     probe_port: "{{ netbird_target.ansible_port | default(22) }}"
@@ -42,7 +17,7 @@
         fail_msg: >-
           No bootstrap target resolved. Pass one explicitly with
           `make host-bootstrap HOST=<inventory name>` (or -e bootstrap_host=...);
-          it defaults to the single netbird_management host.
+          it defaults to the single management host.
 
     - name: "[Probe] Try each identity over SSH"
       ansible.builtin.shell: |
@@ -75,16 +50,16 @@
           fi
           return 1
         }
-        for id in ANSIBLE ADMIN ROOT; do
+        for id in IAC ADMIN ROOT; do
           if try_identity "$id"; then echo "$id"; exit 0; fi
         done
         exit 1
       args:
         executable: /bin/bash
       environment:
-        PROBE_ANSIBLE_USER: "{{ netbird_target.ssh_identities.ansible.user }}"
-        PROBE_ANSIBLE_PW: "{{ netbird_target.ssh_identities.ansible.password }}"
-        PROBE_ANSIBLE_KEY: "{{ netbird_target.ssh_identities.ansible.privkey }}"
+        PROBE_IAC_USER: "{{ netbird_target.ssh_identities.iac.user }}"
+        PROBE_IAC_PW: "{{ netbird_target.ssh_identities.iac.password }}"
+        PROBE_IAC_KEY: "{{ netbird_target.ssh_identities.iac.privkey }}"
         PROBE_ADMIN_USER: "{{ netbird_target.ssh_identities.admin.user }}"
         PROBE_ADMIN_PW: "{{ netbird_target.ssh_identities.admin.password }}"
         PROBE_ADMIN_KEY: "{{ netbird_target.ssh_identities.admin.privkey }}"
@@ -101,9 +76,9 @@
         that:
           - probe.rc == 0
         fail_msg: >-
-          Could not log in as ansible, admin or root with the configured
-          credentials. Check inventory/host_vars/<host>/vault.yml for the
-          passwords (vault_{ansible,admin,root}_password) and the main.yml next to
+          Could not log in as iac, admin or root with
+          the configured credentials. Check inventory/host_vars/<host>/vault.yml
+          for the passwords (vault_{iac,admin,root}_password) and the main.yml next to
           it for the key paths (host_<id>_ssh_privkey_file), plus the host.
 
     - name: "[Probe] Record the working identity"
@@ -123,39 +98,22 @@
         msg: "Connected as '{{ probe_identity }}' ({{ probe_chosen.user }})."
 
 - name: Bootstrap host system tuning
-  # Target the probed host by name (the bootstrap playbook manages one host at a
-  # time). Using the inventory host avoids a dynamic-only group that
-  # --syntax-check on a static inventory would warn about ("could not match
-  # supplied host pattern").
-  hosts: "{{ bootstrap_host | default(groups['netbird_management'] | default([]) | first | default('', true)) }}"
+  hosts: "{{ bootstrap_host | default(groups['management'] | default([]) | first | default('', true)) }}"
   gather_facts: true
-  # add_host vars rank below inventory host_vars; apply the probed identity as
-  # play vars so it takes effect.
   vars:
     ansible_user: "{{ hostvars['localhost'].probe_chosen.user }}"
     ansible_password: "{{ hostvars['localhost'].probe_chosen.password }}"
-    # The probed identity may be a password-sudo account (e.g. the `admin`
-    # account when root SSH is disabled); use its password for sudo. The
-    # `ansible` service account is NOPASSWD, so an empty value is harmless.
     ansible_become_password: "{{ hostvars['localhost'].probe_chosen.password }}"
     ansible_ssh_private_key_file: "{{ hostvars['localhost'].probe_chosen.privkey }}"
     ansible_become: "{{ hostvars['localhost'].probe_chosen.become }}"
+    apt_security_mirror: >-
+      {{ apt_mirror | default('', true) | regex_replace('/debian/?$', '') ~ '/debian-security' }}
   handlers:
     - name: Restart docker
       ansible.builtin.systemd_service:
         name: docker
         state: restarted
-
   tasks:
-    # --------------------------------------------------------------------------
-    # Hostname resolution (loopback alias)
-    # --------------------------------------------------------------------------
-    # A cloud image can set a hostname that /etc/hosts does not map: the name then
-    # falls through nsswitch to DNS and everything that resolves the local name
-    # waits for a resolver timeout — `sudo` does it on EVERY task, ~2s per become
-    # task on a deploy. Map it to the standard loopback alias (the Debian
-    # installer's own layout), but ONLY when it does not resolve already, so a
-    # host whose name is in DNS (or already in /etc/hosts) is left untouched.
     - name: "[Bootstrap] Read the effective hostname"
       ansible.builtin.command:
         argv: [hostname]
@@ -268,18 +226,10 @@
       when: docker_registry_mirrors | default([]) | length > 0
       notify: Restart docker
 
-    # --------------------------------------------------------------------------
-    # Service account: create/repair only when not already connected as ansible.
-    # --------------------------------------------------------------------------
-    # Key mode is decided by the PUBLIC key path: that is the key bootstrap
-    # installs, so it is what actually keeps the account reachable. A
-    # private-key-only config is NOT treated as key mode (the key may not be
-    # authorized yet), so a password is still provisioned as a lockout-safe
-    # fallback.
     - name: "[Bootstrap] Resolve the service account settings"
       ansible.builtin.set_fact:
-        bootstrap_service_user: "ansible"
-        bootstrap_use_key: "{{ host_ansible_ssh_pubkey_file | default('', true) | length > 0 }}"
+        bootstrap_service_user: "iac"
+        bootstrap_use_key: "{{ host_iac_ssh_pubkey_file | default('', true) | length > 0 }}"
 
     - name: "[Bootstrap] Provision a service-account password (no key supplied)"
       ansible.builtin.include_role:
@@ -289,15 +239,11 @@
         secrets_component: "netbird_bootstrap"
         secrets_vault_file: "vault.yml"
         secrets_list:
-          - var: "vault_host_ansible_password"
+          - var: "vault_host_iac_password"
             type: "base64"
             length: 18
       when: not (bootstrap_use_key | bool)
 
-    # Password mode only (no key supplied): hash with a per-account RANDOM salt
-    # and update_password=on_create, so re-runs are idempotent and a password
-    # rotated on the host is not silently reverted. Key mode omits the password
-    # entirely — the account is reached by its authorized key.
     - name: "[Bootstrap] Create/repair the service account"
       ansible.builtin.user:
         name: "{{ bootstrap_service_user }}"
@@ -307,19 +253,12 @@
         create_home: true
         state: present
         password: >-
-          {{ (vault_host_ansible_password | password_hash('sha512'))
+          {{ (vault_host_iac_password | password_hash('sha512'))
              if not (bootstrap_use_key | bool) else omit }}
         update_password: on_create
       no_log: true
-      when: probe_identity | lower != 'ansible'
+      when: probe_identity | lower != 'iac'
 
-    # --------------------------------------------------------------------------
-    # Admin identity (optional, opt-in via create_admin_account). This is a HUMAN
-    # operator account, so it always gets a password (generated into vault.yml
-    # when left empty) for console login and sudo; a configured public key is
-    # installed additionally. Root is never created; the service account is
-    # handled above.
-    # --------------------------------------------------------------------------
     - name: "[Bootstrap] Resolve the admin identity settings"
       ansible.builtin.set_fact:
         bootstrap_admin: "{{ ssh_identities.admin }}"
@@ -435,23 +374,17 @@
 
     - name: "[Bootstrap] Resolve the sudo accounts"
       ansible.builtin.set_fact:
-        # The `default()` guards make the template resolvable by static analysis
-        # (ansible-lint) before the earlier set_fact tasks have run; at runtime
-        # the real values are always defined.
         bootstrap_sudo_nopasswd_users: >-
-          {{ [bootstrap_service_user | default('ansible')] }}
+          {{ [bootstrap_service_user | default('iac')] }}
         bootstrap_sudo_password_users: >-
           {{ [((bootstrap_admin | default({})).user | default('admin'))]
              if (bootstrap_admin_defined | default(false) | bool
                  and (bootstrap_admin | default({})).user | default('', true) != 'root'
                  and (bootstrap_admin | default({})).user | default('', true)
-                     != (bootstrap_service_user | default('ansible')))
+                     != (bootstrap_service_user | default('iac')))
              else [] }}
 
     - name: "[Bootstrap] Ensure sudo is installed for the sudoers grants"
-      # Minimal Debian images ship without the sudo package (/etc/sudoers.d may
-      # not exist at all), yet the grants below, and the `become` the deploy
-      # relies on, both need it.
       ansible.builtin.apt:
         name: sudo
         state: present

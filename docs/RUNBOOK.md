@@ -22,7 +22,7 @@ contracts, conventions and gotchas.
   `allow_root_login=true`.
 - Host security is opt-in per host and safe to add later: enable the base
   firewall (the mesh contract stays open) and key-only SSH hardening only after
-  `make host-bootstrap` has authorized the `ansible` key — see §5b.
+  `make host-bootstrap` has authorized the `iac` key — see §5b.
 - The vault password file is auto-created by the make targets
   (`~/.config/projects/netbird-iac/ansible_vault_password`); keep it safe.
 
@@ -35,8 +35,7 @@ make deploy      # deploy the server, then apply the tenant state
 ```
 
 `make deploy` is the one-shot entry point: it runs `bootstrap.yml` (host init),
-then the server deploy, then the tenant apply. It probes `ansible → admin → root`,
-creates the `ansible` service account when needed, ensures Docker Engine + Compose
+then the server deploy, then the tenant apply. It probes `iac → admin → root`, creates the `iac` automation account when needed, ensures Docker Engine + Compose
 v2, generates missing secrets into the encrypted `vault.yml`, renders
 `config.yaml` / `dashboard.env` / `docker-compose.yml` to `{{ stack_dir }}`
 (`/opt/netbird`), starts the stack, waits for TLS, then optionally creates the
@@ -65,8 +64,8 @@ GeoLite2 DBs from `pkgs.netbird.io`. If the readiness wait times out, re-run
 
 ## 2. First owner and access token
 
-- With `vault_owner_email` set, the first owner is created automatically via
-  `/api/setup` (works only while the instance has no accounts). The same run
+- With `owner_email` set in `main.yml`, the first owner is created automatically
+  via `/api/setup` (works only while the instance has no accounts). The same run
   creates an `admin` service user and its PAT, stored as
   `vault_service_admin_access_token`.
 - Without an email, open `https://<domain>/setup` and create the owner; then
@@ -77,7 +76,7 @@ GeoLite2 DBs from `pkgs.netbird.io`. If the readiness wait times out, re-run
 - **Host reinstalled/reimaged**: the host-returned secrets in `vault.yml` are stale
   (they existed only on the old server). Move the file aside — or delete it — and
   redeploy: a missing file is regenerated (a fresh PAT via the first-owner
-  bootstrap when `vault_owner_email` is set; new setup keys via `make apply`).
+  bootstrap when `owner_email` is set; new setup keys via `make apply`).
   Leaving a stale non-empty value there keeps the invalid token and every tenant
   run fails with "token rejected".
 
@@ -183,7 +182,7 @@ make deploy TAGS=sshd       # key-only SSH (roles/sshd)
 ```yaml
 # inventory/host_vars/<host>/main.yml
 firewall_enabled: true
-sshd_hardening_enabled: true     # only after host-bootstrap keyed `ansible`
+sshd_hardening_enabled: true     # only after host-bootstrap keyed `iac`
 ```
 
 - **Firewall**: enforces the mesh contract (TCP 80/443, UDP 3478 —
@@ -194,7 +193,7 @@ sshd_hardening_enabled: true     # only after host-bootstrap keyed `ansible`
   [`components/firewall.md`](components/firewall.md).
 - **SSH hardening**: closes password login (plus the PAM keyboard-interactive and
   empty-password paths) and applies `sshd_permit_root_login` (default `no`). It
-  proves a key-only login as the chosen identity (`ansible`, or root when allowed)
+  proves a key-only login as the chosen identity (`iac`, or root when allowed)
   first and rolls itself back on any failed verification. The human `admin`
   account keeps its password for the **console** only — set
   `host_admin_ssh_pubkey_file` (in the host's main.yml) to keep SSH for it.
@@ -267,7 +266,7 @@ Verify after restore: the OIDC discovery URL answers and users can log in.
 | STUN / relay clients fail | UDP 3478 open; Traefik owns `172.30.0.10`. |
 | `prometheus-node-exporter` failed after a reboot | The overlay address was never created: the drop-in waits ~90s then gives up (5 retries). Check `docker ps` / `ip -br addr show wt0` / `journalctl -u prometheus-node-exporter`. A manual `systemctl start prometheus-node-exporter` clears it once the overlay is up. |
 | Dashboard/API answer locally but not from the internet (firewall applied) | `nft list table inet basefw` — the declared TCP ports must be there (the NetBird agent adds one extra `iifname "wt0" counter … accept` rule of its own; that is expected). `make deploy TAGS=firewall` re-verifies them from the control node. Roll back with `systemctl disable --now firewall && nft delete table inet basefw`. |
-| `make deploy TAGS=sshd` failed and the host kept password login | Expected: the role reverted the drop-in and failed. Read the failing task (the key-only login probe is the usual one): the `ansible` key must be authorized by `make host-bootstrap` and accepted by OpenSSH (`make agent-load` for a `/mnt/c` key). |
+| `make deploy TAGS=sshd` failed and the host kept password login | Expected: the role reverted the drop-in and failed. Read the failing task (the key-only login probe is the usual one): the `iac` key must be authorized by `make host-bootstrap` and accepted by OpenSSH (`make agent-load` for a `/mnt/c` key). |
 | No usable SSH login after enabling hardening | Recover from the provider console: `rm /etc/ssh/sshd_config.d/00-sshd-hardening.conf && systemctl reload ssh`, then set `sshd_hardening_enabled: false` and re-run. |
 | Readiness times out on first deploy | GeoLite2 download (§1); re-run or pre-seed the DBs. |
 | Tenant run: token rejected | PAT expired — recreate it for the `admin` service user and update the vault (§2). |

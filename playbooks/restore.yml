@@ -1,18 +1,6 @@
 ---
-# ==============================================================================
-# Restore the NetBird server state from a backup made by playbooks/backup.yml.
-#
-#   make restore FROM=backup/<host>/<timestamp>
-#
-# Replaces the data volume with the archived contents, then redeploys the stack.
-# config.yaml is re-rendered from the control node's existing
-# inventory/host_vars/<host>/vault.yml, so that file must hold the SAME
-# datastore encryptionKey as when the data was backed up; otherwise the restored
-# data cannot be decrypted.
-# ==============================================================================
-
 - name: Restore the NetBird server state
-  hosts: netbird_management
+  hosts: management
   gather_facts: false
   vars:
     restore_from: ""

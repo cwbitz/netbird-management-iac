@@ -1,43 +1,17 @@
 ---
-# ==============================================================================
-# Apply the declarative NetBird tenant configuration (desired state as code).
-#
-# Desired state comes from the per-host vars (main.yml for non-secret values,
-# vault.yml for secrets/PII). This play renders them into a generated, gitignored
-# directory and applies them to the running server's REST API via
-# community.ansible_netbird:
-#
-#   inventory/host_vars/<host>/{main,vault}.yml -> .cache/tenant_config/<host>/ -> NetBird API
-#
-# Preview with `make plan` (read-only diff); apply with `make apply` (commits).
-# Strict mode (also removes unmanaged resources) is off unless `tenant_strict:
-# true` is set per host or passed with -e. The desired state is validated
-# locally (scripts/validate_tenant_config.py) before rendering, so an unusable
-# value fails before anything is rendered or applied. Requires
-# vault_service_admin_access_token (created by the first-owner bootstrap, or
-# set in vault.yml).
-# ==============================================================================
-
 - name: Apply NetBird tenant configuration as code
-  hosts: netbird_management
+  hosts: management
   connection: local
   gather_facts: false
   vars:
-    # Generated config directory (gitignored).
     tenant_build_dir: "{{ playbook_dir }}/../.cache/tenant_config/{{ inventory_hostname }}"
     config_dir: "{{ tenant_build_dir }}"
     netbird_api_url: "https://{{ domain_name }}"
     netbird_api_token: "{{ vault_service_admin_access_token | default('', true) }}"
     netbird_validate_certs: true
     tenant_commit: false
-    # tenant_strict is NOT set here: it is a host-level knob (host_vars/<host>/
-    # main.yml), defaulting to false where the role uses it. Set it per host or
-    # with -e tenant_strict=true.
-    # Run API modules with the control node's Python (connection is local).
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
-    # Local API work only; no privilege needed.
     ansible_become: false
-
   tasks:
     - name: "[Tenant] Assert an access token is configured"
       ansible.builtin.assert:

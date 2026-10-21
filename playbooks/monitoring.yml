@@ -1,19 +1,6 @@
 ---
-# ==============================================================================
-# Optional host monitoring + host security (`make monitoring`).
-#
-# Installs prometheus-node-exporter + CrowdSec (+ the nftables firewall bouncer)
-# and joins the host to the overlay via the shared agent role. Opt-in per host
-# with `monitoring_enabled: true` in inventory/host_vars/<host>/main.yml; when
-# unset/false the role is skipped WITHOUT connecting to the host (the play does
-# not gather facts).
-#
-# Metrics/events are visualized from a central Prometheus/Grafana/Loki stack;
-# this playbook installs only the host-side agents.
-# ==============================================================================
-
 - name: Optional host monitoring and host security
-  hosts: netbird_management
+  hosts: management
   gather_facts: false
   roles:
     - role: monitoring

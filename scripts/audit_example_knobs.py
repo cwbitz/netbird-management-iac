@@ -31,46 +31,30 @@ import os
 import re
 import sys
 
-# --------------------------------------------------------------------------------
-# Exclusions (explicit and documented — keep them in sync with the project).
-# --------------------------------------------------------------------------------
-# SSH connection wiring + control-node baseline: not per-host knobs, they live in
-# inventory/group_vars/<group>/main.yml (and group_vars/all for the engine range).
 WIRING = {
     "ssh_identities", "ssh_identity", "ssh_user", "ssh_password",
     "ssh_privkey_file", "ssh_become", "ssh_common_args",
     "ansible_user", "ansible_password", "ansible_ssh_private_key_file",
     "ansible_become", "ansible_ssh_common_args", "become", "user", "password",
-    "privkey", "pubkey", "root", "admin", "ansible",
+    "privkey", "pubkey", "root", "admin", "iac", "legacy", "ansible",
     "ansible_core_min_version", "ansible_core_max_version",
     "ansible_core_allow_untested",
-    "netbird_management_host",
+    "management_host",
 }
-# Role-internal constants that happen to live in defaults/ (paths, Renovate-pinned
-# image tags): changing them per host is not a supported operator knob.
 INTERNAL = {
-    "agent_dir", "monitoring_dir", "stack_dir",
+    "agent_dir", "monitoring_dir",
     "netbird_agent_version", "alloy_version",
     "server_image", "server_version", "dashboard_image", "dashboard_version",
     "traefik_image", "traefik_version",
     "network_name", "network_subnet", "network_gateway", "traefik_ip",
 }
-# Vault-bound inputs: the example references the vault variable while the role
-# default adds a `| default('', true)` guard, so the texts differ by design.
 VAULT_BOUND: set[str] = set()
-# Values derived at run time from another setting: not per-host knobs, so they
-# are absent from the example (setting one, even empty, defeats the derivation).
-# apt_security_mirror derives from apt_mirror; netbird_peer_setup_key is resolved
-# from the management host's vault (vault_endpoint_setup_key).
 DERIVED = {"apt_security_mirror", "netbird_peer_setup_key"}
-# Playbook-level knobs (declared as play vars, not in group_vars/defaults):
-# presence as an ACTIVE line required; the values are the documented defaults.
 EXTRA = {
+    "stack_dir",
     "apt_mirror", "docker_registry_mirrors", "allow_root_login",
-    # per-host values documented by the example (not declared in defaults/, they
-    # are consumed by the management role / tenant play directly)
     "domain_name", "acme_email", "owner_email", "owner_name",
-    "owner_password", "tenant_strict",
+    "tenant_strict",
 }
 
 KEY_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*):\s*(.*)$")

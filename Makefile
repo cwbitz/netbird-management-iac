@@ -1,67 +1,30 @@
-# ==============================================================================
-# NetBird self-hosted IaC - Makefile wrapper
-# ==============================================================================
-# Entry points around ansible-playbook / ansible-lint. Run `make help` for the
-# target list. Override HOST=... (single host), TAGS=... (focused run).
-
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-# Fixed paths (not operator knobs): the playbooks and inventory are part of the
-# repo layout. Non-mainstream cases can call ansible directly.
 ANS_PLAY      := ansible-playbook
 PLAYBOOK      := playbooks/site.yml
 INVENTORY     := inventory/hosts.yml
 INV           := $(INVENTORY)
 INVENTORY_DIR := inventory
 
-# Command-line inputs (set at invocation, e.g. `make restore FROM=<dir>`).
 TAGS ?=
 HOST ?=
 
-# Management address / SSH port written into the inventory entry by host-init.
-# Empty address writes the CHANGE_ME_HOST_IP placeholder, which the site preflight
-# rejects until it is replaced with the host's real address; an empty port leaves
-# the default (22).
 HOST_IP ?=
 HOST_PORT ?=
 
-# Operator knobs for the scaffolding target. They are command-line inputs: a
-# value inherited from the environment is called out, because make lets an
-# environment variable win over the file default silently.
 $(foreach v,HOST HOST_IP HOST_PORT,$(if $(filter environment,$(origin $(v))),$(warning $(v) is inherited from the environment; pass $(v)=... explicitly if unintended)))
-# Inventory group host-init adds the new host to (the management server).
-GROUP ?= netbird_management
+GROUP ?= management
 FROM ?=
-# Refresh SSH host keys before connecting (REFRESH=1). Useful after a managed
-# host is rebuilt: its new host key would otherwise fail the "host key changed"
-# check. hostkey-init scans every inventory host and (re)writes its key into the
-# control node's known_hosts; deploy/dry-run/host-bootstrap call it when set.
 REFRESH ?=
 KNOWN_HOSTS ?= $(HOME)/.ssh/known_hosts
 
-# Ansible Vault password file (outside the repo), exported under Ansible's own
-# env-var name so every ansible-* invocation picks it up.
 export ANSIBLE_VAULT_PASSWORD_FILE := $(HOME)/.config/projects/netbird-iac/ansible_vault_password
 
-# Unified operator hint, printed only when a vault command cannot decrypt a
-# file (the vault password is missing or does not match).
 VAULT_PASSWORD_HINT := ERROR: Ansible Vault cannot decrypt this file - the password in $(ANSIBLE_VAULT_PASSWORD_FILE) is missing or incorrect. Restore the original password, or re-encrypt the vault file with the current one.
 
-# sshpass is needed ONLY for the `host-bootstrap` password probe. It is ensured
-# by the internal `ensure-sshpass` target (invoked by `install`): installed with
-# passwordless apt-get when available, otherwise rootless into
-# ~/.local/bin/sshpass; a failure is fatal (install it manually and re-run).
-# Key-only bootstrap does not need it, and steady-state Ansible password auth
-# uses ssh_askpass, not sshpass.
 SSHPASS_BIN   ?= $(HOME)/.local/bin/sshpass
 
-# Keychain 3 (pinned single-file zipapp) is an OPTIONAL fallback ssh-agent: it is
-# only started when OpenSSH refuses a private key whose permissions cannot be
-# fixed (e.g. the WSL /mnt/c mount, mode 0777). It is ensured by the internal
-# `ensure-keychain` target (invoked by `install`); all `keychain-*` targets are
-# internal and never exposed as public make commands. The download URL is fixed;
-# a failure aborts so the operator can place the asset manually and re-run.
 KEYCHAIN_PIN     := $(CURDIR)/keychain.pin
 KEYCHAIN_VERSION := $(shell awk '!/^#/ && NF {print $$1; exit}' $(KEYCHAIN_PIN))
 KEYCHAIN_SHA256  := $(shell awk '!/^#/ && NF {print $$2; exit}' $(KEYCHAIN_PIN) | sed 's/^sha256://')
@@ -69,34 +32,19 @@ KEYCHAIN_URL     ?= https://github.com/danielrobbins/keychain/releases/download/
 KEYCHAIN_BIN     ?= $(HOME)/.local/bin/keychain
 KEYCHAIN_CACHE   ?= $(HOME)/.cache/netbird-iac
 KEYCHAIN_ASSET   := $(KEYCHAIN_CACHE)/keychain-$(KEYCHAIN_VERSION).pyz
-# Start (or reuse) the Keychain agent in the CURRENT shell; --eval prints the
-# SSH_AUTH_SOCK / SSH_AGENT_PID exports on stdout (banner goes to stderr).
 KEYCHAIN_AGENT   := eval "$$($(KEYCHAIN_BIN) agent start --eval --quiet 2>/dev/null)"
 
-# ------------------------------------------------ shared ssh-agent runner ----
-# Identical across the sibling IaC projects: the generic
-# scripts/run-with-ssh-agent.sh is driven by the SSH_AGENT_* environment
-# variables, so only the per-project values below differ (the private-key hostvar
-# names, and the inventory/playbook paths already defined above). The agent is
-# prepared proactively only when a configured key has permissions OpenSSH would
-# refuse (e.g. WSL /mnt/c), and the runner retries once on a refused-key failure.
 SSH_AGENT_ENV   ?= $(HOME)/.cache/iac/ssh-agent.env
 SSH_AGENT_RUN   ?= $(CURDIR)/scripts/run-with-ssh-agent.sh
-# Per-project fork: hostvars holding the control-node private-key paths.
-SSH_AGENT_KEY_VARS ?= host_ansible_ssh_privkey_file host_admin_ssh_privkey_file host_root_ssh_privkey_file
+SSH_AGENT_KEY_VARS ?= host_iac_ssh_privkey_file host_admin_ssh_privkey_file host_root_ssh_privkey_file
 export SSH_AGENT_ENV
 export SSH_AGENT_KEYCHAIN_BIN  := $(KEYCHAIN_BIN)
 export SSH_AGENT_ANS_PLAY      := $(ANS_PLAY)
 export SSH_AGENT_INVENTORY     := $(INV)
 export SSH_AGENT_LOAD_PLAYBOOK := playbooks/ssh_agent_load.yml
 
-# (shared) Probe: exit 0 when a configured private key has unsafe permissions
-# (group/other bits set, e.g. 0777), i.e. OpenSSH would refuse it.
 SSH_AGENT_PROBE := ansible-inventory -i $(INV) --list 2>/dev/null | SSH_AGENT_KEY_VARS="$(SSH_AGENT_KEY_VARS)" python3 -c "import json,os,sys; names=os.environ['SSH_AGENT_KEY_VARS'].split(); vs=json.load(sys.stdin).get('_meta',{}).get('hostvars',{}); ks={os.path.expanduser(h.get(v)) for h in vs.values() for v in names if h.get(v)}; sys.exit(0 if any(os.path.isfile(k) and (os.stat(k).st_mode & 0o077) for k in ks) else 1)"
 
-# (shared) Canned recipe: prepare the Keychain ssh-agent. Reuse a loaded agent;
-# otherwise start Keychain and load the configured keys. SSH_AGENT_FORCE=1 skips
-# the permission probe. Writes SSH_AGENT_ENV for the runner to source.
 define SSH_AGENT_PREPARE
 	@set -e; \
 	mkdir -p "$$(dirname "$(SSH_AGENT_ENV)")"; \
@@ -239,11 +187,11 @@ ensure-keychain: verify-keychain-pin
 	echo "keychain installed: $(KEYCHAIN_BIN) (v$(KEYCHAIN_VERSION))"
 
 .PHONY: host-init
-host-init: vault-init ## Scaffold host_vars/<HOST> + the inventory entry (HOST default netbird-1, GROUP default netbird_management, IP default CHANGE_ME_HOST_IP)
-	@host="$(HOST)"; host="$${host:-netbird-1}"; group="$(GROUP)"; group="$${group:-netbird_management}"; ip="$(HOST_IP)"; ip="$${ip:-CHANGE_ME_HOST_IP}"; port="$(HOST_PORT)"; \
+host-init: vault-init ## Scaffold host_vars/<HOST> + the inventory entry (HOST default netbird-1, GROUP default management, IP default CHANGE_ME_HOST_IP)
+	@host="$(HOST)"; host="$${host:-netbird-1}"; group="$(GROUP)"; group="$${group:-management}"; ip="$(HOST_IP)"; ip="$${ip:-CHANGE_ME_HOST_IP}"; port="$(HOST_PORT)"; \
 	if [ -e "$(INVENTORY)" ]; then :; else python3 $(CURDIR)/scripts/render_clean_template.py inventory/hosts.yml.example $(INVENTORY); echo "Created $(INVENTORY) from example (comments stripped)"; fi; \
 	install -d -m 0700 $(INVENTORY_DIR)/host_vars/$$host; \
-	if [ ! -e $(INVENTORY_DIR)/host_vars/$$host/main.yml ]; then python3 $(CURDIR)/scripts/render_clean_template.py $(INVENTORY_DIR)/host_vars/example/main.yml $(INVENTORY_DIR)/host_vars/$$host/main.yml; fi; \
+	if [ ! -e $(INVENTORY_DIR)/host_vars/$$host/main.yml ]; then python3 $(CURDIR)/scripts/render_clean_template.py --strip-blank-lines $(INVENTORY_DIR)/host_vars/example/main.yml $(INVENTORY_DIR)/host_vars/$$host/main.yml; fi; \
 	chmod 0644 $(INVENTORY_DIR)/host_vars/$$host/main.yml; \
 	if [ ! -e $(INVENTORY_DIR)/host_vars/$$host/vault.yml ]; then python3 $(CURDIR)/scripts/render_clean_template.py $(INVENTORY_DIR)/host_vars/example/vault.yml.example $(INVENTORY_DIR)/host_vars/$$host/vault.yml; fi; \
 	if grep -q 'ANSIBLE_VAULT' $(INVENTORY_DIR)/host_vars/$$host/vault.yml; then :; else \

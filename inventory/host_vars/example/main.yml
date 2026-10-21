@@ -8,10 +8,10 @@
 
 # --- SSH connection identities ------------------------------------------------
 # Account name and key paths are non-secret (passwords stay in vault.yml).
-# The optional human `admin` account may be renamed; `ansible` is a fixed name.
+# The optional human `admin` account may be renamed; `iac` is a fixed name.
 host_admin_username: "admin"
-host_ansible_ssh_pubkey_file: ""
-host_ansible_ssh_privkey_file: ""
+host_iac_ssh_pubkey_file: ""
+host_iac_ssh_privkey_file: ""
 host_admin_ssh_pubkey_file: ""
 host_admin_ssh_privkey_file: ""
 host_root_ssh_pubkey_file: ""
@@ -21,15 +21,14 @@ host_root_ssh_privkey_file: ""
 # The FQDN the server is reachable at; its A record must point at this host, with
 # TCP 80/443 and UDP 3478 open. The placeholder fails the deploy.
 domain_name: "netbird.example.com"
-acme_email: "{{ vault_acme_email }}"
+acme_email: "admin@example.com"
 
 # --- Optional first-owner bootstrap ------------------------------------------
 # Set owner_email to create the first owner via /api/setup (this also provisions
 # the tenant PAT into vault.yml); leave it empty to onboard manually at
 # https://<domain>/setup. An empty owner_password is generated into vault.yml.
-owner_email: "{{ vault_owner_email | default('', true) }}"
-owner_name: "{{ vault_owner_name | default('', true) }}"
-owner_password: "{{ vault_owner_password | default('', true) }}"
+owner_email: ""
+owner_name: ""
 
 # --- Server -------------------------------------------------------------------
 # The advertised HTTPS port, STUN/TURN port and log level. The firewall follows
@@ -37,6 +36,7 @@ owner_password: "{{ vault_owner_password | default('', true) }}"
 exposed_port: 443
 stun_port: 3478
 log_level: "info"
+stack_dir: "/opt/netbird"
 # Skip the GeoLite2 download at startup (needs pkgs.netbird.io; set true on
 # air-gapped or slow-CDN hosts; disables geo-based posture checks).
 disable_geolite_update: false
@@ -72,7 +72,7 @@ firewall_allow_icmp: true
 
 # --- SSH hardening (make deploy TAGS=sshd) ------------------------------------
 # Key-only SSH administration, opt-in (make deploy TAGS=sshd). Enable it only
-# once a keyed login works for `ansible` (or root when that is the only admin
+# once a keyed login works for `iac` (or root when that is the only admin
 # path); the role verifies that and rolls back otherwise.
 sshd_hardening_enabled: false
 # Root SSH policy, independent of the toggle above: "no" disables root SSH;

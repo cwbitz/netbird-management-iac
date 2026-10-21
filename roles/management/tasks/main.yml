@@ -20,9 +20,8 @@
       - acme_email is defined and (acme_email | string | trim) | length > 0
     fail_msg: >-
       Set domain_name (an FQDN whose A record points at this host, without a
-      scheme) and acme_email in
-      inventory/host_vars/<hostname>/main.yml / vault.yml. See
-      inventory/host_vars/example/.
+      scheme) and acme_email in inventory/host_vars/<hostname>/main.yml (both are
+      non-secret and live there directly). See inventory/host_vars/example/.
   run_once: true
   delegate_to: localhost
   become: false
@@ -184,13 +183,13 @@
   tags: [netbird, netbird_owner]
   ansible.builtin.debug:
     msg: >-
-      owner_password is set but owner_email is empty, so the
+      vault_owner_password is set but owner_email is empty, so the
       first owner is NOT created automatically and this password is not applied.
       Set owner_email, or onboard manually at
       https://{{ domain_name }}/setup.
   when:
     - owner_email | default('', true) | length == 0
-    - owner_password | default('', true) | length > 0
+    - vault_owner_password | default('', true) | length > 0
 
 - name: "[NetBird] Check whether instance setup is still required"
   tags: [netbird, netbird_owner]
@@ -216,8 +215,8 @@
     status_code: [200]
     body:
       email: "{{ owner_email }}"
-      name: "{{ owner_name | default(owner_email.split('@') | first) }}"
-      password: "{{ owner_password }}"
+      name: "{{ (owner_name | default('', true) | trim) or (owner_email.split('@') | first) }}"
+      password: "{{ vault_owner_password | default('', true) }}"
       create_pat: true
       pat_expire_in: 7
   register: setup_result
@@ -226,7 +225,7 @@
   when:
     - not ansible_check_mode
     - owner_email | default('', true) | length > 0
-    - owner_password | default('', true) | length > 0
+    - vault_owner_password | default('', true) | length > 0
     - instance is defined
     - instance.json is defined
     - instance.json.setup_required | default(false) | bool
