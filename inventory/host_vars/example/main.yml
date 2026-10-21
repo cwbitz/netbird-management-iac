@@ -51,8 +51,8 @@ service_admin_access_token_expire_days: 365
 # Opt-in: prometheus-node-exporter + CrowdSec (+ nftables bouncer), and joins the
 # host to the overlay.
 monitoring_enabled: false
-node_exporter_enabled: true
-crowdsec_enabled: true
+node_exporter_enabled: false
+crowdsec_enabled: false
 alloy_enabled: false                          # ship host logs to a central Loki
 # Central Loki endpoint over the overlay: an overlay IP, or preferably the central
 # peer's NetBird name ("http://<peer>.netbird.selfhosted:3100"), which survives a
@@ -60,9 +60,9 @@ alloy_enabled: false                          # ship host logs to a central Loki
 loki_push_url: ""
 
 # Journal sources Alloy ships to the central Loki; raw extra matches go in
-# alloy_journal_extra.
+# alloy_journal_extras.
 alloy_journal_presets: [ssh, security, kernel, services]
-alloy_journal_extra: []
+alloy_journal_extras: []
 # --- Host firewall -------------------------------------------------------------
 # Default-deny inbound, opt-in (make deploy TAGS=firewall). Keeps the public
 # surface at the mesh contract (TCP 80/443, UDP 3478) plus SSH and the overlay;

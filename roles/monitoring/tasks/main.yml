@@ -66,7 +66,7 @@
       Unknown alloy_journal_presets: {{
         alloy_journal_presets | default([]) | difference(['ssh', 'security', 'kernel', 'services']) | join(', ')
       }}. Known presets: ssh, security, kernel, services (raw journal matches go in
-      alloy_journal_extra).
+      alloy_journal_extras).
   when: alloy_enabled | bool
 
 - name: "[Monitoring] Ensure the monitoring stack directory exists"
