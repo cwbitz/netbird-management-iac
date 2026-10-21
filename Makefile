@@ -307,9 +307,13 @@ vault-view: vault-init ## View vault.yml for EVERY host, or one with HOST=<name>
 		else cat "$$p"; fi; \
 	done
 
+.PHONY: validate-knobs
+validate-knobs: vault-init
+	@test -f $(INVENTORY) || { echo "validate-knobs: $(INVENTORY) missing, skipped"; exit 0; }
+	$(ANS_PLAY) -i $(INVENTORY) playbooks/validate_knobs.yml
+
 .PHONY: lint
-# (internal) Syntax check + ansible-lint (invoked by CI).
-lint: vault-init
+lint: vault-init validate-knobs
 	$(ANS_PLAY) --syntax-check playbooks/site.yml
 	$(ANS_PLAY) --syntax-check playbooks/tenant.yml
 	$(ANS_PLAY) --syntax-check playbooks/bootstrap.yml
@@ -317,27 +321,20 @@ lint: vault-init
 	$(ANS_PLAY) --syntax-check playbooks/restore.yml
 	$(ANS_PLAY) --syntax-check playbooks/monitoring.yml
 	ansible-lint playbooks/site.yml playbooks/tenant.yml playbooks/bootstrap.yml playbooks/backup.yml playbooks/restore.yml playbooks/monitoring.yml
-	# The example main.yml is the template host-init copies: it must carry every
-	# operator knob with its project default (stdlib-only script).
 	python3 scripts/audit_example_knobs.py
-	# The tenant value gate runs in every plan/apply; keep it importable.
 	python3 -m py_compile scripts/validate_tenant_config.py
 
-# Transient-network retry for the tenant apply. The pinned collection does not
-# retry API calls, and a cross-region link can drop a small fraction of TLS
-# handshakes; scripts/retry-transient.sh re-runs only on a network-level failure
-# (a config/auth error still fails fast). See the script for the knobs.
 RETRY_RUN          ?= $(CURDIR)/scripts/retry-transient.sh
 TENANT_RETRY_MAX   ?= 5
 TENANT_RETRY_DELAY ?= 8
 
 .PHONY: dry-run
-dry-run: vault-init agent-fallback ## Dry-run (--check --diff); REFRESH=1 refreshes host keys first
+dry-run: vault-init validate-knobs agent-fallback ## Dry-run (--check --diff); REFRESH=1 refreshes host keys first
 	@if [ -n "$(REFRESH)" ]; then $(MAKE) --no-print-directory hostkey-init; fi; \
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) $(PLAYBOOK) --check --diff $(if $(TAGS),--tags $(TAGS),)
 
 .PHONY: deploy
-deploy: vault-init agent-fallback ## One-shot: bootstrap the host, deploy the server, then apply the tenant state; TAGS=... runs only the server; REFRESH=1 refreshes host keys first
+deploy: vault-init validate-knobs agent-fallback ## One-shot: bootstrap the host, deploy the server, then apply the tenant state; TAGS=... runs only the server; REFRESH=1 refreshes host keys first
 	@if [ -n "$(REFRESH)" ]; then $(MAKE) --no-print-directory hostkey-init; fi
 	@echo "==> Bootstrapping the host (playbooks/bootstrap.yml: service account, Docker)..."
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml $(if $(HOST),-e bootstrap_host=$(HOST),)

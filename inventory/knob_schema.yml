@@ -1,0 +1,90 @@
+---
+operator_knob_schema:
+  host_admin_username: "host_admin_username is not defined or host_admin_username is string"
+  host_iac_ssh_pubkey_file: "host_iac_ssh_pubkey_file is not defined or host_iac_ssh_pubkey_file is string"
+  host_iac_ssh_privkey_file: "host_iac_ssh_privkey_file is not defined or host_iac_ssh_privkey_file is string"
+  host_admin_ssh_pubkey_file: "host_admin_ssh_pubkey_file is not defined or host_admin_ssh_pubkey_file is string"
+  host_admin_ssh_privkey_file: "host_admin_ssh_privkey_file is not defined or host_admin_ssh_privkey_file is string"
+  host_root_ssh_pubkey_file: "host_root_ssh_pubkey_file is not defined or host_root_ssh_pubkey_file is string"
+  host_root_ssh_privkey_file: "host_root_ssh_privkey_file is not defined or host_root_ssh_privkey_file is string"
+  install_docker: "install_docker is not defined or install_docker is boolean"
+  apt_mirror: "(apt_mirror | default('', true) | string | trim) == '' or (apt_mirror | string) is match('^https?://[^\\s]+$')"
+  docker_registry_mirrors: >-
+    docker_registry_mirrors is not defined or ((docker_registry_mirrors is sequence) and not (docker_registry_mirrors is string) and not
+    (docker_registry_mirrors is mapping))
+  create_admin_account: "create_admin_account is not defined or create_admin_account is boolean"
+  allow_root_login: "allow_root_login is not defined or allow_root_login is boolean"
+  sshd_hardening_enabled: "sshd_hardening_enabled is not defined or sshd_hardening_enabled is boolean"
+  sshd_permit_root_login: >-
+    sshd_permit_root_login is not defined or (sshd_permit_root_login | string) in ["yes", "no", "prohibit-password", "without-password"]
+  firewall_enabled: "firewall_enabled is not defined or firewall_enabled is boolean"
+  firewall_allow_icmp: "firewall_allow_icmp is not defined or firewall_allow_icmp is boolean"
+  monitoring_enabled: "monitoring_enabled is not defined or monitoring_enabled is boolean"
+  node_exporter_enabled: "node_exporter_enabled is not defined or node_exporter_enabled is boolean"
+  crowdsec_enabled: "crowdsec_enabled is not defined or crowdsec_enabled is boolean"
+  alloy_enabled: "alloy_enabled is not defined or alloy_enabled is boolean"
+  loki_push_url: "(loki_push_url | default('', true) | string | trim) == '' or (loki_push_url | string) is match('^https?://[^\\s]+$')"
+  alloy_journal_presets: >-
+    alloy_journal_presets is not defined or ((alloy_journal_presets is sequence) and not (alloy_journal_presets is string) and not
+    (alloy_journal_presets is mapping))
+  alloy_journal_extras: >-
+    alloy_journal_extras is not defined or ((alloy_journal_extras is sequence) and not (alloy_journal_extras is string) and not
+    (alloy_journal_extras is mapping))
+  domain_name: >-
+    (domain_name is not defined or domain_name is string) and (domain_name is defined) and ((domain_name | default('', true) | string | trim |
+    length) > 0)
+  acme_email: >-
+    ((acme_email | default('', true) | string | trim) == '' or (acme_email | string) is match('^[^@\s]+@[^@\s]+\.[^@\s]+$')) and (acme_email
+    is defined) and ((acme_email | default('', true) | string | trim | length) > 0)
+  owner_email: "(owner_email | default('', true) | string | trim) == '' or (owner_email | string) is match('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')"
+  owner_name: "owner_name is not defined or owner_name is string or owner_name is number"
+  exposed_port: >-
+    (exposed_port | default('', true) | string | trim) == '' or (((exposed_port | string) is match('^[0-9]+(-[0-9]+)?$')) and ((exposed_port |
+    string | regex_replace('-[0-9]+$', '') | int) >= 1) and ((exposed_port | string | regex_replace('^[0-9]+-', '') | int) <= 65535))
+  stun_port: >-
+    (stun_port | default('', true) | string | trim) == '' or (((stun_port | string) is match('^[0-9]+(-[0-9]+)?$')) and ((stun_port | string |
+    regex_replace('-[0-9]+$', '') | int) >= 1) and ((stun_port | string | regex_replace('^[0-9]+-', '') | int) <= 65535))
+  stack_dir: >-
+    stack_dir is not defined or (stack_dir is string and
+    stack_dir is match('^/[^\s]+$'))
+  log_level: "log_level is not defined or (log_level | string) in [\"trace\", \"debug\", \"info\", \"warn\", \"error\"]"
+  disable_geolite_update: "disable_geolite_update is not defined or disable_geolite_update is boolean"
+  trusted_peers: "trusted_peers is not defined or ((trusted_peers is sequence) and not (trusted_peers is string) and not (trusted_peers is mapping))"
+  service_admin_access_token_expire_days: >-
+    service_admin_access_token_expire_days is not defined or ((service_admin_access_token_expire_days is number) and not
+    (service_admin_access_token_expire_days is boolean))
+  tenant_strict: "tenant_strict is not defined or tenant_strict is boolean"
+  netbird_settings: "netbird_settings is not defined or netbird_settings is mapping"
+  netbird_groups: >-
+    netbird_groups is not defined or ((netbird_groups is sequence) and not (netbird_groups is string) and not (netbird_groups is mapping))
+  netbird_policies: >-
+    netbird_policies is not defined or ((netbird_policies is sequence) and not (netbird_policies is string) and not (netbird_policies is
+    mapping))
+  netbird_posture_checks: >-
+    netbird_posture_checks is not defined or ((netbird_posture_checks is sequence) and not (netbird_posture_checks is string) and not
+    (netbird_posture_checks is mapping))
+  netbird_networks: >-
+    netbird_networks is not defined or ((netbird_networks is sequence) and not (netbird_networks is string) and not (netbird_networks is
+    mapping))
+  netbird_dns_nameserver_groups: >-
+    netbird_dns_nameserver_groups is not defined or ((netbird_dns_nameserver_groups is sequence) and not (netbird_dns_nameserver_groups is
+    string) and not (netbird_dns_nameserver_groups is mapping))
+  netbird_dns_zones: >-
+    netbird_dns_zones is not defined or ((netbird_dns_zones is sequence) and not (netbird_dns_zones is string) and not (netbird_dns_zones is
+    mapping))
+  netbird_dns_disabled_management_groups: >-
+    netbird_dns_disabled_management_groups is not defined or ((netbird_dns_disabled_management_groups is sequence) and not
+    (netbird_dns_disabled_management_groups is string) and not (netbird_dns_disabled_management_groups is mapping))
+  netbird_setup_keys: >-
+    netbird_setup_keys is not defined or ((netbird_setup_keys is sequence) and not (netbird_setup_keys is string) and not (netbird_setup_keys is
+    mapping))
+  netbird_services: >-
+    netbird_services is not defined or ((netbird_services is sequence) and not (netbird_services is string) and not (netbird_services is
+    mapping))
+  netbird_service_domains: >-
+    netbird_service_domains is not defined or ((netbird_service_domains is sequence) and not (netbird_service_domains is string) and not
+    (netbird_service_domains is mapping))
+  netbird_users: "netbird_users is not defined or ((netbird_users is sequence) and not (netbird_users is string) and not (netbird_users is mapping))"
+  netbird_service_users: >-
+    netbird_service_users is not defined or ((netbird_service_users is sequence) and not (netbird_service_users is string) and not
+    (netbird_service_users is mapping))

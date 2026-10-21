@@ -1,0 +1,69 @@
+---
+- name: Validate operator knobs
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Load the operator knob schema
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../inventory/knob_schema.yml"
+
+    - name: Assert the schema covers every example knob
+      ansible.builtin.assert:
+        that:
+          - operator_knob_schema.keys() | sort == (lookup('file', playbook_dir ~ '/../inventory/host_vars/example/main.yml') | from_yaml).keys() | sort
+        fail_msg: "inventory/knob_schema.yml is out of sync with inventory/host_vars/example/main.yml"
+        quiet: true
+
+    - name: Validate every operator knob
+      ansible.builtin.assert:
+        that:
+          - "{{ item.value }}"
+        fail_msg: >-
+          {{ inventory_hostname }}: invalid {{ item.key }} =
+          {{ vars[item.key] | default('<unset>') | to_json }}
+        quiet: true
+      loop: "{{ operator_knob_schema | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Validate NetBird settings
+      ansible.builtin.assert:
+        that:
+          - netbird_settings.peer_login_expiration_enabled | default(true) is boolean
+          - netbird_settings.peer_login_expire_seconds | default(604800) is number
+          - netbird_settings.peer_inactivity_expiration_enabled | default(false) is boolean
+          - netbird_settings.peer_inactivity_expire_seconds | default(2592000) is number
+          - netbird_settings.extra_user_approval_required | default(false) is boolean
+          - netbird_settings.regular_users_view_blocked | default(false) is boolean
+          - netbird_settings.groups_propagation_enabled | default(true) is boolean
+          - netbird_settings.jwt_groups_enabled | default(false) is boolean
+          - netbird_settings.jwt_groups_claim_name | default('groups') is string
+          - netbird_settings.jwt_allow_groups | default([]) is sequence
+          - netbird_settings.dns_domain | default('netbird.selfhosted') is string
+          - netbird_settings.network_range | default('100.64.0.0/10') is string
+          - netbird_settings.network_range_v6 | default('fd00::/64') is string
+          - netbird_settings.ipv6_enabled_groups | default([]) is sequence
+          - netbird_settings.routing_peer_dns_resolution_enabled | default(true) is boolean
+          - netbird_settings.lazy_connection_enabled | default(false) is boolean
+          - netbird_settings.auto_update_version | default('disabled') is string
+          - netbird_settings.auto_update_always | default(false) is boolean
+          - netbird_settings.peer_expose_enabled | default(false) is boolean
+          - netbird_settings.peer_expose_groups | default([]) is sequence
+        fail_msg: "{{ inventory_hostname }}: invalid netbird_settings entry"
+        quiet: true
+
+    - name: Validate named tenant entries
+      ansible.builtin.assert:
+        that:
+          - item.value | select('mapping') | list | length == item.value | length
+          - item.value | rejectattr('name', 'defined') | list | length == 0
+        fail_msg: "{{ inventory_hostname }}: {{ item.key }} entries need a name and must be mappings"
+        quiet: true
+      loop: >-
+        {{ {'netbird_groups': netbird_groups | default([]),
+            'netbird_setup_keys': netbird_setup_keys | default([]),
+            'netbird_services': netbird_services | default([]),
+            'netbird_users': netbird_users | default([]),
+            'netbird_service_users': netbird_service_users | default([])} | dict2items }}
+      loop_control:
+        label: "{{ item.key }}"
