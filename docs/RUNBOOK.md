@@ -209,7 +209,9 @@ sshd_hardening_enabled: true     # only after host-bootstrap keyed `iac`
 
 `make host-bootstrap` (also run by `make deploy`) can point a host at alternative
 package mirrors for hosts where the defaults are slow or blocked. It is a no-op
-unless the variables are set, and touches nothing in the deploy baseline:
+unless the variables are set, and touches nothing in the deploy baseline. The
+Debian security suite derives from the single base mirror (a `…/debian` path
+maps to its `…/debian-security` sibling), so there is no separate security knob:
 
 ```yaml
 # inventory/host_vars/<host>/main.yml
