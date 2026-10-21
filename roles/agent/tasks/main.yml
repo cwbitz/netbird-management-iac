@@ -22,9 +22,6 @@
     group: root
     mode: "0700"
 
-# The agent runs in this role's own compose project: a `netbird` container owned by
-# a DIFFERENT compose project is removed first (ours is left alone), so taking over
-# ownership converges.
 - name: "[Agent] Inspect any existing overlay container"
   community.docker.docker_container_info:
     name: netbird

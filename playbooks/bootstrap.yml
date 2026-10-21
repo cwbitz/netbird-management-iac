@@ -130,8 +130,6 @@
     - name: "[Bootstrap] Map an unresolvable hostname to the loopback alias"
       ansible.builtin.lineinfile:
         path: /etc/hosts
-        # The full name first (what gethostname()/sudo resolve), then the short
-        # name when it differs (Debian's own cloud-image layout).
         line: >-
           {{ ('127.0.1.1 ' ~ bootstrap_hostname.stdout ~ ' ' ~ bootstrap_hostname_short)
              if bootstrap_hostname_short != bootstrap_hostname.stdout
@@ -142,9 +140,6 @@
         bootstrap_hostname_short: "{{ bootstrap_hostname.stdout.split('.') | first }}"
       when: bootstrap_hostname_lookup.rc | default(1) != 0
 
-    # --------------------------------------------------------------------------
-    # APT mirror (Debian-family)
-    # --------------------------------------------------------------------------
     - name: "[Bootstrap] Validate the APT mirror settings"
       ansible.builtin.assert:
         that:
@@ -180,17 +175,11 @@
         - apt_mirror | default('', true) | length > 0
         - apt_sources.changed | default(false)
 
-    # --------------------------------------------------------------------------
-    # Docker Engine (auto-install when missing)
-    # --------------------------------------------------------------------------
     - name: "[Bootstrap] Ensure Docker Engine and the Compose v2 plugin are present"
       ansible.builtin.include_role:
         name: helpers
         tasks_from: install_docker
 
-    # --------------------------------------------------------------------------
-    # Docker Hub registry mirrors
-    # --------------------------------------------------------------------------
     - name: "[Bootstrap] Check that Docker is installed"
       ansible.builtin.command: docker --version
       register: bootstrap_docker
@@ -293,10 +282,6 @@
         - bootstrap_admin.user != 'root'
         - bootstrap_admin.user != bootstrap_service_user
 
-    # --------------------------------------------------------------------------
-    # SSH public keys: authorize each supplied host_<id>_ssh_pubkey_file for its
-    # account. Empty/unset is ignored (never generated).
-    # --------------------------------------------------------------------------
     - name: "[Bootstrap] Resolve the explicitly supplied public keys"
       ansible.builtin.set_fact:
         bootstrap_pubkey_specs: >-

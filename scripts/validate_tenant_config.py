@@ -21,9 +21,6 @@ import json
 import re
 import sys
 
-# --------------------------------------------------------------------------------
-# Enumerations mirrored from the collection's module argument specs.
-# --------------------------------------------------------------------------------
 ACTIONS = {"accept", "drop"}
 PROTOCOLS = {"all", "tcp", "udp", "icmp", "netbird-ssh"}
 STATES = {"present", "absent"}
@@ -34,8 +31,6 @@ SERVICE_MODES = {"http", "tcp", "udp", "tls"}
 TARGET_TYPES = {"subnet", "host", "domain", "peer", "cluster"}
 RECORD_TYPES = {"A", "AAAA", "CNAME", "TXT", "MX", "NS", "SRV"}
 
-# Account settings accepted by the collection's netbird_account module. The
-# project's `*_expire_seconds` durations are mapped by playbooks/tenant.yml.
 ALLOWED_SETTINGS = {
     "peer_login_expiration_enabled",
     "peer_login_expiration",

@@ -55,16 +55,6 @@
           vault_service_admin_access_token in
           inventory/host_vars/{{ inventory_hostname }}/vault.yml and re-run.
 
-    # --------------------------------------------------------------------------
-    # Routed networks bind their gateway by peer GROUP (routers[].peer_groups),
-    # not by an individual peer: the group exists once this play creates it, so
-    # each network applies on the first run and the client becomes its router when
-    # it enrolls with the matching setup key (auto_groups).
-    # --------------------------------------------------------------------------
-
-    # --------------------------------------------------------------------------
-    # Render the config directory the collection role consumes.
-    # --------------------------------------------------------------------------
     - name: "[Tenant] Clean the generated config directory"
       ansible.builtin.file:
         path: "{{ tenant_build_dir }}"
@@ -80,11 +70,6 @@
         - "access_control"
         - "dns"
 
-    # --------------------------------------------------------------------------
-    # Value gate: validate the effective desired state before rendering or
-    # calling the API. Local and stdlib-only; references that need the live
-    # account (peers, IdP-synced groups) stay the collection's own preflight.
-    # --------------------------------------------------------------------------
     - name: "[Tenant] Write the effective desired state for the value gate"
       ansible.builtin.copy:
         dest: "{{ tenant_build_dir }}/_validate.json"
@@ -119,10 +104,6 @@
         path: "{{ tenant_build_dir }}/_validate.json"
         state: absent
 
-    # netbird_settings uses the collection's native field names, except the peer
-    # expiry DURATIONS, which follow the project convention (*_expire_<unit>);
-    # the *_expiration_enabled toggles keep the collection names. Map the
-    # durations back to the collection/API names before rendering settings.yml.
     - name: "[Tenant] Map project expiry durations to the collection's settings fields"
       ansible.builtin.set_fact:
         netbird_settings: >-
@@ -162,32 +143,19 @@
              | to_nice_yaml(indent=2) }}
         mode: "0600"
 
-    # --------------------------------------------------------------------------
-    # Apply the desired state (plain names resolved to IDs, dependency order).
-    # With tenant_commit=false this only produces a read-only diff.
-    # --------------------------------------------------------------------------
     - name: "[Tenant] Apply the config-as-code desired state"
       ansible.builtin.include_role:
         name: community.ansible_netbird.configure
       vars:
         commit: "{{ tenant_commit }}"
-        # Strict mode is opt-in: empty/null, false, or undefined all mean
-        # non-strict; only an explicit truthy value (e.g. true) enables it.
         strict: "{{ tenant_strict | default(false, true) | bool }}"
 
-    # --------------------------------------------------------------------------
-    # A setup key's secret is returned only at creation. Persist each newly
-    # created key as vault_<name> in vault.yml (the key name already ends in _setup_key).
-    # --------------------------------------------------------------------------
     - name: "[Tenant] Persist newly created setup key values in the vault"
       ansible.builtin.include_role:
         name: helpers
         tasks_from: store_secret
       vars:
         secret_store_file: "vault.yml"
-        # key_result.item is the original setup-key spec recorded by the
-        # community.ansible_netbird configure role (its loop uses the default
-        # `item` loop var, so the nested key stays `item`).
         secret_store_var: "vault_{{ key_result.item.name | regex_replace('[^A-Za-z0-9_]', '_') }}"
         secret_store_value: "{{ key_result.setup_key.key }}"
       loop: "{{ (netbird_setup_key_results | default({'results': []})).results }}"
@@ -199,11 +167,6 @@
         - key_result.changed | default(false)
         - (key_result.setup_key.key | default('', true)) | length > 0
 
-    # --------------------------------------------------------------------------
-    # Users/service users use the separate netbird_user module, so they are
-    # applied here (after groups). auto_groups take plain names, resolved to IDs
-    # against the live groups. Runs only on commit.
-    # --------------------------------------------------------------------------
     - name: "[Tenant] Fetch groups for user auto_groups resolution"
       community.ansible_netbird.netbird_info:
         api_url: "{{ netbird_api_url }}"

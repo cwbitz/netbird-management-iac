@@ -1,18 +1,4 @@
 ---
-# ==============================================================================
-# Deploy the self-hosted NetBird server (combined Management + Signal + Relay +
-# STUN container) with the dashboard and a built-in Traefik reverse proxy.
-#
-# Driven from the control node over SSH. See docs/components/server.md,
-# docs/RUNBOOK.md and AGENTS.md.
-# ==============================================================================
-
-# Preflight on the control node: every managed host's connection address lives in
-# the gitignored inventory (the committed template carries the CHANGE_ME_HOST_IP
-# placeholder). It is validated here, as an implicit localhost play and before
-# any connection is attempted, so an unfilled entry fails with the command that
-# fixes it instead of an opaque SSH-resolution error. Tagged [always], so focused
-# runs check it too.
 - name: "Preflight: verify the managed hosts are configured"
   hosts: localhost
   connection: local

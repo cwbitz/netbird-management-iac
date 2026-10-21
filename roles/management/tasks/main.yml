@@ -1,15 +1,4 @@
 ---
-# ==============================================================================
-# Deploy the self-hosted NetBird server
-# (roles/management/tasks/main.yml)
-# ==============================================================================
-# Deploys the combined server container (Management + Signal + Relay + STUN +
-# embedded Dex IdP), the dashboard, and a built-in Traefik reverse proxy that
-# issues Let's Encrypt certificates over TLS-ALPN. Run via playbooks/site.yml.
-
-# ------------------------------------------------------------------------------
-# Preflight (advisory / required checks)
-# ------------------------------------------------------------------------------
 - name: "[NetBird] Assert the required inputs are set"
   tags: [netbird, netbird_preflight]
   ansible.builtin.assert:
@@ -51,10 +40,6 @@
       TLS issuance and client connections can succeed.
   when: dns_check.rc | default(1) != 0
 
-# ------------------------------------------------------------------------------
-# Generate the server's crypto material into the encrypted per-host
-# vault.yml. Existing values are preserved (never rotated).
-# ------------------------------------------------------------------------------
 - name: "[NetBird] Provision per-host secrets in the encrypted vault"
   tags: [netbird]
   ansible.builtin.include_role:
@@ -74,9 +59,6 @@
         type: "base64"
         length: 32
 
-# ------------------------------------------------------------------------------
-# Render the stack
-# ------------------------------------------------------------------------------
 - name: "[NetBird] Ensure the stack directory exists"
   tags: [netbird, netbird_config]
   ansible.builtin.file:
@@ -116,9 +98,6 @@
     group: root
     mode: "0644"
 
-# ------------------------------------------------------------------------------
-# Deploy
-# ------------------------------------------------------------------------------
 - name: "[NetBird] Deploy the NetBird server stack"
   tags: [netbird, netbird_deploy]
   community.docker.docker_compose_v2:
@@ -127,10 +106,6 @@
     remove_orphans: true
   when: not ansible_check_mode
 
-# ------------------------------------------------------------------------------
-# Wait for the OIDC discovery endpoint over public TLS (this also drives the
-# first Let's Encrypt certificate issuance).
-# ------------------------------------------------------------------------------
 - name: "[NetBird] Wait for the server to answer over TLS"
   tags: [netbird, netbird_deploy]
   ansible.builtin.uri:
@@ -144,14 +119,6 @@
   changed_when: false
   when: not ansible_check_mode
 
-# ------------------------------------------------------------------------------
-# First-owner bootstrap. /api/setup is unauthenticated and works only while the
-# instance has no accounts, so this runs on the first deploy and is skipped
-# afterwards. With owner_email set it creates the owner, mints a short-lived owner
-# token, creates the 'admin' service user and a PAT for it (persisted as
-# vault_service_admin_access_token), then deletes the owner token; without
-# owner_email, onboard manually at https://<domain>/setup.
-# ------------------------------------------------------------------------------
 - name: "[NetBird] Provision an owner password (email set, no password supplied)"
   tags: [netbird, netbird_owner]
   ansible.builtin.include_role:

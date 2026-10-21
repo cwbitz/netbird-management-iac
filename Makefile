@@ -62,28 +62,20 @@ define SSH_AGENT_PREPARE
 	$(ANS_PLAY) -i $(INV) $(SSH_AGENT_LOAD_PLAYBOOK)
 endef
 
-# (internal) Diagnostic probe: exit 0 when a configured private key would be
-# refused by OpenSSH. Shared across the sibling projects.
 agent-needed: vault-init
 	@$(SSH_AGENT_PROBE)
 
-# (internal) Prepare the Keychain ssh-agent, probe-gated (Ansible targets).
 agent-fallback: ensure-keychain
 	$(SSH_AGENT_PREPARE)
 
-# (internal) Prepare the Keychain ssh-agent unconditionally. Unused by this
-# Ansible-only project, kept so the block is identical across the sibling
-# projects.
 agent-ensure: ensure-keychain
 	$(SSH_AGENT_PREPARE)
 agent-ensure: SSH_AGENT_FORCE := 1
 
-# (internal) Load the connection keys into the Keychain ssh-agent
 agent-load: vault-init ensure-keychain
 	@$(KEYCHAIN_AGENT); \
 	$(ANS_PLAY) -i $(INV) $(SSH_AGENT_LOAD_PLAYBOOK)
 
-# (internal) Ensure the Keychain agent has identities loaded
 agent-check: ensure-keychain
 	@$(KEYCHAIN_AGENT); \
 	if ssh-add -l >/dev/null 2>&1; then \
@@ -111,21 +103,11 @@ install: ensure-sshpass ensure-keychain ## Install the pinned toolchain, collect
 	else echo "Neither mise nor asdf found; install one, or ensure ansible-core 2.19.x is on PATH." >&2; exit 1; fi
 	@$(MAKE) --no-print-directory ensure-ansible-collections
 
-# Internal. Install/refresh the pinned Ansible collections into the
-# project-local `collections/` dir (selected by ansible.cfg's `collections_path`,
-# which REPLACES the global ~/.ansible/collections). ansible-galaxy is
-# idempotent and version-aware: it no-ops when the pinned versions are present,
-# and installs/upgrades to the exact requirements.yml pins otherwise. The
-# requirements.yml GitHub-tarball entry (community.ansible_netbird) installs the
-# same way as Galaxy-hosted collections.
 ensure-ansible-collections:
 	@ansible-galaxy collection install -r requirements.yml
 
-# Internal helpers (not listed in `make help`; not part of the public interface).
 .PHONY: ensure-ansible-collections ensure-sshpass ensure-keychain keychain-fetch verify-keychain-pin \
         agent-needed agent-fallback agent-ensure agent-load agent-check
-# (internal) ensure sshpass: passwordless apt-get when available, otherwise a
-# rootless install into ~/.local/bin. A failure is fatal — no silent fallback.
 ensure-sshpass:
 	@set -e; \
 	if command -v sshpass >/dev/null 2>&1 || [ -x "$(SSHPASS_BIN)" ]; then \
@@ -150,7 +132,6 @@ ensure-sshpass:
 		echo "sshpass installed: $(SSHPASS_BIN)"; \
 	fi
 
-# (internal) download the pinned Keychain asset into the fixed cache path.
 keychain-fetch:
 	@set -e; \
 	mkdir -p "$(KEYCHAIN_CACHE)"; \
@@ -169,13 +150,11 @@ keychain-fetch:
 	fi; \
 	mv "$(KEYCHAIN_ASSET).tmp" "$(KEYCHAIN_ASSET)"
 
-# (internal) verify the cached asset against keychain.pin (used by CI).
 verify-keychain-pin: keychain-fetch
 	@set -e; \
 	printf '%s  %s\n' "$(KEYCHAIN_SHA256)" "$(KEYCHAIN_ASSET)" | sha256sum -c -; \
 	echo "keychain pin OK: v$(KEYCHAIN_VERSION)"
 
-# (internal) ensure the pinned asset is installed (and unmodified) in ~/.local/bin.
 ensure-keychain: verify-keychain-pin
 	@set -e; \
 	if [ -f "$(KEYCHAIN_BIN)" ] \
@@ -208,13 +187,10 @@ host-init: vault-init ## Scaffold host_vars/<HOST> + the inventory entry (HOST d
 	echo "      verify: make print HOST=$$host"
 
 .PHONY: host-bootstrap
-host-bootstrap: vault-init agent-fallback ## Create the ansible service account on one host (HOST=<name>, default the management host); REFRESH=1 refreshes host keys first
+host-bootstrap: vault-init agent-fallback ## Create the iac automation account on one host (HOST=<name>, default the management host); REFRESH=1 refreshes host keys first
 	@if [ -n "$(REFRESH)" ]; then $(MAKE) --no-print-directory hostkey-init; fi; \
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml $(if $(HOST),-e bootstrap_host=$(HOST),)
 
-# Refresh every managed host's SSH host key in the control node's known_hosts
-# (removing any stale entry first). Also run automatically when REFRESH=1 is set
-# on deploy / dry-run / host-bootstrap.
 .PHONY: hostkey-init
 hostkey-init: vault-init ## Refresh every managed host's SSH host key in known_hosts
 	@set -e; \

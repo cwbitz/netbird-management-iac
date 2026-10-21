@@ -1,28 +1,7 @@
 ---
-# ==============================================================================
-# Management (server) role defaults — operator knobs only.
-# (roles/management/defaults/main.yml)
-# ==============================================================================
-# Container images, the internal network and the fixed public scheme are
-# role-internal constants (Renovate-pinned / derived) and live in vars/main.yml.
-
-# --- Public endpoint ---------------------------------------------------------
 exposed_port: 443
 stun_port: 3478
-
-# --- Server behaviour --------------------------------------------------------
 log_level: "info"
-
-# Skip the GeoLite2 database download at startup. The download needs outbound
-# access to pkgs.netbird.io and blocks startup until it finishes; set true on
-# air-gapped/network-restricted hosts (disables geo-based posture checks).
 disable_geolite_update: false
-
-# Extra management addresses trusted as a reverse proxy (external proxy setups).
-# The built-in Traefik is covered by traefik_ip. Example: ["203.0.113.20/32"].
 trusted_peers: []
-
-# Lifetime (days) of the 'admin' service-user PAT minted by the first-owner
-# bootstrap. NetBird caps PATs at 365 days; recreate it from the Dashboard when
-# it expires (the tenant run reports it).
 service_admin_access_token_expire_days: 365

@@ -1,19 +1,4 @@
 #!/usr/bin/env bash
-#
-# retry-transient.sh — retry a command while it fails for a NETWORK-level reason.
-#
-# The pinned community.ansible_netbird collection does not retry its API calls,
-# and a cross-region control-node -> VPS path can drop a small fraction of TLS
-# handshakes (SSL UNEXPECTED_EOF / connection reset). Because a tenant apply is
-# idempotent, re-running the whole command is safe; a genuine configuration or
-# authentication error does NOT match the transient pattern and fails fast.
-#
-# Environment:
-#   RETRY_MAX      maximum attempts (default 5)
-#   RETRY_DELAY    seconds between attempts (default 8)
-#   RETRY_PATTERN  ERE matched against the output (sensible default below)
-#
-# Usage: retry-transient.sh <command> [args...]
 
 set -u
 

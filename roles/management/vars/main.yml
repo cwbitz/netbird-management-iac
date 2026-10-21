@@ -1,33 +1,18 @@
 ---
-# ==============================================================================
-# management role internal constants (roles/management/vars/main.yml)
-# ==============================================================================
-# Values the role owns; kept out of defaults/main.yml so inventory cannot
-# override them.
-
-# --- Public scheme -----------------------------------------------------------
-# Traefik terminates TLS with a Let's Encrypt certificate and the OIDC issuer /
-# redirect URIs must be https, so a plaintext deployment is not supported.
-http_protocol: "https"
-
-# --- Volumes -----------------------------------------------------------------
-# Explicit names keep the volumes stable regardless of the compose project dir.
-netbird_data_volume: "netbird_data"
-traefik_certs_volume: "traefik_letsencrypt"
-
-# --- Container images (Renovate-pinned) --------------------------------------
-server_image: "netbirdio/netbird-server"
 # renovate: datasource=docker depName=netbirdio/netbird-server
 server_version: "0.79.0"
-dashboard_image: "netbirdio/dashboard"
-# Upstream only ships moving dashboard tags (latest / sha-* / pr-*), so there is
-# no immutable version to pin; Renovate cannot track it.
+
 dashboard_version: "latest"
-traefik_image: "traefik"
+
 # renovate: datasource=docker depName=traefik
 traefik_version: "v3.7.13"
 
-# --- Internal network --------------------------------------------------------
+http_protocol: "https"
+netbird_data_volume: "netbird_data"
+traefik_certs_volume: "traefik_letsencrypt"
+server_image: "netbirdio/netbird-server"
+dashboard_image: "netbirdio/dashboard"
+traefik_image: "traefik"
 network_name: "netbird"
 network_subnet: "172.30.0.0/24"
 network_gateway: "172.30.0.1"

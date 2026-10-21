@@ -1,9 +1,4 @@
 ---
-# ==============================================================================
-# Handlers (roles/management/handlers/main.yml)
-# ==============================================================================
-# Restart the stack after a config re-render: docker compose does not recreate a
-# container when only a bind-mounted file's content changes.
 - name: "[NetBird] Restart the stack"
   tags: [netbird, netbird_deploy]
   community.docker.docker_compose_v2:
