@@ -330,7 +330,7 @@ dry-run: vault-init validate-knobs agent-fallback ## Dry-run (--check --diff); R
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) $(PLAYBOOK) --check --diff $(if $(TAGS),--tags $(TAGS),)
 
 .PHONY: deploy
-deploy: vault-init hostkey-init validate-knobs agent-fallback ## One-shot: bootstrap the host, deploy the server, then apply the tenant state; TAGS=... runs only the server; REFRESH=1 refreshes host keys first
+deploy: vault-init hostkey-init validate-knobs agent-fallback ## One-shot: bootstrap the host, deploy the server, apply the tenant state, then converge monitoring; TAGS=... runs only the server; REFRESH=1 refreshes host keys first
 	@echo "==> Bootstrapping the host (playbooks/bootstrap.yml: service account, Docker)..."
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml $(if $(HOST),-e bootstrap_host=$(HOST),)
 	@echo "==> Deploying the NetBird server (playbooks/site.yml)..."
@@ -339,6 +339,8 @@ deploy: vault-init hostkey-init validate-knobs agent-fallback ## One-shot: boots
 		echo "==> Applying the tenant config-as-code state (playbooks/tenant.yml)..."; \
 		RETRY_MAX=$(TENANT_RETRY_MAX) RETRY_DELAY=$(TENANT_RETRY_DELAY) \
 			$(RETRY_RUN) $(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml -e tenant_commit=true; \
+		echo "==> Converging the host monitoring (playbooks/monitoring.yml)..."; \
+		$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/monitoring.yml; \
 	fi
 
 .PHONY: plan

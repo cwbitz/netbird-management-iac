@@ -170,7 +170,9 @@ this project's vars/vault. Rules:
   a complete, value-accurate mirror of every operator knob.
 - `make dry-run` / `make deploy` — dry-run / deploy. `deploy` is the one-shot
   entry point: it runs `bootstrap.yml` (host init), then the server playbook,
-  then applies the tenant state (`tenant.yml -e tenant_commit=true`); add
+  then applies the tenant state (`tenant.yml -e tenant_commit=true`), then
+  converges the host monitoring (`monitoring.yml`, which also joins the overlay
+  through the agent); add
   `TAGS=...` to skip the tenant apply and run only the server. Tags:
   `netbird`, `netbird_preflight`, `netbird_config`, `netbird_deploy`,
   `netbird_owner`. Two opt-in host-security roles live in the same playbook and
