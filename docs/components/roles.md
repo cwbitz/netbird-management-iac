@@ -53,7 +53,7 @@ current (see `renovate.json`).
 | Component | Registry | Version var |
 |---|---|---|
 | netbird-server | dockerhub | `server_version` |
-| netbird-dashboard | dockerhub | `dashboard_version` (upstream has no pinned tags) |
+| netbird-dashboard | dockerhub | `dashboard_version` |
 | traefik | dockerhub | `traefik_version` |
 | netbird-agent | ghcr.io | `netbird_agent_version` |
 | alloy | dockerhub | `alloy_version` |

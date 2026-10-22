@@ -1,11 +1,12 @@
 ---
 # renovate: datasource=docker depName=netbirdio/netbird-server
-server_version: "0.79.0"
+server_version: "0.81.3"
 
-dashboard_version: "latest"
+# renovate: datasource=docker depName=netbirdio/dashboard
+dashboard_version: "v2.95.0"
 
 # renovate: datasource=docker depName=traefik
-traefik_version: "v3.7.13"
+traefik_version: "v3.7.16"
 
 http_protocol: "https"
 netbird_data_volume: "netbird_data"

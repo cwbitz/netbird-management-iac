@@ -1,6 +1,6 @@
 ---
 # renovate: datasource=docker depName=ghcr.io/netbirdio/netbird
-netbird_agent_version: "0.77.0"
+netbird_agent_version: "0.81.3"
 
 agent_dir: "/opt/netbird-agent"
 agent_project_name: "netbird-agent"

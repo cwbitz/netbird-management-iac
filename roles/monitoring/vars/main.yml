@@ -1,6 +1,6 @@
 ---
 # renovate: datasource=docker depName=grafana/alloy
-alloy_version: "v1.18.1"
+alloy_version: "v1.21.1"
 
 pkg_node_exporter: "prometheus-node-exporter"
 pkg_crowdsec: "crowdsec"
