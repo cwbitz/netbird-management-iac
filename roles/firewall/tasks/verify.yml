@@ -1,0 +1,27 @@
+---
+- name: "[Firewall] Check whether the server stack is running"
+  community.docker.docker_container_info:
+    name: netbird-traefik
+  register: firewall_traefik
+  failed_when: false
+  check_mode: false
+  when: not ansible_check_mode
+
+- name: "[Firewall] Verify the public endpoints are still reachable from outside"
+  ansible.builtin.wait_for:
+    host: "{{ ansible_host | default(inventory_hostname) }}"
+    port: "{{ item | int }}"
+    timeout: 5
+  loop: "{{ firewall_public_tcp_specs | select('match', '^[0-9]+$') | list }}"
+  loop_control:
+    label: "{{ item }}"
+  delegate_to: localhost
+  become: false
+  vars:
+    ansible_become: false
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - firewall_traefik.container is defined
+    - firewall_traefik.container is not none
+    - firewall_traefik.container.State.Running | default(false)

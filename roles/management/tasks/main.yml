@@ -109,7 +109,7 @@
 - name: "[NetBird] Wait for the server to answer over TLS"
   tags: [netbird, netbird_deploy]
   ansible.builtin.uri:
-    url: "https://{{ domain_name }}/oauth2/.well-known/openid-configuration"
+    url: "https://{{ domain_name }}:{{ exposed_port }}/oauth2/.well-known/openid-configuration"
     validate_certs: true
     status_code: 200
   register: ready

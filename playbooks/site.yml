@@ -62,10 +62,17 @@
   hosts: management
   gather_facts: true
   roles:
-    - role: management
     - role: firewall
       tags: [firewall]
       when: firewall_enabled | default(false) | bool
+    - role: management
     - role: sshd
       tags: [sshd]
       when: sshd_hardening_enabled | default(false) | bool
+  tasks:
+    - name: "[Firewall] Verify the public contract from the control node"
+      tags: [firewall]
+      ansible.builtin.include_role:
+        name: firewall
+        tasks_from: verify
+      when: firewall_enabled | default(false) | bool
