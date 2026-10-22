@@ -245,9 +245,48 @@ The placeholder-address assert builds `fail_msg` with single braces, so the
 operator sees the literal `{ item }` and `{ hostvars[item].ansible_host }` instead
 of the host name and value. Evidence: `artifacts/E2E-01/`.
 
+### Remaining cases (second pass)
+
+| Case | Result | Evidence |
+| --- | --- | --- |
+| Draw a recovery line for the owner identity | The first owner is now defined once, by the `netbird_users` entry with `role: owner`; the role derives the bootstrap identity from it and the example, schema and audit follow | `roles/management/defaults/main.yml` |
+| Rendering the role again | `changed=0`, all containers running | `artifacts/RL-01/` |
+| Dashboard and proxy wiring | Dashboard 200 through the proxy; `dashboard.env` holds only the documented keys | `artifacts/RL-03/` |
+| Changing `exposed_port` | **Fails** — see D-7 | `artifacts/RL-04/` |
+| Changing `stack_dir` | **Fails** on a running host — see D-8 | `artifacts/RL-05/` |
+| Agent without a setup key | Refuses with the variable name and the fix, container untouched | `artifacts/RL-07/` |
+| SSH hardening without a key | Refuses before writing; effective config unchanged | `artifacts/RL-15/` |
+| Host-key refresh with a partial failure | Unreachable host reported, the reachable host refreshed, `known_hosts` intact | `artifacts/E2E-20/` |
+| Vault view and edit | Content unchanged and still sorted when the editor makes no edit; both encrypted | `artifacts/E2E-21/` |
+| Host scaffold | Comment-free, vault encrypted, idempotent, `FORCE_IP` replaces the address | `artifacts/E2E-22/` |
+
+**D-7 — major: `exposed_port` cannot be changed in one run.**
+
+The management role waits for TLS on `https://<domain>/…` without the port, so the
+wait only ever succeeds on 443; and the firewall runs after the management role,
+so the newly published port is still closed when the stack restarts. During the
+test the stack came up on 8443 behind a firewall that only allowed 443, which took
+the dashboard down until the run was reverted. Fix direction: build the wait URL
+from `http_protocol`, `domain_name` and `exposed_port`, and apply the firewall
+before the stack restarts (or skip the wait when the port changed).
+
+**D-8 — minor: `stack_dir` cannot move on a running host.**
+
+The compose project name follows the directory, so a new `stack_dir` targets a new
+project while the existing containers (and volumes) still belong to the old one;
+the run fails with a container-name conflict. It fails without data loss. Fix
+direction: pin a stable `project_name` in the compose calls, or document that
+`stack_dir` is chosen at first deploy.
+
+**D-5 and D-6 — fixed and verified.** Restore with an empty key now stops at a new
+assert before the stack is touched (key hash unchanged, containers still up,
+dashboard 200: `artifacts/NEG-03/run-fixed.log`), and the placeholder preflight
+renders the host name and the value (`artifacts/E2E-01/run-fixed.log`).
+
 ### Still open
 
-Strict-mode tenant deletion (E2E-11), the vault edit/scaffold flows
-(E2E-21/E2E-22), host reboot and interrupted-run cases (NEG-06/NEG-10), the Alloy
-path (RL-11, blocked on the central Loki address), and the `docker kill`
-self-healing question (NEG-05).
+Strict-mode tenant deletion (E2E-11), the reboot and interrupted-run cases
+(NEG-06/NEG-10), the Alloy path (RL-11, blocked on the central Loki address), the
+`docker kill` self-healing question (NEG-05), the firewall precondition case
+(RL-14, no such guard exists) and the SSH rollback drill (RL-16, needs a
+deliberately broken post-hardening login).

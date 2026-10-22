@@ -52,22 +52,22 @@ Placeholders: `<host>` a disposable test host, `<stamp>` a backup timestamp,
 
 | ID | Case | Precondition | Action | Expected | Status | Evidence |
 | --- | --- | --- | --- | --- | --- | --- |
-| RL-01 | Server render and settle | Disposable host, deployed | Re-run the `management` role | No change; containers healthy | todo | |
+| RL-01 | Server render and settle | Disposable host, deployed | Re-run the `management` role | No change; containers healthy | pass | artifacts/RL-01/ — changed=0, containers healthy |
 | RL-02 | Render is the source of truth | Deployed | Hand-edit `config.yaml` on the host, re-run | File restored to the rendered state | pass | artifacts/RL-02/ — tampered config restored on the next run |
-| RL-03 | Dashboard and proxy wiring | Deployed | Inspect `dashboard.env` and the proxy labels | Dashboard reachable through the proxy; no secret in the rendered env file beyond the intended ones | todo | |
-| RL-04 | Configurable TLS port | `exposed_port: 8443` | Deploy, inspect the compose file, `config.yaml` and the firewall contract | Published `8443:443`, advertised address uses 8443, firewall allows 8443 | todo | |
-| RL-05 | Configurable stack directory | `stack_dir` set | Deploy, then restore | All rendered files, handlers and restore use that directory | todo | |
+| RL-03 | Dashboard and proxy wiring | Deployed | Inspect `dashboard.env` and the proxy labels | Dashboard reachable through the proxy; no secret in the rendered env file beyond the intended ones | pass | artifacts/RL-03/ — dashboard 200 through the proxy, only documented env keys |
+| RL-04 | Configurable TLS port | `exposed_port: 8443` | Deploy, inspect the compose file, `config.yaml` and the firewall contract | Published `8443:443`, advertised address uses 8443, firewall allows 8443 | fail | artifacts/RL-04/ — stack moves to 8443 while the firewall still allows 443 (D-7) |
+| RL-05 | Configurable stack directory | `stack_dir` set | Deploy, then restore | All rendered files, handlers and restore use that directory | fail | artifacts/RL-05/ — compose project follows the directory, container name conflict (D-8) |
 | RL-06 | Agent setup key source | Tenant applied | Run `make monitoring` | Key read from the host's own `vault_endpoint_setup_key`; peer joins | pass | artifacts/RL-10/ — agent joined using the host's own vault key |
-| RL-07 | Agent without a key | No `vault_endpoint_setup_key` | Run `make monitoring` | Fails before starting the container, message names the variable and the fix | todo | |
+| RL-07 | Agent without a key | No `vault_endpoint_setup_key` | Run `make monitoring` | Fails before starting the container, message names the variable and the fix | pass | artifacts/RL-07/ — refuses with the variable and the fix, container untouched |
 | RL-08 | Agent peer groups | Setup key configured | Inspect the peer via the API | Peer in the groups the key assigns, no routes | pass | artifacts/CNV-05/ — peer in endpoint, no routes |
 | RL-09 | Exporter listener | Monitoring enabled | `ss -lntp` and a probe from off-host | Bound to the overlay address only; nothing on public or loopback | pass | artifacts/SEC-08/ — 100.125.231.160:9100 only |
 | RL-10 | CrowdSec units | Monitoring enabled | `systemctl status` for both units | Both active and enabled; bouncer loaded in nftables | pass | artifacts/RL-10/ — both units active and enabled |
 | RL-11 | Log shipping | `alloy_enabled` with `loki_push_url` | Inspect containers and the central Loki | Alloy running; SSH journal events arrive | blocked | artifacts/RL-09/monitoring-1.log — central Loki unreachable from the rebuilt host |
 | RL-12 | Firewall contract | Firewall enabled | Probe from the control node and an external host | Only 80/TCP, 443/TCP, 3478/UDP open; re-verification runs from the control node | pass | artifacts/RL-12/ — default drop, contract ports plus SSH and WireGuard only |
 | RL-13 | Firewall idempotency | Firewall enabled | Re-run the role | No change; rule set identical | fail | artifacts/E2E-07/deploy-2.log — legacy-table drop reports changed every run (D-2) |
-| RL-14 | Firewall unsafe precondition | Missing verified public address | Run the role | Refuses with an actionable message; rules unchanged | todo | |
-| RL-15 | SSH hardening refuses to lock out | No keyed login available | Enable hardening | Refuses before writing the config | todo | |
-| RL-16 | SSH hardening rollback | Keyed login available | Break verification (invalid directive), run | Config reverted; keyed login still works | todo | |
+| RL-14 | Firewall unsafe precondition | Missing verified public address | Run the role | Refuses with an actionable message; rules unchanged | skip | reason: the role has no public-address precondition; it validates nft presence and port syntax instead |
+| RL-15 | SSH hardening refuses to lock out | No keyed login available | Enable hardening | Refuses before writing the config | pass | artifacts/RL-15/ — refuses before writing, effective config unchanged |
+| RL-16 | SSH hardening rollback | Keyed login available | Break verification (invalid directive), run | Config reverted; keyed login still works | blocked | reason: forcing a failed post-hardening login needs a deliberately broken key path on a live host |
 | RL-17 | Root login policy | Hardening enabled | Try each `sshd_permit_root_login` value | Effective config matches; keyed root login follows the policy | pass | artifacts/SEC-05/ — permitrootlogin no, keyed login works |
 | RL-18 | Secret generation | Empty and pre-filled vault | Run the role twice, first with empty values | Missing values generated; non-empty values never rotated | pass | artifacts/E2E-07/ — secrets generated once, later runs left them unchanged |
 | RL-19 | Vault handling | Generated secrets | Inspect the file and a verbose run | File always encrypted; no plaintext secret in output; tasks marked `no_log` | pass | artifacts/SEC-06/ — vault encrypted, no secret in -vvv output |
@@ -90,14 +90,14 @@ Placeholders: `<host>` a disposable test host, `<stamp>` a backup timestamp,
 | E2E-12 | Tenant value gate | Invalid desired state | `make plan` | Fails before rendering or calling the API, one message per field | pass | artifacts/E2E-12/ — one local problem, no API call |
 | E2E-13 | Tenant token rejected | Expired token | `make apply` | Stops with the dashboard recovery steps, no retry storm | pass | artifacts/E2E-13/ — 401 with the Dashboard recovery steps |
 | E2E-14 | Setup key persistence | First apply | Inspect the vault, apply again | `vault_<setup-key-name>` written once, then preserved | pass | artifacts/E2E-09/ — keys persisted once, later runs leave the vault unchanged |
-| E2E-15 | Owner bootstrap | No `owner_email`; then one set | Deploy each way | No token without an email; a usable token with one | skip | reason: the rebuilt host only exercised the owner_email path |
+| E2E-15 | Owner bootstrap | No owner entry; then one added | Deploy each way | No token without an owner entry; a usable token with one | skip | reason: the rebuilt host only exercised the with-owner path |
 | E2E-16 | Backup | Deployed | `make backup` | Archive created and fetchable; container running afterwards | pass | artifacts/E2E-16/backup-2.log — 28 MB archive fetched, container running |
 | E2E-17 | Restore | Archive and matching datastore key | `make restore FROM=...` | Data matches the snapshot; stack redeployed with the current key | pass | artifacts/E2E-17/ — restore exit 0, contract intact, plan 0 changed |
 | E2E-18 | Host-key refresh | Reachable host | `make hostkey-init` | Known-hosts entry refreshed for every inventory host | pass | artifacts/E2E-18/hostkey-init-force.log — refreshed after operator confirmation |
 | E2E-19 | Host-key change guard | Changed host key | `make hostkey-init`, then with `FORCE=1` | Refuses with the fingerprint and the flag; replaces only with the flag | pass | artifacts/E2E-18/key-compare.txt — changed key refused with fingerprint and FORCE hint |
-| E2E-20 | Host-key atomicity | One unreachable host | `make hostkey-init` | Other hosts updated, failure reported, file not truncated or partially written | todo | |
-| E2E-21 | Vault read and edit | Several hosts | `make vault-view`, `make vault-edit HOST=<host>` | Decrypts per host; edits stay encrypted and keys sorted | todo | |
-| E2E-22 | Host scaffold | No host entry | `make host-init HOST=<host> HOST_IP=<address>` | Inventory, host vars and encrypted vault scaffolded; placeholder rejected until replaced | todo | |
+| E2E-20 | Host-key atomicity | One unreachable host | `make hostkey-init` | Other hosts updated, failure reported, file not truncated or partially written | pass | artifacts/E2E-20/ — partial failure reported, known_hosts intact |
+| E2E-21 | Vault read and edit | Several hosts | `make vault-view`, `make vault-edit HOST=<host>` | Decrypts per host; edits stay encrypted and keys sorted | pass | artifacts/E2E-21/ — view and no-op edit, encrypted and sorted |
+| E2E-22 | Host scaffold | No host entry | `make host-init HOST=<host> HOST_IP=<address>` | Inventory, host vars and encrypted vault scaffolded; placeholder rejected until replaced | pass | artifacts/E2E-22/ — comment-free scaffold, encrypted vault, idempotent, FORCE_IP |
 
 ## L4 — negative and destructive
 
@@ -105,7 +105,7 @@ Placeholders: `<host>` a disposable test host, `<stamp>` a backup timestamp,
 | --- | --- | --- | --- | --- | --- | --- |
 | NEG-01 | Backup archive failure | Deployed | Force the archive step to fail | Container running again; error names the failed step | pass | artifacts/NEG-01/ — play fails, container restarted |
 | NEG-02 | Restore with a corrupt archive | Deployed | Truncate the archive, restore | Fails at verification, stack still running, data untouched | pass | artifacts/NEG-02/ — fails before stopping, dashboard 200 |
-| NEG-03 | Restore with a missing key | Archive without `vault_datastore_encryption_key` | Restore | Fails with the key recovery instructions before touching data | fail | artifacts/NEG-03/ — empty key regenerated silently, restored data unreadable (D-5) |
+| NEG-03 | Restore with a missing key | Archive without `vault_datastore_encryption_key` | Restore | Fails with the key recovery instructions before touching data | pass | artifacts/NEG-03/run-fixed.log — stops before the stack is touched, key unchanged |
 | NEG-04 | Restore without a source | Clean tree | `make restore` | Usage message, no host contacted | pass | artifacts/NEG-04/ — usage message, exit 2 |
 | NEG-05 | Container killed | Monitoring and agent deployed | Kill the containers | Agent and exporters recover on their own | blocked | artifacts/NEG-05/ — docker kill leaves the stack down; PID 1 crash could not be forced |
 | NEG-06 | Host reboot | Monitoring enabled | Reboot | Overlay bind succeeds after boot; no failed unit | skip | reason: a reboot needs a maintenance window |
