@@ -102,6 +102,7 @@
   tags: [netbird, netbird_deploy]
   community.docker.docker_compose_v2:
     project_src: "{{ stack_dir }}"
+    project_name: "{{ netbird_project_name }}"
     state: present
     remove_orphans: true
   when: not ansible_check_mode

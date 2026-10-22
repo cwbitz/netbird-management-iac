@@ -35,6 +35,7 @@
 - name: "[Monitoring] Remove the Alloy compose stack"
   community.docker.docker_compose_v2:
     project_src: "{{ monitoring_dir }}"
+    project_name: "{{ monitoring_project_name }}"
     state: absent
   when:
     - monitoring_alloy_teardown | bool

@@ -3,4 +3,5 @@
 netbird_agent_version: "0.77.0"
 
 agent_dir: "/opt/netbird-agent"
+agent_project_name: "netbird-agent"
 netbird_agent_image: "ghcr.io/netbirdio/netbird"

@@ -106,6 +106,7 @@
 - name: "[Monitoring] Deploy the monitoring stack"
   community.docker.docker_compose_v2:
     project_src: "{{ monitoring_dir }}"
+    project_name: "{{ monitoring_project_name }}"
     state: present
     remove_orphans: true
   when:

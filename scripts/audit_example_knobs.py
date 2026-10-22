@@ -46,6 +46,7 @@ INTERNAL = {
     "server_image", "server_version", "dashboard_image", "dashboard_version",
     "traefik_image", "traefik_version",
     "network_name", "network_subnet", "network_gateway", "traefik_ip",
+    "netbird_project_name",
 }
 VAULT_BOUND: set[str] = set()
 DERIVED = {"apt_security_mirror", "netbird_peer_setup_key", "owner_entry", "owner_email", "owner_name"}

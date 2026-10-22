@@ -50,6 +50,7 @@
 - name: "[Agent] Deploy the agent"
   community.docker.docker_compose_v2:
     project_src: "{{ agent_dir }}"
+    project_name: "{{ agent_project_name }}"
     state: present
     remove_orphans: true
   when: not ansible_check_mode

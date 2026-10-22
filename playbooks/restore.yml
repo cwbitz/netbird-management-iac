@@ -59,6 +59,7 @@
         - name: "[Restore] Stop the stack"
           community.docker.docker_compose_v2:
             project_src: "{{ stack_dir }}"
+            project_name: "{{ netbird_project_name }}"
             state: stopped
 
         - name: "[Restore] Copy the archive to the host"
