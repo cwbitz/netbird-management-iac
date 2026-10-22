@@ -204,9 +204,9 @@ this project's vars/vault. Rules:
   `host_vars/<host>/main.yml`; default off. node_exporter binds the overlay
   address only (no local or public listener; a boot drop-in waits for the overlay
   so the bind survives a reboot). The agent resolves its setup key
-  (`netbird_peer_setup_key`) from the
-  management node's vault (single source of truth; the route-less `endpoint` key by
-  default, which grants no exit/LAN routes) and the exporters bind the overlay
+  (`netbird_peer_setup_key`) from the host's own vault
+  (the route-less `endpoint` key by default, which grants no exit/LAN routes)
+  and the exporters bind the overlay
   address; with `alloy_enabled: true`
   + `loki_push_url` an Alloy container ships journald SSH events to a central Loki
   over the overlay (an overlay IP, or preferably the central peer's NetBird name

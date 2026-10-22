@@ -149,7 +149,7 @@ Opt-in per host with `monitoring_enabled: true` in
 `crowdsec-firewall-bouncer` (nftables enforcement), and joins the host to the
 overlay through the `agent` role so a central Prometheus/Alloy can reach it with
 no public port. The agent uses the route-less `endpoint` setup key by default
-(`netbird_peer_setup_key`, resolved from the management node's vault); node_exporter
+(`netbird_peer_setup_key`, resolved from the host's own vault); node_exporter
 binds the overlay address only (no local or public listener), and a boot drop-in
 waits for the overlay so the bind survives a reboot.
 
