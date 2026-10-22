@@ -312,3 +312,7 @@ Shared by the `*-iac` repos; keep this chain statically resolvable so
 - `docs/components/roles.md` — playbooks/roles layout, platform, image baseline.
 - `docs/RUNBOOK.md` — operational procedures.
 - `docs/IDP.md` — external identity providers.
+- `docs/testing/plan.md` — test levels, environment boundaries, evidence and
+  defect rules.
+- `docs/testing/matrix.md` — the case matrix with IDs, commands and expected
+  results.
