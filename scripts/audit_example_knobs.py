@@ -39,7 +39,6 @@ WIRING = {
     "privkey", "pubkey", "root", "admin", "iac", "legacy", "ansible",
     "ansible_core_min_version", "ansible_core_max_version",
     "ansible_core_allow_untested",
-    "management_host",
 }
 INTERNAL = {
     "agent_dir", "monitoring_dir",
