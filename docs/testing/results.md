@@ -178,8 +178,76 @@ and six changes for the tenant play, all local temporary files that are deleted
 and re-rendered at the start of every run; the API diff in `make plan` is 0
 changed. The server converges; the `changed` counter does not (D-2, D-4).
 
+### Monitoring
+
+`make monitoring` installs the exporter and CrowdSec on the host and joins the
+overlay through the agent. With `alloy_enabled: false` the stack converges:
+`prometheus-node-exporter`, `crowdsec` and `crowdsec-firewall-bouncer` are active,
+and the exporter listens on the overlay address only (`100.125.231.160:9100`, no
+local or public listener) — `artifacts/RL-09/`, `artifacts/RL-10/`,
+`artifacts/SEC-08/`.
+
+`alloy_enabled: true` currently fails: `loki_push_url` is an overlay IP literal
+(`http://100.125.55.195:3100`) and the central Loki does not answer from this
+rebuilt host (`No route to host`). The role's own message recommends the central
+peer's NetBird name instead of an IP; RL-11 stays blocked on the operator fixing
+that address. The host configuration was restored to its original values after
+the run.
+
+Convergence behaves as documented: disabling one component stops and disables
+only that unit; disabling the master switch stops and disables both CrowdSec units
+and the exporter, keeps the packages installed and skips the absent Alloy stack;
+re-enabling brings everything back without reinstalling. Evidence:
+`artifacts/CNV-01/`, `artifacts/CNV-02/`, `artifacts/CNV-03/`.
+
+### Negative and destructive cases
+
+| Case | Result | Evidence |
+| --- | --- | --- |
+| Backup with a broken archive step | The play fails, the server container is restarted by the `always:` block | `artifacts/NEG-01/` |
+| Restore with a corrupt archive | Fails at the readability check before stopping the stack; dashboard stays 200 | `artifacts/NEG-02/` |
+| Restore with an empty datastore key | **Fails the restore contract** — see D-5 | `artifacts/NEG-03/` |
+| Restore without a source | Usage message, exit 2 | `artifacts/NEG-04/` |
+| Killing the containers | `docker kill` leaves the stack down (Docker treats it as a manual stop); recovered with `docker compose up -d`. A PID 1 crash could not be forced inside the container, so self-healing stays unverified | `artifacts/NEG-05/` |
+| Plaintext vault | The next write encrypts it, keeps mode 0600 and the new content | `artifacts/NEG-07/` |
+
+**D-5 — blocker: restore silently regenerates a missing datastore key.**
+
+Restoring with an empty `vault_datastore_encryption_key` replaces the data volume
+first; the redeploy then provisions the "missing" secret, generating a new key
+and rewriting the vault. The restored data is encrypted with the old key, so the
+server comes up with an empty store, the tenant token is rejected and the data is
+unreadable — the exact opposite of the documented guarantee. Recovery required
+restoring the original key from the pre-rebuild vault copy and re-running the
+restore.
+
+Fix direction: `restore.yml` must assert the datastore key is present (and not
+regenerate it) before stopping the stack or replacing the volume.
+
+### Contracts and remaining security
+
+- Peer API returns `ip`, `dns_label` and `groups`; the server peer is in `endpoint`
+  (`artifacts/CNV-05/`).
+- Setup-key to group mapping matches the documented contract for all three keys
+  (`artifacts/CNV-06/`).
+- Embedded DNS resolves `rs-jp-tyo-1.netbird.selfhosted` to its overlay address
+  from inside the agent container (`artifacts/CNV-07/`).
+- The tenant value gate rejects an unknown setting locally, with one message per
+  field (`artifacts/E2E-12/`).
+- A rejected token stops with the exact Dashboard recovery steps
+  (`artifacts/SEC-10/`, also recorded as E2E-13).
+- A `-vvv` check run of `site.yml` contains none of the vault secret values
+  (`artifacts/SEC-06/`).
+
+**D-6 — minor: the preflight failure message prints template placeholders.**
+
+The placeholder-address assert builds `fail_msg` with single braces, so the
+operator sees the literal `{ item }` and `{ hostvars[item].ansible_host }` instead
+of the host name and value. Evidence: `artifacts/E2E-01/`.
+
 ### Still open
 
-Monitoring convergence, the negative cases (backup failure injection, corrupt
-archive, missing datastore key, killed container, plaintext vault), the peer/DNS
-contract checks and the remaining security checks in L5.
+Strict-mode tenant deletion (E2E-11), the vault edit/scaffold flows
+(E2E-21/E2E-22), host reboot and interrupted-run cases (NEG-06/NEG-10), the Alloy
+path (RL-11, blocked on the central Loki address), and the `docker kill`
+self-healing question (NEG-05).
