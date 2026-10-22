@@ -17,6 +17,8 @@
         restore_from: "{{ restore_from | realpath }}"
       delegate_to: localhost
       become: false
+      vars:
+        ansible_become: false
 
     - name: "[Restore] Stat the backup archive on the control node"
       ansible.builtin.stat:
@@ -24,6 +26,8 @@
       register: restore_archive
       delegate_to: localhost
       become: false
+      vars:
+        ansible_become: false
 
     - name: "[Restore] Fail early if the archive is missing"
       ansible.builtin.assert:
@@ -36,6 +40,8 @@
       changed_when: false
       delegate_to: localhost
       become: false
+      vars:
+        ansible_become: false
 
     - name: "[Restore] Replace the data volume and redeploy"
       block:

@@ -5,6 +5,8 @@
   become: false
   gather_facts: false
   tags: [always]
+  vars:
+    ansible_become: false
   tasks:
     - name: "[Preflight] Require a real management address for every host"
       ansible.builtin.assert:
@@ -42,6 +44,8 @@
           accept an untested newer engine, set ansible_core_allow_untested=true.
       delegate_to: localhost
       become: false
+      vars:
+        ansible_become: false
 
     - name: "[Preflight] Require the service account (not root) for the deploy"
       ansible.builtin.assert:

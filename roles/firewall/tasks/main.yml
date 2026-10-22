@@ -156,6 +156,8 @@
     label: "{{ item }}"
   delegate_to: localhost
   become: false
+  vars:
+    ansible_become: false
   changed_when: false
   when:
     - not ansible_check_mode
