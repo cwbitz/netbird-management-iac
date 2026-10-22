@@ -258,7 +258,7 @@ of the host name and value. Evidence: `artifacts/E2E-01/`.
 | SSH hardening without a key | Refuses before writing; effective config unchanged | `artifacts/RL-15/` |
 | Host-key refresh with a partial failure | Unreachable host reported, the reachable host refreshed, `known_hosts` intact | `artifacts/E2E-20/` |
 | Vault view and edit | Content unchanged and still sorted when the editor makes no edit; both encrypted | `artifacts/E2E-21/` |
-| Host scaffold | Comment-free, vault encrypted, idempotent, `FORCE_IP` replaces the address | `artifacts/E2E-22/` |
+| Host scaffold | Comment-free, vault encrypted, idempotent, `FORCE` replaces the address | `artifacts/E2E-22/` |
 
 **D-7 — fixed: `exposed_port` converges in one run.**
 

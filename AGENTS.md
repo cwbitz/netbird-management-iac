@@ -153,7 +153,7 @@ this project's vars/vault. Rules:
   connection address/port (`HOST_IP` defaults to the `CHANGE_ME_HOST_IP`
   placeholder the site preflight rejects until replaced; `HOST_PORT` is omitted
   when unset). HOST defaults to `netbird-1`. Idempotent: existing files are kept,
-  and an already-present host is left unchanged unless `FORCE_IP=1`, which
+  and an already-present host is left unchanged unless `FORCE=1`, which
   overwrites a conflicting address/port. Edit the vault with
   `make vault-edit HOST=<name>`.
 - `make host-bootstrap` — host init only: ensures Docker Engine + Compose v2

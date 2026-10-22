@@ -37,7 +37,7 @@ Placeholders: `<host>` a disposable test host, `<stamp>` a backup timestamp,
 | UT-06 | Vault sort: no-op path | Test fixture | Feed a file it cannot normalise | File returned byte-identical, exit 0 | skip | reason: no silent no-op path - an unnormalisable file is refused (exit 1, untouched), verified in tests/test_sort_vault_keys.py |
 | UT-07 | Vault sort: content safety | Test fixture | Compare the line multiset before and after | Identical multiset; no line lost | pass | artifacts/L1/pytest.log · tests/test_sort_vault_keys.py |
 | UT-08 | Inventory scaffold: idempotency | Temp directory | Run the scaffold twice with the same input | Second run leaves both files unchanged | pass | artifacts/L1/pytest.log · tests/test_ensure_inventory_host.py |
-| UT-09 | Inventory scaffold: address override | Temp directory | Re-run with `FORCE_IP` and a new address | Address replaced; other settings kept | pass | artifacts/L1/pytest.log · tests/test_ensure_inventory_host.py |
+| UT-09 | Inventory scaffold: address override | Temp directory | Re-run with `FORCE` and a new address | Address replaced; other settings kept | pass | artifacts/L1/pytest.log · tests/test_ensure_inventory_host.py |
 | UT-10 | Inventory scaffold: port handling | Temp directory | Run with and without a port | Port written only when supplied | pass | artifacts/L1/pytest.log · tests/test_ensure_inventory_host.py |
 | UT-11 | Template cleaning | Fixture with comments | Render the clean form | Comments gone, values and structure unchanged | pass | artifacts/L1/pytest.log · tests/test_render_clean_template.py |
 | UT-12 | Knob audit: both directions | Temp tree | Remove and add keys on each side | One failure per difference | pass | artifacts/L1/pytest.log · tests/test_audit_example_knobs.py |
@@ -97,7 +97,7 @@ Placeholders: `<host>` a disposable test host, `<stamp>` a backup timestamp,
 | E2E-19 | Host-key change guard | Changed host key | `make hostkey-init`, then with `FORCE=1` | Refuses with the fingerprint and the flag; replaces only with the flag | pass | artifacts/E2E-18/key-compare.txt — changed key refused with fingerprint and FORCE hint |
 | E2E-20 | Host-key atomicity | One unreachable host | `make hostkey-init` | Other hosts updated, failure reported, file not truncated or partially written | pass | artifacts/E2E-20/ — partial failure reported, known_hosts intact |
 | E2E-21 | Vault read and edit | Several hosts | `make vault-view`, `make vault-edit HOST=<host>` | Decrypts per host; edits stay encrypted and keys sorted | pass | artifacts/E2E-21/ — view and no-op edit, encrypted and sorted |
-| E2E-22 | Host scaffold | No host entry | `make host-init HOST=<host> HOST_IP=<address>` | Inventory, host vars and encrypted vault scaffolded; placeholder rejected until replaced | pass | artifacts/E2E-22/ — comment-free scaffold, encrypted vault, idempotent, FORCE_IP |
+| E2E-22 | Host scaffold | No host entry | `make host-init HOST=<host> HOST_IP=<address>` | Inventory, host vars and encrypted vault scaffolded; placeholder rejected until replaced | pass | artifacts/E2E-22/ — comment-free scaffold, encrypted vault, idempotent, FORCE |
 
 ## L4 — negative and destructive
 

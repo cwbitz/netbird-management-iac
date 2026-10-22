@@ -43,7 +43,7 @@ def test_conflicting_address_is_not_overwritten(run_python, write_file):
 
     assert result.returncode == 0
     assert "not changed" in result.stderr
-    assert "FORCE_IP=1" in result.stderr
+    assert "FORCE=1" in result.stderr
     assert "192.0.2.10" in inventory.read_text()
 
 
@@ -95,3 +95,14 @@ def test_missing_group_and_file_are_errors(run_python, write_file):
     missing_file = run_python("ensure_inventory_host.py", inventory.parent / "absent.yml", "h")
     assert missing_file.returncode == 1
     assert "does not exist" in missing_file.stderr
+
+def test_force_adds_a_missing_port(run_python, write_file):
+    inventory = write_file("hosts.yml", BASE)
+    result = run_python(
+        "ensure_inventory_host.py", inventory, "existing", "--ansible-port", "47616", "--force"
+    )
+
+    assert result.returncode == 0
+    text = inventory.read_text()
+    assert "ansible_port: 47616" in text
+    assert "ansible_port: 2222" not in text

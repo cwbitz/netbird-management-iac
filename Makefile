@@ -6,6 +6,7 @@ PLAYBOOK      := playbooks/site.yml
 INVENTORY     := inventory/hosts.yml
 INV           := $(INVENTORY)
 INVENTORY_DIR := inventory
+INVENTORY_HOSTS = ansible-inventory -i $(INVENTORY) --list 2>/dev/null | python3 -c 'import json,sys; print("\n".join(sorted(json.load(sys.stdin).get("_meta",{}).get("hostvars",{}))))'
 
 TAGS ?=
 HOST ?=
@@ -166,7 +167,7 @@ ensure-keychain: verify-keychain-pin
 	echo "keychain installed: $(KEYCHAIN_BIN) (v$(KEYCHAIN_VERSION))"
 
 .PHONY: host-init
-host-init: vault-init ## Scaffold host_vars/<HOST> + the inventory entry (HOST default netbird-1, GROUP default management, IP default CHANGE_ME_HOST_IP)
+host-init: vault-init ## Scaffold host_vars/<HOST> + the inventory entry (HOST default netbird-1, GROUP default management, IP default CHANGE_ME_HOST_IP), FORCE=1 replaces an existing entry
 	@host="$(HOST)"; host="$${host:-netbird-1}"; group="$(GROUP)"; group="$${group:-management}"; ip="$(HOST_IP)"; ip="$${ip:-CHANGE_ME_HOST_IP}"; port="$(HOST_PORT)"; \
 	if [ -e "$(INVENTORY)" ]; then :; else python3 $(CURDIR)/scripts/render_clean_template.py inventory/hosts.yml.example $(INVENTORY); echo "Created $(INVENTORY) from example (comments stripped)"; fi; \
 	install -d -m 0700 $(INVENTORY_DIR)/host_vars/$$host; \
@@ -178,7 +179,7 @@ host-init: vault-init ## Scaffold host_vars/<HOST> + the inventory entry (HOST d
 		ansible-vault encrypt $(INVENTORY_DIR)/host_vars/$$host/vault.yml; \
 	fi; \
 	chmod 0600 $(INVENTORY_DIR)/host_vars/$$host/vault.yml; \
-	entry=$$(python3 $(CURDIR)/scripts/ensure_inventory_host.py $(INVENTORY) "$$host" --group "$$group" --ansible-host "$$ip" $(if $(HOST_PORT),--ansible-port "$(HOST_PORT)") $(if $(FORCE_IP),--force)); \
+	entry=$$(python3 $(CURDIR)/scripts/ensure_inventory_host.py $(INVENTORY) "$$host" --group "$$group" --ansible-host "$$ip" $(if $(HOST_PORT),--ansible-port "$(HOST_PORT)") $(if $(FORCE),--force)); \
 	printf '%s\n' "$$entry"; \
 	effective_host=$$(printf '%s\n' "$$entry" | sed -n 's/^effective ansible_host=//p'); \
 	effective_port=$$(printf '%s\n' "$$entry" | sed -n 's/^effective ansible_port=//p'); \
@@ -244,14 +245,14 @@ vault-init: ## One-time: generate the vault password (idempotent)
 vault-edit: vault-init ## Edit one host's vault (plaintext auto-encrypted first, keys re-sorted alphabetically; HOST=<name>; auto when a single host)
 	@host="$(HOST)"; \
 	if [ -z "$$host" ]; then \
-		host="$$(ansible-inventory -i $(INVENTORY) --list 2>/dev/null \
-			| python3 -c 'import json,sys; h=list(json.load(sys.stdin).get("_meta",{}).get("hostvars",{})); print(h[0] if len(h)==1 else "")')"; \
+		hosts="$$($(INVENTORY_HOSTS))"; \
+		set -- $$hosts; \
+		[ "$$#" -eq 1 ] && host="$$1"; \
 	fi; \
 	if [ -z "$$host" ]; then \
 		echo "Usage: make vault-edit HOST=<hostname> (required when the inventory has more than one host)" >&2; \
 		echo "Available hosts:" >&2; \
-		ansible-inventory -i $(INVENTORY) --list 2>/dev/null \
-			| python3 -c 'import json,sys; [print("  "+h) for h in sorted(json.load(sys.stdin).get("_meta",{}).get("hostvars",{}))]' >&2; \
+		printf '  %s\n' $$hosts >&2; \
 		exit 1; \
 	fi; \
 	p="$(INVENTORY_DIR)/host_vars/$$host/vault.yml"; \
@@ -280,10 +281,7 @@ vault-edit: vault-init ## Edit one host's vault (plaintext auto-encrypted first,
 .PHONY: vault-view
 vault-view: vault-init ## View vault.yml for EVERY host, or one with HOST=<name> (read-only)
 	@hosts="$(HOST)"; \
-	if [ -z "$$hosts" ]; then \
-		hosts="$$(ansible-inventory -i $(INVENTORY) --list 2>/dev/null \
-			| python3 -c 'import json,sys; print("\n".join(sorted(json.load(sys.stdin).get("_meta",{}).get("hostvars",{}))))')"; \
-	fi; \
+	[ -n "$$hosts" ] || hosts="$$($(INVENTORY_HOSTS))"; \
 	if [ -z "$$hosts" ]; then \
 		echo "No hosts found in $(INVENTORY)." >&2; exit 1; \
 	fi; \
@@ -371,8 +369,9 @@ restore: vault-init agent-fallback ## Restore FROM=backup/<host>/<stamp>
 print: vault-init ## Print resolved host vars (incl. decrypted vault)
 	@host="$(HOST)"; \
 	if [ -z "$$host" ]; then \
-		host="$$(ansible-inventory -i $(INVENTORY) --list 2>/dev/null \
-			| python3 -c 'import json,sys; h=list(json.load(sys.stdin).get("_meta",{}).get("hostvars",{})); print(h[0] if len(h)==1 else "")')"; \
+		hosts="$$($(INVENTORY_HOSTS))"; \
+		set -- $$hosts; \
+		[ "$$#" -eq 1 ] && host="$$1"; \
 	fi; \
 	if [ -z "$$host" ]; then \
 		echo "Usage: make print HOST=<hostname> (required when the inventory has no single host)" >&2; exit 1; \

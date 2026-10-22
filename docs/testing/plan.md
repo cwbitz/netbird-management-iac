@@ -67,7 +67,7 @@ Cover at minimum:
   `tenant_strict` defaults to off;
 - `sort_vault_keys.py` — ordering, comment preservation, the
   no-op path for a file it cannot normalise, and the line-multiset check;
-- `ensure_inventory_host.py` — create, idempotent re-run, `FORCE_IP`, port
+- `ensure_inventory_host.py` — create, idempotent re-run, `FORCE`, port
   handling;
 - `render_clean_template.py` — comment stripping without value damage;
 - `audit_example_knobs.py` — example/schema differences in both directions and
