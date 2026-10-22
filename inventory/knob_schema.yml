@@ -8,6 +8,9 @@ operator_knob_schema:
   host_root_ssh_pubkey_file: "host_root_ssh_pubkey_file is not defined or host_root_ssh_pubkey_file is string"
   host_root_ssh_privkey_file: "host_root_ssh_privkey_file is not defined or host_root_ssh_privkey_file is string"
   install_docker: "install_docker is not defined or install_docker is boolean"
+  timezone: >-
+    (timezone | default('', true) | string | trim) == ''
+    or (timezone | string) is match('^[A-Za-z0-9_+/-]+$')
   apt_mirror: "(apt_mirror | default('', true) | string | trim) == '' or (apt_mirror | string) is match('^https?://[^\\s]+$')"
   docker_registry_mirrors: >-
     docker_registry_mirrors is not defined or ((docker_registry_mirrors is sequence) and not (docker_registry_mirrors is string) and not

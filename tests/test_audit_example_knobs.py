@@ -13,6 +13,7 @@ acme_email: "admin@example.com"
 allow_root_login: false
 apt_mirror: ""
 docker_registry_mirrors: []
+timezone: "UTC"
 tenant_strict: false
 stack_dir: "/opt/netbird"
 widget_mode: "on"
@@ -24,6 +25,7 @@ KEYS = [
     "allow_root_login",
     "apt_mirror",
     "docker_registry_mirrors",
+    "timezone",
     "tenant_strict",
     "stack_dir",
     "widget_mode",
