@@ -314,6 +314,7 @@ lint: vault-init validate-knobs
 	ansible-lint playbooks/site.yml playbooks/tenant.yml playbooks/bootstrap.yml playbooks/backup.yml playbooks/restore.yml playbooks/monitoring.yml
 	python3 scripts/audit_example_knobs.py
 	python3 scripts/check_host_keys.py
+	gitleaks dir . --config .gitleaks.toml --no-banner --redact
 	@bad="$$(git ls-files inventory/host_vars | grep -v '^inventory/host_vars/example/' || true)"; \
 	if [ -n "$$bad" ]; then echo "ERROR: only inventory/host_vars/example may be tracked:" >&2; printf '%s\n' "$$bad" >&2; exit 1; fi
 	python3 -m py_compile scripts/validate_tenant_config.py
