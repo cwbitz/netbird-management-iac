@@ -67,6 +67,13 @@
   loop: "{{ firewall_legacy_paths | default([]) }}"
   when: not ansible_check_mode
 
+- name: "[Firewall] List the tables loaded in the kernel"
+  ansible.builtin.command: "{{ firewall_nft }} list tables"
+  register: firewall_loaded_tables
+  changed_when: false
+  check_mode: false
+  when: not ansible_check_mode
+
 - name: "[Firewall] Drop the previous table still loaded in the kernel"
   ansible.builtin.command:
     argv:
@@ -77,8 +84,9 @@
       - "{{ item }}"
   loop: "{{ firewall_legacy_tables | default([]) }}"
   changed_when: true
-  failed_when: false
-  when: not ansible_check_mode
+  when:
+    - not ansible_check_mode
+    - ('table inet ' ~ item) in (firewall_loaded_tables.stdout | default(''))
 
 - name: "[Firewall] Ensure the nftables config directory exists"
   ansible.builtin.file:
