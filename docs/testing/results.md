@@ -294,3 +294,19 @@ Strict-mode tenant deletion (E2E-11), the reboot and interrupted-run cases
 (RL-14, no such guard exists) and the SSH rollback drill (RL-16, needs a
 deliberately broken post-hardening login). Outside-port reachability depends on
 the provider forwarding the port, which this host does only for 80/443/3478.
+
+## Post-run defect 2026-10-22 19:14
+
+**D-9 — fixed: the SSH key-only probe ran as root.**
+
+After another host rebuild, `make deploy` failed with `Error 2` at
+`[SSHD] Fail when the key-only login did not work`: the probe's
+`delegate_to: localhost` inherited `ansible_become`, so it ran as root and read
+`/root/.ssh/known_hosts`, which `make hostkey-init` never refreshes. With
+`StrictHostKeyChecking=accept-new` an unknown key is accepted, so a first deploy
+succeeds, but a rebuilt host presents a changed key and the probe aborts (exit
+255); the role correctly rolled the hardening back and failed the run.
+
+The probe now overrides `ansible_become: false`. Verified: `make deploy TAGS=sshd`
+applied the hardening (`permitrootlogin no`, password login off), a full
+`make deploy` exited 0, the tenant applied, and `make plan` reports 0 changed.
