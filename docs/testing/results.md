@@ -96,7 +96,7 @@ disposable host and are not part of this run.
 
 ## Host run 2026-10-22 (L2–L6, partial)
 
-Ran against `rs-jp-tyo-1` after the operator confirmed a rebuild. Access was
+Ran against `<host>` after the operator confirmed a rebuild. Access was
 restored with `make hostkey-init FORCE=1`, then bootstrap, deploy, plan, apply and
 backup. The run stopped at the backup step because of a blocking defect; the
 destructive cases need the fix first.
@@ -164,7 +164,7 @@ every run, so bootstrap is never fully idempotent. Evidence:
 
 ### Backup and restore
 
-`make backup` → `backup/rs-jp-tyo-1/20261022T140955/` (28 MB, 6 entries), server
+`make backup` → `backup/<host>/20261022T140955/` (28 MB, 6 entries), server
 container running afterwards. `make restore FROM=...` exited 0 and the stack was
 redeployed with the current vault key. After the restore the external contract is
 intact (80/443 open, TLS 1.3, dashboard 200, API 401 unauthenticated, STUN
@@ -183,12 +183,12 @@ changed. The server converges; the `changed` counter does not (D-2, D-4).
 `make monitoring` installs the exporter and CrowdSec on the host and joins the
 overlay through the agent. With `alloy_enabled: false` the stack converges:
 `prometheus-node-exporter`, `crowdsec` and `crowdsec-firewall-bouncer` are active,
-and the exporter listens on the overlay address only (`100.125.231.160:9100`, no
+and the exporter listens on the overlay address only (`203.0.113.11:9100`, no
 local or public listener) — `artifacts/RL-09/`, `artifacts/RL-10/`,
 `artifacts/SEC-08/`.
 
 `alloy_enabled: true` currently fails: `loki_push_url` is an overlay IP literal
-(`http://100.125.55.195:3100`) and the central Loki does not answer from this
+(`http://203.0.113.12:3100`) and the central Loki does not answer from this
 rebuilt host (`No route to host`). The role's own message recommends the central
 peer's NetBird name instead of an IP; RL-11 stays blocked on the operator fixing
 that address. The host configuration was restored to its original values after
@@ -230,7 +230,7 @@ regenerate it) before stopping the stack or replacing the volume.
   (`artifacts/CNV-05/`).
 - Setup-key to group mapping matches the documented contract for all three keys
   (`artifacts/CNV-06/`).
-- Embedded DNS resolves `rs-jp-tyo-1.netbird.selfhosted` to its overlay address
+- Embedded DNS resolves `<host>.netbird.selfhosted` to its overlay address
   from inside the agent container (`artifacts/CNV-07/`).
 - The tenant value gate rejects an unknown setting locally, with one message per
   field (`artifacts/E2E-12/`).
