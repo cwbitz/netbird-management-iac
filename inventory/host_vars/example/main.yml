@@ -33,6 +33,12 @@ stack_dir: "/opt/netbird"
 # Skip the GeoLite2 download at startup (needs pkgs.netbird.io; set true on
 # air-gapped or slow-CDN hosts; disables geo-based posture checks).
 disable_geolite_update: false
+# Start-up waits: the server logs a started HTTP listener (the geolocation
+# databases download on first boot and can take minutes), then the public TLS
+# endpoint must answer. Raise the first one on a slow link, lower the second to
+# fail faster when ACME cannot issue.
+server_ready_retries: 120
+tls_wait_retries: 24
 # Extra management addresses trusted as a reverse proxy (external proxy
 # setups); Traefik is covered by traefik_ip. Example: ["203.0.113.20/32"].
 trusted_peers: []

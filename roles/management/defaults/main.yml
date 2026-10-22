@@ -6,6 +6,8 @@ disable_geolite_update: false
 trusted_peers: []
 service_admin_access_token_expire_days: 365
 stack_dir: "/opt/netbird"
+server_ready_retries: 120
+tls_wait_retries: 24
 owner_entry: >-
   {{ ((netbird_users | default([])) | selectattr('role', 'defined')
       | selectattr('role', 'equalto', 'owner')

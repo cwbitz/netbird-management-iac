@@ -46,6 +46,14 @@ operator_knob_schema:
     stack_dir is not defined or (stack_dir is string and
     stack_dir is match('^/[^\s]+$'))
   log_level: "log_level is not defined or (log_level | string) in [\"trace\", \"debug\", \"info\", \"warn\", \"error\"]"
+  server_ready_retries: >-
+    (server_ready_retries | default('', true) | string | trim) == ''
+    or ((server_ready_retries | string) is match('^[0-9]+$')
+    and (server_ready_retries | int) >= 1 and (server_ready_retries | int) <= 1000)
+  tls_wait_retries: >-
+    (tls_wait_retries | default('', true) | string | trim) == ''
+    or ((tls_wait_retries | string) is match('^[0-9]+$')
+    and (tls_wait_retries | int) >= 1 and (tls_wait_retries | int) <= 1000)
   disable_geolite_update: "disable_geolite_update is not defined or disable_geolite_update is boolean"
   trusted_peers: "trusted_peers is not defined or ((trusted_peers is sequence) and not (trusted_peers is string) and not (trusted_peers is mapping))"
   service_admin_access_token_expire_days: >-

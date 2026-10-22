@@ -36,7 +36,11 @@ make deploy      # deploy the server, apply the tenant state, then monitoring
 
 `make deploy` is the one-shot entry point: it runs `bootstrap.yml` (host init),
 then the server deploy, then the tenant apply, then `monitoring.yml` (host
-monitoring plus the overlay agent). It probes `iac → admin → root`, creates the `iac` automation account when needed, ensures Docker Engine + Compose
+monitoring plus the overlay agent). The server deploy waits for the process to
+log its HTTP listener (`server_ready_retries`, default 120 attempts) before it
+checks the public TLS endpoint (`tls_wait_retries`, default 24) — a fresh volume
+downloads the geolocation databases first, which can take several minutes on a
+slow link. It probes `iac → admin → root`, creates the `iac` automation account when needed, ensures Docker Engine + Compose
 v2, generates missing secrets into the encrypted `vault.yml`, renders
 `config.yaml` / `dashboard.env` / `docker-compose.yml` to `{{ stack_dir }}`
 (`/opt/netbird`), starts the stack, waits for TLS, then optionally creates the

@@ -111,6 +111,43 @@
     remove_orphans: true
   when: not ansible_check_mode
 
+- name: "[NetBird] Read the server container state"
+  tags: [netbird, netbird_deploy]
+  community.docker.docker_container_info:
+    name: netbird-server
+  register: netbird_container
+  failed_when: false
+  when: not ansible_check_mode
+
+- name: "[NetBird] Wait for the server process to start"
+  tags: [netbird, netbird_deploy]
+  ansible.builtin.command: >-
+    docker logs --since
+    {{ netbird_container.container.State.StartedAt | default('1970-01-01T00:00:00Z') }}
+    netbird-server
+  register: netbird_server_log
+  until: >-
+    (netbird_server_log.stdout ~ netbird_server_log.stderr)
+    is search('running HTTP server and gRPC server on the same port')
+  retries: "{{ server_ready_retries }}"
+  delay: 5
+  changed_when: false
+  failed_when: false
+  when: not ansible_check_mode
+
+- name: "[NetBird] Fail when the server never started"
+  tags: [netbird, netbird_deploy]
+  ansible.builtin.assert:
+    that:
+      - >-
+        (netbird_server_log.stdout ~ netbird_server_log.stderr)
+        is search('running HTTP server and gRPC server on the same port')
+    fail_msg: >-
+      netbird-server did not log a started HTTP server within
+      {{ server_ready_retries }} attempts. Last log lines:
+      {{ ((netbird_server_log.stdout_lines | default([])) + (netbird_server_log.stderr_lines | default([])))[-10:] | join(' | ') }}
+  when: not ansible_check_mode
+
 - name: "[NetBird] Wait for the server to answer over TLS"
   tags: [netbird, netbird_deploy]
   ansible.builtin.uri:
@@ -119,7 +156,7 @@
     status_code: 200
   register: ready
   until: ready is succeeded
-  retries: 24
+  retries: "{{ tls_wait_retries }}"
   delay: 5
   changed_when: false
   when: not ansible_check_mode
