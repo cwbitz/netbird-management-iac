@@ -8,7 +8,10 @@
 
 # --- SSH connection identities ------------------------------------------------
 # Account name and key paths are non-secret (passwords stay in vault.yml).
-# The optional human `admin` account may be renamed; `iac` is a fixed name.
+# The optional human `admin` account may be renamed; `iac` is a fixed name. It is
+# created only while create_admin_account is true (it always gets a password,
+# generated into vault.yml when empty, plus any configured key).
+create_admin_account: false
 host_admin_username: "admin"
 host_iac_ssh_pubkey_file: ""
 host_iac_ssh_privkey_file: ""
@@ -88,10 +91,7 @@ apt_mirror: ""
 # Docker Hub pull-through mirrors; e.g. ["https://mirror.gcr.io"] is the fastest
 # from an APAC/JP host (it also lifts Docker Hub's anonymous pull limit).
 docker_registry_mirrors: []
-# The optional human 'admin' account is created only when enabled here; it always
-# gets a password (generated into vault.yml when empty) plus any configured key.
 # Escape hatch: run the deploy as root instead of the service account.
-create_admin_account: false
 allow_root_login: false
 
 # ==============================================================================
