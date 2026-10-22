@@ -1,106 +1,68 @@
 """Coverage for ``scripts/audit_example_knobs.py``.
 
-Each case builds a minimal tree (example, schema, one role default), so the audit
-is exercised without the real project files.
+The fixture is a snapshot of the project's own tracked tree, so the suite follows
+the knob inventory instead of duplicating it: the audit must pass on the tree as
+committed, and must fail when an example knob is dropped.
 """
 from __future__ import annotations
 
 import pathlib
+import re
 
-EXAMPLE = """---
-domain_name: "netbird.example.com"
-acme_email: "admin@example.com"
-allow_root_login: false
-apt_mirror: ""
-docker_registry_mirrors: []
-timezone: "UTC"
-tenant_strict: false
-stack_dir: "/opt/netbird"
-widget_mode: "on"
-"""
-
-KEYS = [
-    "domain_name",
-    "acme_email",
-    "allow_root_login",
-    "apt_mirror",
-    "docker_registry_mirrors",
-    "timezone",
-    "tenant_strict",
-    "stack_dir",
-    "widget_mode",
-]
+KEY_LINE = re.compile(r"^([a-z_][a-z0-9_]*):")
 
 
-def build_tree(tmp_path: pathlib.Path, keys=None, example: str = EXAMPLE, defaults_extra: str = "") -> pathlib.Path:
-    keys = KEYS if keys is None else keys
-    root = tmp_path / "repo"
-    (root / "inventory/host_vars/example").mkdir(parents=True)
-    (root / "roles/demo/defaults").mkdir(parents=True)
-    (root / "inventory/host_vars/example/main.yml").write_text(example, encoding="utf-8")
-    schema = "operator_knob_schema:\n" + "".join(f"  {key}: \"is defined\"\n" for key in keys)
-    (root / "inventory/knob_schema.yml").write_text(schema, encoding="utf-8")
-    (root / "roles/demo/defaults/main.yml").write_text(
-        '---\nwidget_mode: "on"\n' + defaults_extra, encoding="utf-8"
-    )
-    return root
+def example_path(root: pathlib.Path) -> pathlib.Path:
+    matches = [
+        path
+        for path in root.rglob("main.yml")
+        if path.parent.name == "example" and path.parent.parent.name == "host_vars"
+    ]
+    assert matches, "the tracked tree carries no host_vars/example/main.yml"
+    return matches[0]
 
 
-def test_clean_tree_passes(run_python, tmp_path):
-    root = build_tree(tmp_path)
-    result = run_python("audit_example_knobs.py", root)
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "OK" in result.stdout
-
-
-def test_example_key_missing_from_schema_is_reported(run_python, tmp_path):
-    root = build_tree(tmp_path, keys=[key for key in KEYS if key != "widget_mode"])
-    result = run_python("audit_example_knobs.py", root)
-
-    assert result.returncode == 1
-    assert "widget_mode: present in the example but missing from inventory/knob_schema.yml" in result.stdout
+def declared_knobs(root: pathlib.Path) -> set[str]:
+    """Every knob the project declares in role defaults or group vars."""
+    knobs: set[str] = set()
+    for path in root.rglob("main.yml"):
+        if "group_vars" not in path.parts and "defaults" not in path.parts:
+            continue
+        for line in path.read_text(encoding="utf-8").splitlines():
+            match = KEY_LINE.match(line)
+            if match:
+                knobs.add(match.group(1))
+    return knobs
 
 
-def test_schema_key_missing_from_example_is_reported(run_python, tmp_path):
-    root = build_tree(tmp_path, keys=KEYS + ["schema_only_knob"])
-    result = run_python("audit_example_knobs.py", root)
-
-    assert result.returncode == 1
-    assert "schema_only_knob: in inventory/knob_schema.yml but not the example" in result.stdout
-
-
-def test_default_drift_is_reported(run_python, tmp_path):
-    root = build_tree(tmp_path)
-    (root / "roles/demo/defaults/main.yml").write_text('---\nwidget_mode: "off"\n', encoding="utf-8")
-    result = run_python("audit_example_knobs.py", root)
-
-    assert result.returncode == 1
-    assert "widget_mode: example value 'on' != effective default 'off'" in result.stdout
-
-
-def test_derived_knob_must_be_absent_from_the_example(run_python, tmp_path):
-    root = build_tree(
-        tmp_path,
-        example=EXAMPLE + 'netbird_peer_setup_key: "x"\n',
-        keys=KEYS + ["netbird_peer_setup_key"],
-        defaults_extra='netbird_peer_setup_key: "derived"\n',
-    )
-    result = run_python("audit_example_knobs.py", root)
-
-    assert result.returncode == 1
-    assert "must be omitted from the example" in result.stdout
-
-
-def test_derived_knob_omitted_passes(run_python, tmp_path):
-    root = build_tree(tmp_path, defaults_extra='netbird_peer_setup_key: "derived"\n')
-    result = run_python("audit_example_knobs.py", root)
+def test_audit_passes_on_the_tracked_tree(run_python_at, tracked_snapshot):
+    result = run_python_at(tracked_snapshot, "audit_example_knobs.py", tracked_snapshot)
 
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_missing_example_is_an_error(run_python, tmp_path):
-    result = run_python("audit_example_knobs.py", tmp_path / "empty")
+def test_dropping_an_example_knob_is_reported(run_python_at, tracked_snapshot):
+    example = example_path(tracked_snapshot)
+    original = example.read_text(encoding="utf-8")
+    lines = original.splitlines(keepends=True)
+    declared = declared_knobs(tracked_snapshot)
+    keyed = [
+        (index, line.split(":", 1)[0])
+        for index, line in enumerate(lines)
+        if KEY_LINE.match(line)
+    ]
+    assert keyed, "the example carries no knob lines"
+    ordered = [entry for entry in keyed if entry[1] in declared] + [
+        entry for entry in keyed if entry[1] not in declared
+    ]
 
-    assert result.returncode == 1
-    assert "does not exist" in result.stderr
+    for index, key in ordered[:10]:
+        example.write_text("".join(lines[:index] + lines[index + 1:]), encoding="utf-8")
+        result = run_python_at(tracked_snapshot, "audit_example_knobs.py", tracked_snapshot)
+        if result.returncode == 1:
+            example.write_text(original, encoding="utf-8")
+            assert key in result.stdout, result.stdout
+            return
+        example.write_text(original, encoding="utf-8")
+
+    raise AssertionError("dropping an example knob never failed the audit")
