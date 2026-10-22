@@ -43,6 +43,17 @@
       vars:
         ansible_become: false
 
+    - name: "[Restore] Require the datastore encryption key"
+      ansible.builtin.assert:
+        that:
+          - (vault_datastore_encryption_key | default('', true) | string | trim | length) > 0
+        fail_msg: >-
+          restore needs the key that encrypted the archived data, and
+          vault_datastore_encryption_key is empty in
+          inventory/host_vars/{{ inventory_hostname }}/vault.yml. Restore it from
+          the copy you kept with the backup; the key is not in the archive, and
+          without it the archived data cannot be read.
+
     - name: "[Restore] Replace the data volume and redeploy"
       block:
         - name: "[Restore] Stop the stack"
