@@ -59,3 +59,6 @@ mise.local.toml
 # Python bytecode caches (e.g. scripts/)
 __pycache__/
 *.py[cod]
+
+# pytest's per-run cache directory.
+.pytest_cache/

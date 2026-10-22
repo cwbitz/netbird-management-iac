@@ -9,3 +9,6 @@ ansible-core 2.19.11
 # ansible-lint runs the CI lint gate (`make lint`); pinned here so local and CI
 # use one version.
 pipx:ansible-lint 26.6.0
+
+# Unit tests for the control-node helpers (`make test`).
+pipx:pytest 9.1.1
