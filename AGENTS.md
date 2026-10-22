@@ -285,6 +285,67 @@ Shared by the `*-iac` repos; keep this chain statically resolvable so
   half-provisioned account (login OK, sudoers not yet written) must never be
   chosen, or the bootstrap can no longer repair that host.
 
+## Testing and verification
+
+Two layers, and only one of them is executable:
+
+- **Automated** — `make lint` (syntax check, ansible-lint, the knob schema, the
+  example audit, the host-key and repository-privacy checks, `gitleaks`) and
+  `make test` (the helper suite under `tests/`). Both run in CI on every change.
+- **Manual** — the cases that need a disposable host, a throwaway domain and
+  destructive steps. They are a checklist in `docs/RUNBOOK.md` §11 and are re-run
+  when a role, the bootstrap or the backup path changes. They are not automated:
+  `tests/` covers the helpers, not a live SSH session.
+
+### Environment and safety boundaries
+
+- **Live hosts are read-only.** Inspect them with `make print`, `make vault-view`,
+  `docker inspect`, `systemctl status` and external probes. No deploy, bootstrap,
+  backup, restore, firewall or SSH-hardening run targets a live host.
+- **Every state-changing or destructive case runs on a disposable Debian-family
+  host** (systemd, Docker Engine with Compose v2, nftables, sshd) that can be
+  rebuilt from scratch.
+- **Isolate the test environment**: its own inventory (never the real
+  `inventory/hosts.yml`), its own vault password file, its own domain and DNS
+  record. Reusing a live domain breaks ACME validation and the STUN contract.
+- **Ask before creating resources** — hosts, domains, DNS records — and before
+  anything that costs money or touches a system outside the test host.
+- **Order of work**: read-only checks first, then state-changing cases, then
+  destructive ones; snapshot or back up before every destructive step.
+- **Never print, paste or commit secrets.** Redact evidence before quoting it; a
+  secret in a log or a report is itself a defect to record.
+
+### Execution rules
+
+- Write the expected result before running a case; never backfill it.
+- Cases are independently runnable; declare prerequisites where order matters.
+- A defect gets a reproducing case before anything else happens.
+- Separate product defects from environment failures, and state the evidence for
+  that call.
+- Skip only with a recorded reason; never count an unexecuted case as a pass.
+- No change to the product to make a case pass; no drive-by fixes.
+
+### Recording and defects
+
+- Keep raw logs, `-vvv` output, `docker inspect`, `systemctl status` and probe
+  responses under `/tmp/opencode/test-run-<UTC stamp>/artifacts/<case>/`; never
+  store a decrypted vault, and redact before quoting.
+- Severity: `blocker` (data loss, outage, security), `major` (feature unusable, or
+  docs contradict behaviour), `minor`, `nit`. Each entry carries a minimal
+  reproduction, expected vs actual, impact, evidence path and a suggested fix;
+  merge entries that share a root cause.
+
+### Definition of done
+
+- `make lint` and `make test` green;
+- the manual checklist passes on the disposable host, and a second run at the
+  same desired state reports `changed=0` outside the documented non-idempotent
+  steps;
+- every destructive path fails safely with an actionable message;
+- no unexplained high-severity security finding;
+- every conclusion points at evidence, and every unexecuted check names the
+  reason and what would unblock it.
+
 ## Scope
 
 - **In scope**: self-hosted server + dashboard + built-in Traefik, embedded Dex
@@ -315,9 +376,6 @@ Shared by the `*-iac` repos; keep this chain statically resolvable so
 - `docs/components/data-and-volumes.md` — volumes, encryption keys, backup.
 - `docs/components/tenant-config.md` — tenant config-as-code + collection gotchas.
 - `docs/components/roles.md` — playbooks/roles layout, platform, image baseline.
-- `docs/RUNBOOK.md` — operational procedures.
+- `docs/RUNBOOK.md` — operational procedures, including §11 the manual
+  verification checklist for a disposable host.
 - `docs/IDP.md` — external identity providers.
-- `docs/testing/plan.md` — test levels, environment boundaries, evidence and
-  defect rules.
-- `docs/testing/matrix.md` — the case matrix with IDs, commands and expected
-  results.

@@ -312,3 +312,98 @@ ssh <host> 'cd /opt/netbird && docker compose ps'
 - The vault password file is required to decrypt any vault.
 - Keep a copy of `vault.yml` (which holds the datastore key) off-host,
   separate from data backups.
+
+## 11. Manual verification on a disposable host
+
+The cases `tests/` cannot cover. Run them on a throwaway host with a throwaway
+domain (never a live one): read-only checks first, destructive ones last, and keep
+evidence under `/tmp/opencode/test-run-<stamp>/artifacts/<case>/`, redacted. The
+expected result is the contract — a deviation is a defect to record, not a reason
+to skip.
+
+### Render, proxy, monitoring and security roles
+
+- [ ] Re-run the `management` role: `changed=0`, both containers healthy.
+- [ ] Hand-edit `/opt/netbird/config.yaml`, re-run: the file is restored (rendering
+      is the source of truth).
+- [ ] `exposed_port: 8443`: compose publishes `8443:443`, `config.yaml` advertises
+      it, the firewall allows it.
+- [ ] A moved `stack_dir`: deploy and restore both use it; the project name stays
+      pinned.
+- [ ] Unset `vault_endpoint_setup_key` and run `make monitoring`: fails before
+      starting the container and names the variable.
+- [ ] `make monitoring` with a key: the peer joins `endpoint` with no routes; the
+      exporter listens on the overlay only (`ss -lntp`, plus a probe from off-host);
+      both CrowdSec units are active and the bouncer is loaded.
+- [ ] `alloy_enabled: true` with a reachable `loki_push_url`: SSH journal events
+      arrive; an unreachable Loki is a warning, not a failure.
+- [ ] `firewall_enabled: true`: only 80/TCP, 443/TCP and 3478/UDP (plus SSH and
+      WireGuard) are open; the rule set is identical on a re-run.
+- [ ] `sshd_hardening_enabled: true` without a keyed login: refuses before writing;
+      break the verification on purpose and the config rolls back.
+- [ ] Each `sshd_permit_root_login` value matches `sshd -T`.
+- [ ] Run each role with an empty and then a pre-filled vault: missing secrets are
+      generated once, non-empty values are never rotated, the file stays encrypted
+      and `-vvv` shows no value.
+
+### End-to-end
+
+- [ ] `make dry-run` on a fresh host exits 0; a placeholder `ansible_host` is
+      refused with `make host-init` named.
+- [ ] `make host-bootstrap`: `iac` created with passwordless sudo and the configured
+      keys; a second run changes nothing.
+- [ ] `make deploy`: server, dashboard and proxy up; 80/443 and 3478 reachable, the
+      certificate valid for the throwaway domain, dashboard 200, API 401, relay
+      WebSocket answered.
+- [ ] A second `make deploy`: `changed=0` outside the documented non-idempotent
+      steps.
+- [ ] `make plan` writes nothing; `make apply` converges and a second apply is
+      empty; an expired token stops with the Dashboard recovery steps; an invalid
+      value fails locally before any API call.
+- [ ] `make backup` leaves the container running; `make restore FROM=...` with the
+      same datastore key restores the data and keeps the external contract intact.
+- [ ] `make vault-view` / `make vault-edit`: per-host decrypt, edits stay encrypted
+      and sorted.
+- [ ] `make host-init HOST=<name> HOST_IP=<addr>`: comment-free scaffold, encrypted
+      vault, idempotent; `FORCE=1` replaces the address.
+- [ ] `make hostkey-init`: refreshes the entries; a changed key is refused with its
+      fingerprint and the `FORCE=1` hint; one unreachable host leaves the file
+      intact.
+
+### Negative and destructive
+
+- [ ] Backup with a forced archive failure: the container ends up running and the
+      error names the failed step.
+- [ ] Restore from a truncated archive: fails before stopping the stack, data
+      untouched.
+- [ ] Restore with a missing or mismatched datastore key: fails with the recovery
+      instructions before touching data.
+- [ ] A plaintext `vault.yml`: the next write re-encrypts it.
+- [ ] An interrupted backup/restore: the stack ends up running and no half-written
+      archive is treated as valid.
+- [ ] Kill the agent and exporter containers: they come back on their own; after a
+      reboot the overlay binds before the exporter starts.
+
+### Security surface
+
+- [ ] `git ls-files` shows only `example/` under `inventory/host_vars`; `make lint`
+      (gitleaks plus the privacy check) is green.
+- [ ] The vault on disk is `0600` and encrypted.
+- [ ] sudoers: `iac` passwordless, `admin` password sudo, no stray entries.
+- [ ] `sshd -T`: password login off after hardening, keyed login works.
+- [ ] A `-vvv` run of the secret-bearing playbooks shows no vault value.
+- [ ] `docker inspect`: read-only Docker socket, no unnecessary published ports or
+      capabilities.
+- [ ] No exporter listens on a public or loopback address.
+
+### Convergence and contracts
+
+- [ ] Disable `monitoring_enabled`, then a single component: the units stop and are
+      disabled, the Alloy stack is removed, packages are kept; re-enabling restores
+      it without reinstalling.
+- [ ] A component whose package was never installed is skipped, not failed.
+- [ ] `GET /api/peers` returns stable `ip`, `dns_label` and `groups`; the three
+      setup keys map to the documented groups; embedded DNS resolves a peer name
+      from inside the overlay.
+- [ ] `AGENTS.md`, `docs/components/` and this runbook match observed behaviour; a
+      contradiction is recorded as a defect.
