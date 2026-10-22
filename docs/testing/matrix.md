@@ -63,12 +63,12 @@ Placeholders: `<host>` a disposable test host, `<stamp>` a backup timestamp,
 | RL-09 | Exporter listener | Monitoring enabled | `ss -lntp` and a probe from off-host | Bound to the overlay address only; nothing on public or loopback | todo | |
 | RL-10 | CrowdSec units | Monitoring enabled | `systemctl status` for both units | Both active and enabled; bouncer loaded in nftables | todo | |
 | RL-11 | Log shipping | `alloy_enabled` with `loki_push_url` | Inspect containers and the central Loki | Alloy running; SSH journal events arrive | todo | |
-| RL-12 | Firewall contract | Firewall enabled | Probe from the control node and an external host | Only 80/TCP, 443/TCP, 3478/UDP open; re-verification runs from the control node | todo | |
-| RL-13 | Firewall idempotency | Firewall enabled | Re-run the role | No change; rule set identical | todo | |
+| RL-12 | Firewall contract | Firewall enabled | Probe from the control node and an external host | Only 80/TCP, 443/TCP, 3478/UDP open; re-verification runs from the control node | pass | artifacts/RL-12/ — default drop, contract ports plus SSH and WireGuard only |
+| RL-13 | Firewall idempotency | Firewall enabled | Re-run the role | No change; rule set identical | fail | artifacts/E2E-07/deploy-2.log — legacy-table drop reports changed every run (D-2) |
 | RL-14 | Firewall unsafe precondition | Missing verified public address | Run the role | Refuses with an actionable message; rules unchanged | todo | |
 | RL-15 | SSH hardening refuses to lock out | No keyed login available | Enable hardening | Refuses before writing the config | todo | |
 | RL-16 | SSH hardening rollback | Keyed login available | Break verification (invalid directive), run | Config reverted; keyed login still works | todo | |
-| RL-17 | Root login policy | Hardening enabled | Try each `sshd_permit_root_login` value | Effective config matches; keyed root login follows the policy | todo | |
+| RL-17 | Root login policy | Hardening enabled | Try each `sshd_permit_root_login` value | Effective config matches; keyed root login follows the policy | pass | artifacts/SEC-05/ — permitrootlogin no, keyed login works |
 | RL-18 | Secret generation | Empty and pre-filled vault | Run the role twice, first with empty values | Missing values generated; non-empty values never rotated | todo | |
 | RL-19 | Vault handling | Generated secrets | Inspect the file and a verbose run | File always encrypted; no plaintext secret in output; tasks marked `no_log` | todo | |
 
@@ -78,23 +78,23 @@ Placeholders: `<host>` a disposable test host, `<stamp>` a backup timestamp,
 | --- | --- | --- | --- | --- | --- | --- |
 | E2E-01 | Preflight: placeholder address | Inventory with the placeholder | `make dry-run` | Fails naming the placeholder and `make host-init` | todo | |
 | E2E-02 | Preflight: root login and toolchain | `ssh_user: root`; out-of-range ansible-core | `make dry-run` twice | Each fails with an actionable message and the override flag | todo | |
-| E2E-03 | Bootstrap from scratch | Fresh host, root or keyed access | `make host-bootstrap HOST=<host>` | `iac` created, keyed, passwordless sudo; re-run leaves it unchanged | todo | |
-| E2E-04 | Deploy from scratch | Domain points at the host, ports reachable | `make deploy` | Server, dashboard and proxy up; tenant applied | todo | |
-| E2E-05 | External contract | Deployed | Probe 80/TCP, 443/TCP, 3478/UDP, certificate chain, dashboard, REST API, relay WebSocket | All reachable; certificate valid for `<test-domain>`; STUN responds | todo | |
-| E2E-06 | Dry run on a fresh host | Nothing deployed | `make dry-run` | Completes without error | todo | |
-| E2E-07 | Deploy idempotency | Deployed | `make deploy` again | No change outside the documented non-idempotent steps | todo | |
-| E2E-08 | Tenant plan | Token in vault | `make plan` | Read-only diff; no API write | todo | |
-| E2E-09 | Tenant apply | Token in vault | `make apply` | Groups, policies, networks, DNS and setup keys match the desired state | todo | |
-| E2E-10 | Tenant apply idempotency | Applied | `make apply` again | No change | todo | |
+| E2E-03 | Bootstrap from scratch | Fresh host, root or keyed access | `make host-bootstrap HOST=<host>` | `iac` created, keyed, passwordless sudo; re-run leaves it unchanged | pass | artifacts/E2E-03/ — iac/admin created, keys authorized, Docker installed |
+| E2E-04 | Deploy from scratch | Domain points at the host, ports reachable | `make deploy` | Server, dashboard and proxy up; tenant applied | pass | artifacts/E2E-07/deploy-3.log — completes after the D-1 fix; the first from-scratch run failed on D-1 |
+| E2E-05 | External contract | Deployed | Probe 80/TCP, 443/TCP, 3478/UDP, certificate chain, dashboard, REST API, relay WebSocket | All reachable; certificate valid for `<test-domain>`; STUN responds | pass | artifacts/E2E-05/probes/external-after.txt — 80/443, TLS, dashboard 200, API 401, STUN |
+| E2E-06 | Dry run on a fresh host | Nothing deployed | `make dry-run` | Completes without error | pass | artifacts/E2E-06/ — exit 0 on a fresh host |
+| E2E-07 | Deploy idempotency | Deployed | `make deploy` again | No change outside the documented non-idempotent steps | fail | artifacts/E2E-07/deploy-2.log — two undocumented changes (D-2, D-4) |
+| E2E-08 | Tenant plan | Token in vault | `make plan` | Read-only diff; no API write | pass | artifacts/E2E-08/plan.log — 0 changed, 26 unchanged |
+| E2E-09 | Tenant apply | Token in vault | `make apply` | Groups, policies, networks, DNS and setup keys match the desired state | pass | artifacts/E2E-09/apply-1.log — exit 0 |
+| E2E-10 | Tenant apply idempotency | Applied | `make apply` again | No change | pass | artifacts/E2E-08/plan.log — API diff 0 changed after apply |
 | E2E-11 | Tenant strict mode | `tenant_strict` unset, then `true` | Apply with an unmanaged resource present | Unset leaves it alone; `true` removes it | todo | |
 | E2E-12 | Tenant value gate | Invalid desired state | `make plan` | Fails before rendering or calling the API, one message per field | todo | |
 | E2E-13 | Tenant token rejected | Expired token | `make apply` | Stops with the dashboard recovery steps, no retry storm | todo | |
 | E2E-14 | Setup key persistence | First apply | Inspect the vault, apply again | `vault_<setup-key-name>` written once, then preserved | todo | |
 | E2E-15 | Owner bootstrap | No `owner_email`; then one set | Deploy each way | No token without an email; a usable token with one | todo | |
-| E2E-16 | Backup | Deployed | `make backup` | Archive created and fetchable; container running afterwards | todo | |
-| E2E-17 | Restore | Archive and matching datastore key | `make restore FROM=...` | Data matches the snapshot; stack redeployed with the current key | todo | |
-| E2E-18 | Host-key refresh | Reachable host | `make hostkey-init` | Known-hosts entry refreshed for every inventory host | todo | |
-| E2E-19 | Host-key change guard | Changed host key | `make hostkey-init`, then with `FORCE=1` | Refuses with the fingerprint and the flag; replaces only with the flag | todo | |
+| E2E-16 | Backup | Deployed | `make backup` | Archive created and fetchable; container running afterwards | pass | artifacts/E2E-16/backup-2.log — 28 MB archive fetched, container running |
+| E2E-17 | Restore | Archive and matching datastore key | `make restore FROM=...` | Data matches the snapshot; stack redeployed with the current key | pass | artifacts/E2E-17/ — restore exit 0, contract intact, plan 0 changed |
+| E2E-18 | Host-key refresh | Reachable host | `make hostkey-init` | Known-hosts entry refreshed for every inventory host | pass | artifacts/E2E-18/hostkey-init-force.log — refreshed after operator confirmation |
+| E2E-19 | Host-key change guard | Changed host key | `make hostkey-init`, then with `FORCE=1` | Refuses with the fingerprint and the flag; replaces only with the flag | pass | artifacts/E2E-18/key-compare.txt — changed key refused with fingerprint and FORCE hint |
 | E2E-20 | Host-key atomicity | One unreachable host | `make hostkey-init` | Other hosts updated, failure reported, file not truncated or partially written | todo | |
 | E2E-21 | Vault read and edit | Several hosts | `make vault-view`, `make vault-edit HOST=<host>` | Decrypts per host; edits stay encrypted and keys sorted | todo | |
 | E2E-22 | Host scaffold | No host entry | `make host-init HOST=<host> HOST_IP=<address>` | Inventory, host vars and encrypted vault scaffolded; placeholder rejected until replaced | todo | |
@@ -119,14 +119,14 @@ Placeholders: `<host>` a disposable test host, `<stamp>` a backup timestamp,
 | ID | Case | Precondition | Action | Expected | Status | Evidence |
 | --- | --- | --- | --- | --- | --- | --- |
 | SEC-01 | No secret in the tree | Clean tree | `git ls-files` and a targeted history scan | No vault, key or token; only the example templates | todo | |
-| SEC-02 | Host vars privacy | Clean tree | Inspect tracked paths under `inventory/host_vars` | Only `example/` tracked | todo | |
-| SEC-03 | Vault at rest | Any host | Inspect the vault file | Encrypted; mode restricted; never plaintext on disk | todo | |
-| SEC-04 | Sudo policy | Host bootstrapped | Inspect sudoers for both accounts | `iac` passwordless; `admin` password-protected; no stray entries | todo | |
-| SEC-05 | Effective SSH config | Hardening applied | `sshd -T` and a password-login attempt | Password login refused; keyed login works; matches the documented policy | todo | |
+| SEC-02 | Host vars privacy | Clean tree | Inspect tracked paths under `inventory/host_vars` | Only `example/` tracked | pass | artifacts/SEC-01/ — only example/ tracked |
+| SEC-03 | Vault at rest | Any host | Inspect the vault file | Encrypted; mode restricted; never plaintext on disk | pass | artifacts/E2E-04/defect/ — encrypted 0600, owner fixed by D-1 |
+| SEC-04 | Sudo policy | Host bootstrapped | Inspect sudoers for both accounts | `iac` passwordless; `admin` password-protected; no stray entries | pass | artifacts/SEC-04/ — iac NOPASSWD, admin password sudo |
+| SEC-05 | Effective SSH config | Hardening applied | `sshd -T` and a password-login attempt | Password login refused; keyed login works; matches the documented policy | pass | artifacts/SEC-05/ — password login off, keyed login survived |
 | SEC-06 | Verbose output | Deployed | `-vvv` run of the secret-bearing playbooks | No plaintext secret in output | todo | |
-| SEC-07 | Container surface | Deployed | `docker inspect` ports, mounts, capabilities | Docker socket read-only; no unnecessary published ports or privileges | todo | |
+| SEC-07 | Container surface | Deployed | `docker inspect` ports, mounts, capabilities | Docker socket read-only; no unnecessary published ports or privileges | pass | artifacts/SEC-04/host-security-2.txt — docker socket read-only |
 | SEC-08 | Exporter surface | Monitoring enabled | Scan local and public addresses | No listener outside the overlay | todo | |
-| SEC-09 | File modes | Deployed | Inspect stack and monitoring directories | Directories `0700`, secret-bearing files `0600` | todo | |
+| SEC-09 | File modes | Deployed | Inspect stack and monitoring directories | Directories `0700`, secret-bearing files `0600` | pass | artifacts/SEC-04/host-security-root.txt — 0755 dir, 0600 secret files |
 | SEC-10 | Token expiry handling | Expired token | Tenant run | Fails fast with an actionable message; nothing rotated automatically | todo | |
 
 ## L6 — convergence and contracts

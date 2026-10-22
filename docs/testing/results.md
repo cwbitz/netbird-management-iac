@@ -93,3 +93,93 @@ No product defect. Four observations:
 
 L2–L6 (roles, end-to-end, destructive, security, convergence) need the
 disposable host and are not part of this run.
+
+## Host run 2026-10-22 (L2–L6, partial)
+
+Ran against `rs-jp-tyo-1` after the operator confirmed a rebuild. Access was
+restored with `make hostkey-init FORCE=1`, then bootstrap, deploy, plan, apply and
+backup. The run stopped at the backup step because of a blocking defect; the
+destructive cases need the fix first.
+
+### What the deploy reached
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Bootstrap on a rebuilt host | `iac` and `admin` created, keys authorized, Docker installed | `artifacts/E2E-03/` |
+| `make dry-run` on a fresh host | exit 0 | `artifacts/E2E-06/` |
+| First `make deploy` | server, TLS, owner bootstrap, firewall and SSH hardening converged; the tenant step failed on a permission error | `artifacts/E2E-04/deploy-1.log` |
+| Second `make deploy` | exit 0, tenant applied | `artifacts/E2E-07/deploy-2.log` |
+| External contract | 80/443 open, TLS 1.3 certificate valid to 2027-01-20, dashboard 200, API 401 unauthenticated, STUN binding answered | `artifacts/E2E-05/probes/external-after.txt` |
+| `make plan` | 0 changed, 26 unchanged resources | `artifacts/E2E-08/plan.log` |
+| `make apply` | exit 0 | `artifacts/E2E-09/apply-1.log` |
+| `make backup` | **failed** in the fetch step; the server container was restarted by the `always:` block | `artifacts/E2E-16/backup.log` |
+| Firewall contract | default drop; only 47616/tcp, 80/tcp, 443/tcp, 3478/udp, 51820/udp and the overlay are allowed | `artifacts/RL-12/` |
+| SSH hardening | `permitrootlogin no`, password login off, keyed login survived the run | `artifacts/SEC-05/` |
+| Sudo policy | `iac` NOPASSWD, `admin` password sudo | `artifacts/SEC-04/` |
+| Rendered file modes | `/opt/netbird` 0755, `config.yaml` and `dashboard.env` 0600 | `artifacts/SEC-04/host-security-root.txt` |
+| Docker socket | mounted read-only | `artifacts/SEC-04/host-security-2.txt` |
+
+### Defects
+
+**D-1 — fixed, blocker: control-node-local tasks escalated to root.**
+
+`ansible_become` is a connection variable and wins over the `become: false`
+keyword, so every delegated-to-localhost task inside a become-enabled play ran as
+root. Consequences in one deploy:
+
+- the encrypted vault was rewritten as `root:root 0600`, and the following
+  `tenant.yml` step (which reads it as the operator) failed with
+  `Permission denied`;
+- `backup.yml` created `backup/<host>/<stamp>/` as root, so `fetch` (which always
+  writes as the controller user) failed (D-3).
+
+Fix: every control-node-local task now also sets `vars: ansible_become: false`
+(helpers vault read/write/store, dispatch and generation, control-node
+prerequisites, the firewall's local verification, and the local tasks of
+`site.yml`, `bootstrap.yml`, `host_keys.yml`, `ssh_agent_load.yml`,
+`backup.yml`, `restore.yml`). Minimal reproduction and the post-fix result:
+`artifacts/E2E-04/defect/` — same play, now an `ubuntu`-owned file.
+
+Verified after the fix: `make deploy` completes with the vault staying
+`ubuntu:ubuntu 0600` (`artifacts/E2E-07/deploy-3.log`), and `make backup`
+succeeds.
+
+**D-2 — open, minor: the firewall legacy-table cleanup always reports changed.**
+
+`roles/firewall/tasks/main.yml` drops `firewall_legacy_tables` with
+`changed_when: true` and `failed_when: false`, so a converged host reports one
+change per run. Evidence: `artifacts/E2E-07/deploy-2.log`.
+
+**D-3 — fixed, blocker: `make backup` could not fetch the archive.**
+
+Same cause as D-1. After the fix the archive is fetched to
+`backup/<host>/<stamp>/` (28 MB, 6 entries, `ubuntu:ubuntu`) and the container is
+running: `artifacts/E2E-16/backup-2.log`.
+
+**D-4 — open, minor: the bootstrap probe always reports changed.**
+
+`[Probe] Register the probed identity on the target host` reports `changed` on
+every run, so bootstrap is never fully idempotent. Evidence:
+`artifacts/E2E-07/deploy-2.log`.
+
+### Backup and restore
+
+`make backup` → `backup/rs-jp-tyo-1/20261022T140955/` (28 MB, 6 entries), server
+container running afterwards. `make restore FROM=...` exited 0 and the stack was
+redeployed with the current vault key. After the restore the external contract is
+intact (80/443 open, TLS 1.3, dashboard 200, API 401 unauthenticated, STUN
+answered), `make plan` reports 0 changed / 26 unchanged, and the vault is still
+`ubuntu:ubuntu 0600`. Evidence: `artifacts/E2E-17/`.
+
+### Idempotency reading
+
+The second and third `make deploy` runs report `changed=1` for the site play (D-2)
+and six changes for the tenant play, all local temporary files that are deleted
+and re-rendered at the start of every run; the API diff in `make plan` is 0
+changed. The server converges; the `changed` counter does not (D-2, D-4).
+
+### Still open
+
+Monitoring convergence, the negative cases (backup failure injection, corrupt
+archive, missing datastore key, killed container, plaintext vault), the peer/DNS
+contract checks and the remaining security checks in L5.
