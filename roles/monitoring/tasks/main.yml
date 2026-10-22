@@ -68,20 +68,18 @@
     - alloy_enabled | bool
     - not ansible_check_mode
 
-- name: "[Monitoring] Fail when the central Loki is unreachable"
-  ansible.builtin.assert:
-    that:
-      - (monitoring_loki_probe.status | default(-1)) in [200, 503]
-    fail_msg: >-
-      {{ loki_push_url }} did not answer from this host ({{ monitoring_loki_probe.msg | default('no response') }}).
-      A re-enrolled central stack changes its overlay address, so prefer
-      loki_push_url with the central peer's NetBird name
-      ("http://<peer>.netbird.selfhosted:3100", resolved by the container through
-      the agent's DNS); an IP literal must be updated there
-      (`ip -4 -o addr show wt0`).
+- name: "[Monitoring] Warn when the central Loki is unreachable"
+  ansible.builtin.debug:
+    msg: >-
+      WARNING: {{ loki_push_url }} did not answer from this host
+      ({{ monitoring_loki_probe.msg | default('no response') }}). The Alloy stack
+      is still deployed and starts shipping once the central peer is reachable;
+      prefer the central peer's NetBird name over an IP literal, and re-run this
+      play after that peer re-enrols.
   when:
     - alloy_enabled | bool
     - not ansible_check_mode
+    - (monitoring_loki_probe.status | default(-1)) not in [200, 503]
 
 - name: "[Monitoring] Render the Alloy configuration"
   ansible.builtin.template:

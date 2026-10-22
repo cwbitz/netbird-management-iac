@@ -163,6 +163,11 @@ alloy_enabled: true                            # ship host logs to a central Lok
 loki_push_url: "http://<central-peer>.netbird.selfhosted:3100"   # or "<overlay-ip>:3100"
 ```
 
+When `alloy_enabled` is set and the central Loki does not answer from the host
+(the peer has not enrolled yet after a rebuild, for example), the run prints a
+warning and still deploys the Alloy stack; it starts shipping as soon as the
+central peer is reachable.
+
 The toggles converge **off** as well as on: setting `monitoring_enabled: false`,
 `node_exporter_enabled: false`, `crowdsec_enabled: false` or
 `alloy_enabled: false` stops and disables the matching units (node_exporter;
