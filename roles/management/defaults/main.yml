@@ -6,3 +6,9 @@ disable_geolite_update: false
 trusted_peers: []
 service_admin_access_token_expire_days: 365
 stack_dir: "/opt/netbird"
+owner_entry: >-
+  {{ ((netbird_users | default([])) | selectattr('role', 'defined')
+      | selectattr('role', 'equalto', 'owner')
+      | rejectattr('state', 'equalto', 'absent') | list | first) | default({}, true) }}
+owner_email: "{{ owner_entry.email | default('', true) }}"
+owner_name: "{{ owner_entry.name | default('', true) }}"

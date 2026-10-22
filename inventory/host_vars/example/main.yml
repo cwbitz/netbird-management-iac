@@ -23,13 +23,6 @@ host_root_ssh_privkey_file: ""
 domain_name: "netbird.example.com"
 acme_email: "admin@example.com"
 
-# --- Optional first-owner bootstrap ------------------------------------------
-# Set owner_email to create the first owner via /api/setup (this also provisions
-# the tenant PAT into vault.yml); leave it empty to onboard manually at
-# https://<domain>/setup. An empty owner_password is generated into vault.yml.
-owner_email: ""
-owner_name: ""
-
 # --- Server -------------------------------------------------------------------
 # The advertised HTTPS port, STUN/TURN port and log level. The firewall follows
 # these two ports; the scheme is always https (Traefik + ACME).
@@ -200,8 +193,8 @@ netbird_service_domains: []
 # sensitive emails in vault.yml. IdP-driven provisioning (SCIM/IdP sync) is
 # Enterprise; manual users are Community.
 netbird_users: []
-#   - email: "alice@example.com"
-#     name: "Alice"
+#   - email: "owner@example.com"
+#     name: "Owner"
 #     role: "user"            # owner | admin | user | network_admin | auditor
 #     auto_groups: ["personal"]
 #     state: present

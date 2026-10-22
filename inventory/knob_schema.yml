@@ -36,8 +36,6 @@ operator_knob_schema:
   acme_email: >-
     ((acme_email | default('', true) | string | trim) == '' or (acme_email | string) is match('^[^@\s]+@[^@\s]+\.[^@\s]+$')) and (acme_email
     is defined) and ((acme_email | default('', true) | string | trim | length) > 0)
-  owner_email: "(owner_email | default('', true) | string | trim) == '' or (owner_email | string) is match('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')"
-  owner_name: "owner_name is not defined or owner_name is string or owner_name is number"
   exposed_port: >-
     (exposed_port | default('', true) | string | trim) == '' or (((exposed_port | string) is match('^[0-9]+(-[0-9]+)?$')) and ((exposed_port |
     string | regex_replace('-[0-9]+$', '') | int) >= 1) and ((exposed_port | string | regex_replace('^[0-9]+-', '') | int) <= 65535))

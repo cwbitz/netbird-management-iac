@@ -48,11 +48,11 @@ INTERNAL = {
     "network_name", "network_subnet", "network_gateway", "traefik_ip",
 }
 VAULT_BOUND: set[str] = set()
-DERIVED = {"apt_security_mirror", "netbird_peer_setup_key"}
+DERIVED = {"apt_security_mirror", "netbird_peer_setup_key", "owner_entry", "owner_email", "owner_name"}
 EXTRA = {
     "stack_dir",
     "apt_mirror", "docker_registry_mirrors", "allow_root_login",
-    "domain_name", "acme_email", "owner_email", "owner_name",
+    "domain_name", "acme_email",
     "tenant_strict",
 }
 

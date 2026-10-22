@@ -10,8 +10,6 @@ import pathlib
 EXAMPLE = """---
 domain_name: "netbird.example.com"
 acme_email: "admin@example.com"
-owner_email: ""
-owner_name: ""
 allow_root_login: false
 apt_mirror: ""
 docker_registry_mirrors: []
@@ -23,8 +21,6 @@ widget_mode: "on"
 KEYS = [
     "domain_name",
     "acme_email",
-    "owner_email",
-    "owner_name",
     "allow_root_login",
     "apt_mirror",
     "docker_registry_mirrors",

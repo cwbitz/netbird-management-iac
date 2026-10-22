@@ -64,11 +64,12 @@ GeoLite2 DBs from `pkgs.netbird.io`. If the readiness wait times out, re-run
 
 ## 2. First owner and access token
 
-- With `owner_email` set in `main.yml`, the first owner is created automatically
-  via `/api/setup` (works only while the instance has no accounts). The same run
+- With an entry for the owner in `netbird_users` (`role: owner`, the single
+  definition of the owner identity), the first owner is created automatically via
+  `/api/setup` (works only while the instance has no accounts). The same run
   creates an `admin` service user and its PAT, stored as
   `vault_service_admin_access_token`.
-- Without an email, open `https://<domain>/setup` and create the owner; then
+- Without such an entry, open `https://<domain>/setup` and create the owner; then
   create an `admin` service user and an Access Token (Team → Service Users) and
   set `vault_service_admin_access_token` in `vault.yml`.
 - PATs expire (max 365 days). When a tenant run reports the token rejected,
@@ -76,7 +77,8 @@ GeoLite2 DBs from `pkgs.netbird.io`. If the readiness wait times out, re-run
 - **Host reinstalled/reimaged**: the host-returned secrets in `vault.yml` are stale
   (they existed only on the old server). Move the file aside — or delete it — and
   redeploy: a missing file is regenerated (a fresh PAT via the first-owner
-  bootstrap when `owner_email` is set; new setup keys via `make apply`).
+  bootstrap when an owner entry exists in `netbird_users`; new setup keys via
+  `make apply`).
   Leaving a stale non-empty value there keeps the invalid token and every tenant
   run fails with "token rejected".
 
