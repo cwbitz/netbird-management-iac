@@ -16,7 +16,8 @@ Everything the project ships:
   `host_keys`, `ssh_agent_load`, `validate_knobs`;
 - roles — `management`, `monitoring`, `agent`, `firewall`, `sshd`, `helpers`;
 - helpers — `scripts/audit_example_knobs.py`, `check_host_keys.py`,
-  `ensure_inventory_host.py`, `render_clean_template.py`, `sort_vault_keys.py`,
+  `check_repo_privacy.py`, `ensure_inventory_host.py`,
+  `render_clean_template.py`, `sort_vault_keys.py`,
   `validate_tenant_config.py`, `retry-transient.sh`, `run-with-ssh-agent.sh`;
 - the Makefile interface, the vault lifecycle, and the contracts documented in
   `AGENTS.md` and `docs/components/`.
@@ -47,8 +48,8 @@ Everything the project ships:
 The gate every change must pass, deterministic and offline:
 
 - `make lint` — knob validation play, `--syntax-check` on every playbook,
-  ansible-lint, the example-knob audit, the host-key check, and the
-  `inventory/host_vars` privacy guard;
+  ansible-lint, the example-knob audit, the host-key check, the repository
+  privacy check and the `gitleaks` tree scan;
 - `yamllint` (config committed, not wired into `make lint`);
 - `shellcheck scripts/*.sh`;
 - `python3 -m compileall scripts`;
@@ -74,6 +75,8 @@ Cover at minimum:
   the derived/wiring whitelists;
 - `check_host_keys.py` — `known_hosts` parsing, `[host]:port` form, changed-key
   detection, exit codes;
+- `check_repo_privacy.py` — protected trees and credential files, allowlisted
+  versus live addresses, mailboxes and inventory host names;
 - `retry-transient.sh` — retry until the limit, immediate exit on a permanent
   error, exit-code passthrough;
 - `run-with-ssh-agent.sh` — behaviour without an agent, and the single retry on

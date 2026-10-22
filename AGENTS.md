@@ -165,9 +165,12 @@ this project's vars/vault. Rules:
   (so a fresh/rebuilt host gets its service account before `site.yml` connects).
   The mirror parts are no-ops unless their vars are set.
 - The internal `make lint` (`--syntax-check` + `ansible-lint` +
-  `scripts/audit_example_knobs.py`) is run by CI and hidden from `make help`
+  `scripts/audit_example_knobs.py`, the host-key and repository-privacy checks,
+  and the `gitleaks` tree scan) is run by CI and hidden from `make help`
   (developers can still invoke it). The audit keeps `host_vars/example/main.yml`
-  a complete, value-accurate mirror of every operator knob.
+  a complete, value-accurate mirror of every operator knob. The privacy check
+  rejects tracked local-only trees, credential files and real addresses or host
+  names; CI additionally scans the full history with `gitleaks`.
 - `make dry-run` / `make deploy` — dry-run / deploy. `deploy` is the one-shot
   entry point: it runs `bootstrap.yml` (host init), then the server playbook,
   then applies the tenant state (`tenant.yml -e tenant_commit=true`), then
