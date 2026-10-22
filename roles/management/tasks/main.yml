@@ -119,7 +119,7 @@
     status_code: 200
   register: ready
   until: ready is succeeded
-  retries: 60
+  retries: 24
   delay: 5
   changed_when: false
   when: not ansible_check_mode

@@ -79,6 +79,8 @@ sshd_permit_root_login: "no"
 # defaults are slow or blocked; the security repo follows apt_mirror.
 install_docker: true
 apt_mirror: ""
+# Docker Hub pull-through mirrors; e.g. ["https://mirror.gcr.io"] is the fastest
+# from an APAC/JP host (it also lifts Docker Hub's anonymous pull limit).
 docker_registry_mirrors: []
 # The optional human 'admin' account is created only when enabled here; it always
 # gets a password (generated into vault.yml when empty) plus any configured key.
