@@ -172,7 +172,7 @@ host-init: vault-init ## Scaffold host_vars/<HOST> + the inventory entry (HOST d
 	install -d -m 0700 $(INVENTORY_DIR)/host_vars/$$host; \
 	if [ ! -e $(INVENTORY_DIR)/host_vars/$$host/main.yml ]; then python3 $(CURDIR)/scripts/render_clean_template.py --strip-blank-lines $(INVENTORY_DIR)/host_vars/example/main.yml $(INVENTORY_DIR)/host_vars/$$host/main.yml; fi; \
 	chmod 0644 $(INVENTORY_DIR)/host_vars/$$host/main.yml; \
-	if [ ! -e $(INVENTORY_DIR)/host_vars/$$host/vault.yml ]; then python3 $(CURDIR)/scripts/render_clean_template.py $(INVENTORY_DIR)/host_vars/example/vault.yml.example $(INVENTORY_DIR)/host_vars/$$host/vault.yml; fi; \
+	if [ ! -e $(INVENTORY_DIR)/host_vars/$$host/vault.yml ]; then python3 $(CURDIR)/scripts/render_clean_template.py --strip-blank-lines $(INVENTORY_DIR)/host_vars/example/vault.yml.example $(INVENTORY_DIR)/host_vars/$$host/vault.yml; fi; \
 	if grep -q 'ANSIBLE_VAULT' $(INVENTORY_DIR)/host_vars/$$host/vault.yml; then :; else \
 		echo "Encrypting $(INVENTORY_DIR)/host_vars/$$host/vault.yml..."; \
 		ansible-vault encrypt $(INVENTORY_DIR)/host_vars/$$host/vault.yml; \
