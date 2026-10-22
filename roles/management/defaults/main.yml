@@ -5,3 +5,4 @@ log_level: "info"
 disable_geolite_update: false
 trusted_peers: []
 service_admin_access_token_expire_days: 365
+stack_dir: "/opt/netbird"
