@@ -22,23 +22,25 @@
       delegate_to: localhost
       become: false
 
-    - name: "[Backup] Stop the server container for a consistent snapshot"
-      community.docker.docker_container:
-        name: netbird-server
-        state: stopped
+    - name: "[Backup] Snapshot the data volume"
+      block:
+        - name: "[Backup] Stop the server container for a consistent snapshot"
+          community.docker.docker_container:
+            name: netbird-server
+            state: stopped
 
-    - name: "[Backup] Archive the data volume"
-      ansible.builtin.command: >-
-        docker run --rm
-        -v {{ backup_volume }}:/data:ro
-        -v /tmp:/backup
-        alpine sh -c "cd /data && tar czf /backup/netbird_data.tgz ."
-      changed_when: true
-
-    - name: "[Backup] Start the server container"
-      community.docker.docker_container:
-        name: netbird-server
-        state: started
+        - name: "[Backup] Archive the data volume"
+          ansible.builtin.command: >-
+            docker run --rm
+            -v {{ backup_volume }}:/data:ro
+            -v /tmp:/backup
+            alpine sh -c "cd /data && tar czf /backup/netbird_data.tgz ."
+          changed_when: true
+      always:
+        - name: "[Backup] Start the server container"
+          community.docker.docker_container:
+            name: netbird-server
+            state: started
 
     - name: "[Backup] Fetch the archive to the control node"
       ansible.builtin.fetch:

@@ -237,13 +237,14 @@ make restore FROM=backup/<host>/<stamp>
 ```
 
 - `backup` stops the container, archives the `netbird_data` volume
-  (`netbird_data.tgz`), and restarts it. The archive holds user PII and hashed
-  credentials.
+  (`netbird_data.tgz`), and always restarts it, even if the archive fails. The
+  archive holds user PII and hashed credentials.
 - The encryption key is **not** in the archive. It is
   `inventory/host_vars/<host>/vault.yml` on the control node — **back it
   up separately and protect it**. Losing `vault_datastore_encryption_key` makes
   the archived data unrecoverable.
-- `restore` replaces the data volume, then redeploys. `config.yaml` is
+- `restore` verifies the archive before stopping the stack, replaces the data
+  volume, then always redeploys. `config.yaml` is
   re-rendered from the control node's current `vault.yml`, so that file
   must hold the **same** datastore key as when the data was archived.
 - Only `vault_datastore_encryption_key` is restore-critical.

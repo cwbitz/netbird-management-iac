@@ -22,6 +22,6 @@ project directory):
 ## Backup & restore
 
 `make backup` stops the container, snapshots the `netbird_data` volume to
-`backup/<host>/<stamp>/netbird_data.tgz`, and restarts it; `make restore` replaces
-the volume and redeploys. The datastore key stays in the control node's `vault.yml`,
+`backup/<host>/<stamp>/netbird_data.tgz`, and always restarts it; `make restore`
+verifies the archive, replaces the volume, and always redeploys. The datastore key stays in the control node's `vault.yml`,
 so back that file up separately. Full procedure: [../RUNBOOK.md](../RUNBOOK.md).

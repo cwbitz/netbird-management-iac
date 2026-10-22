@@ -31,33 +31,41 @@
           - restore_archive.stat.exists | default(false)
         fail_msg: "No netbird_data.tgz under {{ restore_from }}/."
 
-    - name: "[Restore] Stop the stack"
-      community.docker.docker_compose_v2:
-        project_src: "{{ stack_dir }}"
-        state: stopped
+    - name: "[Restore] Verify the backup archive is readable"  # noqa: command-instead-of-module
+      ansible.builtin.command: "tar tzf {{ restore_from }}/netbird_data.tgz"
+      changed_when: false
+      delegate_to: localhost
+      become: false
 
-    - name: "[Restore] Copy the archive to the host"
-      ansible.builtin.copy:
-        src: "{{ restore_from }}/netbird_data.tgz"
-        dest: /tmp/netbird_data.tgz
-        mode: "0600"
+    - name: "[Restore] Replace the data volume and redeploy"
+      block:
+        - name: "[Restore] Stop the stack"
+          community.docker.docker_compose_v2:
+            project_src: "{{ stack_dir }}"
+            state: stopped
 
-    - name: "[Restore] Replace the data volume contents"
-      ansible.builtin.command: >-
-        docker run --rm
-        -v {{ restore_volume }}:/data
-        -v /tmp:/backup
-        alpine sh -c "rm -rf /data/..?* /data/.[!.]* /data/* && tar xzf /backup/netbird_data.tgz -C /data"
-      changed_when: true
+        - name: "[Restore] Copy the archive to the host"
+          ansible.builtin.copy:
+            src: "{{ restore_from }}/netbird_data.tgz"
+            dest: /tmp/netbird_data.tgz
+            mode: "0600"
 
-    - name: "[Restore] Remove the remote archive"
-      ansible.builtin.file:
-        path: /tmp/netbird_data.tgz
-        state: absent
+        - name: "[Restore] Replace the data volume contents"
+          ansible.builtin.command: >-
+            docker run --rm
+            -v {{ restore_volume }}:/data
+            -v /tmp:/backup
+            alpine sh -c "rm -rf /data/..?* /data/.[!.]* /data/* && tar xzf /backup/netbird_data.tgz -C /data"
+          changed_when: true
+      always:
+        - name: "[Restore] Remove the remote archive"
+          ansible.builtin.file:
+            path: /tmp/netbird_data.tgz
+            state: absent
 
-    - name: "[Restore] Redeploy the stack with the current vault key"
-      ansible.builtin.include_role:
-        name: management
+        - name: "[Restore] Redeploy the stack with the current vault key"
+          ansible.builtin.include_role:
+            name: management
 
     - name: "[Restore] Report"
       ansible.builtin.debug:
