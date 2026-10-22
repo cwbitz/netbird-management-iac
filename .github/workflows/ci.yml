@@ -29,3 +29,5 @@ jobs:
         run: ansible-lint --version
       - name: Lint (syntax check + ansible-lint)
         run: make lint
+      - name: Unit tests (pytest)
+        run: make test

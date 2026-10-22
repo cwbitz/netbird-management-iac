@@ -301,6 +301,10 @@ vault-view: vault-init ## View vault.yml for EVERY host, or one with HOST=<name>
 validate-knobs: vault-init
 	@if [ -f $(INVENTORY) ]; then $(ANS_PLAY) -i $(INVENTORY) playbooks/validate_knobs.yml; else echo "validate-knobs: $(INVENTORY) missing, skipped"; fi
 
+.PHONY: test
+test: ## Run the unit tests for the control-node helpers
+	pytest -q tests
+
 .PHONY: lint
 lint: vault-init validate-knobs
 	$(ANS_PLAY) --syntax-check playbooks/site.yml
