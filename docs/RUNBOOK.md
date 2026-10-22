@@ -160,6 +160,15 @@ alloy_enabled: true                            # ship host logs to a central Lok
 loki_push_url: "http://<central-peer>.netbird.selfhosted:3100"   # or "<overlay-ip>:3100"
 ```
 
+The toggles converge **off** as well as on: setting `monitoring_enabled: false`,
+`node_exporter_enabled: false`, `crowdsec_enabled: false` or
+`alloy_enabled: false` stops and disables the matching units (node_exporter;
+crowdsec + crowdsec-firewall-bouncer) and removes the Alloy containers (the
+compose project in `/opt/monitoring`) on the next run. Packages, the compose file
+and the rendered configuration are kept, so re-enabling needs no reinstall. The playbook includes only the cleanup tasks
+when `monitoring_enabled` is false, and a unit that does not exist on the host is
+left alone instead of failing.
+
 node_exporter has no listen-address knob: it binds the host's **overlay address
 only** — there is no local or public listener, and the central Prometheus scrapes
 it over the mesh. A systemd drop-in

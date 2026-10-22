@@ -199,3 +199,6 @@
     enabled: true
     state: started
   loop: "{{ monitoring_services }}"
+
+- name: "[Monitoring] Converge the disabled components off"
+  ansible.builtin.import_tasks: cleanup.yml

@@ -23,9 +23,14 @@
   (no standalone playbook). `netbird_peer_setup_key` decides the peer's group.
 - `roles/monitoring/` — optional, opt-in (`make monitoring`): apt-installs
   `prometheus-node-exporter` + `crowdsec` + `crowdsec-firewall-bouncer` on a
-  Debian-family host and includes the `agent` role; skipped unless
-  `monitoring_enabled: true`. The play sets `gather_facts: false` and the role
-  gathers facts itself, so non-opted hosts are never contacted.
+  Debian-family host and includes the `agent` role. The play sets
+  `gather_facts: false` and the role gathers facts itself. With
+  `monitoring_enabled: false` the play runs only the role's `cleanup.yml`
+  (`tasks_from`), which stops and disables the monitoring units, removes the
+  Alloy containers (the compose project in `/opt/monitoring`) and keeps the
+  packages and rendered files; with `monitoring_enabled: true`
+  the full role runs and also converges every component toggle set to `false`
+  off (see [RUNBOOK §5](../RUNBOOK.md)).
 - `roles/helpers/` — a real role (no `tasks/main.yml`), always invoked via
   `include_role` + `tasks_from`: `control_node_prereqs.yml`, `install_docker.yml`,
   `read_vault.yml` / `write_vault.yml`, and

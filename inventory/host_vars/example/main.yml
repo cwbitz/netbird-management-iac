@@ -49,7 +49,8 @@ service_admin_access_token_expire_days: 365
 
 # --- Host monitoring + host security (make monitoring) -----------------------
 # Opt-in: prometheus-node-exporter + CrowdSec (+ nftables bouncer), and joins the
-# host to the overlay.
+# host to the overlay. Each toggle converges off too: false stops and disables
+# the component's units and removes the Alloy stack; the packages stay installed.
 monitoring_enabled: false
 node_exporter_enabled: false
 crowdsec_enabled: false

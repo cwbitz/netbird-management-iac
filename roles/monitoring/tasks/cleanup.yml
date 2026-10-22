@@ -1,0 +1,41 @@
+---
+- name: "[Monitoring] Gather the service facts"
+  ansible.builtin.service_facts:
+
+- name: "[Monitoring] Select the units to converge off"
+  ansible.builtin.set_fact:
+    monitoring_disabled_units: >-
+      {{ ([svc_node_exporter]
+          if not (monitoring_enabled | default(false) | bool)
+             or not (node_exporter_enabled | default(false) | bool) else [])
+         + ([svc_crowdsec, svc_crowdsec_firewall_bouncer]
+            if not (monitoring_enabled | default(false) | bool)
+               or not (crowdsec_enabled | default(false) | bool) else []) }}
+    monitoring_alloy_teardown: >-
+      {{ not (monitoring_enabled | default(false) | bool)
+         or not (alloy_enabled | default(false) | bool) }}
+
+- name: "[Monitoring] Stop and disable the disabled monitoring units"
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: false
+    state: stopped
+  loop: "{{ monitoring_disabled_units }}"
+  loop_control:
+    label: "{{ item }}"
+  when:
+    - item ~ '.service' in ansible_facts.services
+    - ansible_facts.services[item ~ '.service'].status | default('') != 'not-found'
+
+- name: "[Monitoring] Stat the Alloy compose file"
+  ansible.builtin.stat:
+    path: "{{ monitoring_dir }}/docker-compose.yml"
+  register: monitoring_alloy_compose_file
+
+- name: "[Monitoring] Remove the Alloy compose stack"
+  community.docker.docker_compose_v2:
+    project_src: "{{ monitoring_dir }}"
+    state: absent
+  when:
+    - monitoring_alloy_teardown | bool
+    - monitoring_alloy_compose_file.stat.exists
