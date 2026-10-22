@@ -14,6 +14,8 @@
   run_once: true
   delegate_to: localhost
   become: false
+  vars:
+    ansible_become: false
 
 - name: "[NetBird] Ensure Docker Engine and the Compose v2 plugin are present"
   tags: [netbird, netbird_preflight]
@@ -30,6 +32,8 @@
   run_once: true
   delegate_to: localhost
   become: false
+  vars:
+    ansible_become: false
 
 - name: "[NetBird] Warn when the domain does not resolve"
   tags: [netbird, netbird_preflight]
