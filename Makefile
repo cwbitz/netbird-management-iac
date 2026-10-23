@@ -20,7 +20,7 @@ FROM ?=
 REFRESH ?=
 KNOWN_HOSTS ?= $(HOME)/.ssh/known_hosts
 
-export ANSIBLE_VAULT_PASSWORD_FILE := $(HOME)/.config/projects/netbird-iac/ansible_vault_password
+export ANSIBLE_VAULT_PASSWORD_FILE := $(HOME)/.config/projects/netbird-management-iac/ansible_vault_password
 
 VAULT_PASSWORD_HINT := ERROR: Ansible Vault cannot decrypt this file - the password in $(ANSIBLE_VAULT_PASSWORD_FILE) is missing or incorrect. Restore the original password, or re-encrypt the vault file with the current one.
 
@@ -31,7 +31,7 @@ KEYCHAIN_VERSION := $(shell awk '!/^#/ && NF {print $$1; exit}' $(KEYCHAIN_PIN))
 KEYCHAIN_SHA256  := $(shell awk '!/^#/ && NF {print $$2; exit}' $(KEYCHAIN_PIN) | sed 's/^sha256://')
 KEYCHAIN_URL     ?= https://github.com/danielrobbins/keychain/releases/download/$(KEYCHAIN_VERSION)/keychain-$(KEYCHAIN_VERSION).pyz
 KEYCHAIN_BIN     ?= $(HOME)/.local/bin/keychain
-KEYCHAIN_CACHE   ?= $(HOME)/.cache/netbird-iac
+KEYCHAIN_CACHE   ?= $(HOME)/.cache/netbird-management-iac
 KEYCHAIN_ASSET   := $(KEYCHAIN_CACHE)/keychain-$(KEYCHAIN_VERSION).pyz
 KEYCHAIN_AGENT   := eval "$$($(KEYCHAIN_BIN) agent start --eval --quiet 2>/dev/null)"
 

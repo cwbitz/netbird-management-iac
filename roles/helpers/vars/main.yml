@@ -1,6 +1,6 @@
 ---
 helper_vault_password_file: >-
   {{ lookup('ansible.builtin.env', 'ANSIBLE_VAULT_PASSWORD_FILE')
-     | default(lookup('ansible.builtin.env', 'HOME') ~ '/.config/projects/netbird-iac/ansible_vault_password', true) }}
+     | default(lookup('ansible.builtin.env', 'HOME') ~ '/.config/projects/netbird-management-iac/ansible_vault_password', true) }}
 
 helper_ansible_vault_bin: "{{ (ansible_playbook_python | dirname) ~ '/ansible-vault' }}"
