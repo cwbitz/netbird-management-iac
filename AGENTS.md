@@ -229,17 +229,21 @@ this project's vars/vault. Rules:
   `feat | fix | chore | docs | refactor | test | ci | build | perf`. The `pr-title`
   check rejects anything else, because release-please cuts the release from that
   title and an invalid one silently drops out of the changelog.
+- **Squash is the only merge method.** Merge commits and rebase are disabled, so
+  the PR title is exactly the commit that lands and the `pr-title` check is what
+  release-please reads. Merged branches are deleted automatically.
 - **Required checks** on the `Protect main` ruleset: `lint` and `pr-title`, with
   the branch up to date with `main`. There are no required approvals, so a solo
   change merges as soon as CI is green. The ruleset also forbids deleting `main`
-  and force-pushing to it.
+  and force-pushing to it, and it carries **no bypass actor**: neither the owner
+  nor an agent working with the owner's credentials can push to `main` directly.
 - **One concern per PR.** Unrelated fixes, dependency bumps and docs for a
   different concern belong in their own PR, so each squash commit stands alone and
   can be reverted on its own.
-- **Break-glass only.** The repository owner is a bypass actor on the ruleset, so a
-  direct push to `main` still succeeds without the checks. Reserve it for undoing a
-  broken merge or landing a fix the checks cannot evaluate; a normal change goes
-  through the PR.
+- **Break-glass is a ruleset change, not a bypass.** When the checks themselves are
+  unusable (a GitHub Actions outage, or a required check that cannot pass), the
+  owner temporarily disables the `Protect main` ruleset, lands the fix, and
+  re-enables it. That is an explicit, visible action; there is no standing bypass.
 - **Release PRs take the same path.** release-please opens one on
   `release-please--branches--main`, and the `release-please` workflow enables
   auto-merge for a non-major version; a major release stays open for a manual
