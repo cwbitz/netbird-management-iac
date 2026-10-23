@@ -1,6 +1,6 @@
 <div align="center">
 
-# NetBird IaC
+# NetBird Management IaC
 
 Ansible IaC that idempotently deploys the **self-hosted NetBird server** onto a
 public Debian-family VPS: the combined `Management + Signal + Relay + STUN`

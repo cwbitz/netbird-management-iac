@@ -24,7 +24,7 @@ contracts, conventions and gotchas.
   firewall (the mesh contract stays open) and key-only SSH hardening only after
   `make host-bootstrap` has authorized the `iac` key — see §5b.
 - The vault password file is auto-created by the make targets
-  (`~/.config/projects/netbird-iac/ansible_vault_password`); keep it safe.
+  (`~/.config/projects/netbird-management-iac/ansible_vault_password`); keep it safe.
 
 ## 1. Deploy
 
