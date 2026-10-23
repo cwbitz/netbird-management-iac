@@ -8,7 +8,6 @@
   "packages": {
     ".": {
       "release-type": "simple",
-      "component": "netbird-management-iac",
       "include-component-in-tag": false
     }
   }
