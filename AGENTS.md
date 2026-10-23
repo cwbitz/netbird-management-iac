@@ -219,6 +219,32 @@ this project's vars/vault. Rules:
 - `make print [HOST=<name>]` — resolved host vars incl. decrypted vault; HOST
   is auto-detected when the inventory has a single host.
 
+## Change workflow
+
+- **Every change lands through a pull request.** Work on a `<type>/<slug>` branch
+  (`fix/vault-path`, `feat/host-timezone`, `ci/pr-title-gate`), open a PR against
+  `main`, wait for the required checks, and squash-merge it.
+- **The PR title becomes the commit on `main`.** Squash sets it verbatim, so it
+  must be a Conventional Commit: `<type>(<scope>)?: <description>` with
+  `feat | fix | chore | docs | refactor | test | ci | build | perf`. The `pr-title`
+  check rejects anything else, because release-please cuts the release from that
+  title and an invalid one silently drops out of the changelog.
+- **Required checks** on the `Protect main` ruleset: `lint` and `pr-title`, with
+  the branch up to date with `main`. There are no required approvals, so a solo
+  change merges as soon as CI is green. The ruleset also forbids deleting `main`
+  and force-pushing to it.
+- **One concern per PR.** Unrelated fixes, dependency bumps and docs for a
+  different concern belong in their own PR, so each squash commit stands alone and
+  can be reverted on its own.
+- **Break-glass only.** The repository owner is a bypass actor on the ruleset, so a
+  direct push to `main` still succeeds without the checks. Reserve it for undoing a
+  broken merge or landing a fix the checks cannot evaluate; a normal change goes
+  through the PR.
+- **Release PRs take the same path.** release-please opens one on
+  `release-please--branches--main`, and the `release-please` workflow enables
+  auto-merge for a non-major version; a major release stays open for a manual
+  merge.
+
 ## Important gotchas
 
 - The public domain's A record must point at the host and **TCP 80/443 + UDP 3478**
