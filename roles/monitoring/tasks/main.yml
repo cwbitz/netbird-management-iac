@@ -254,8 +254,11 @@
 
 - name: "[Monitoring] Build the node_exporter listen arguments"
   ansible.builtin.set_fact:
-    node_exporter_listen_args:
-      - "--web.listen-address={{ overlay_ip }}:{{ node_exporter_port }}"
+    node_exporter_listen_args: >-
+      {{ (['--web.listen-address=' ~ overlay_ip ~ ':' ~ (node_exporter_port | string)])
+         | union(node_exporter_collectors | default([])
+                 | map('regex_replace', '^(.*)$', '--collector.\1') | list)
+         | sort }}
   when: node_exporter_enabled | bool
 
 - name: "[Monitoring] Configure the node_exporter listen address"
