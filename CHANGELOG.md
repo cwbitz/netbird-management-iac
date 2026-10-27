@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/cwbitz/netbird-management-iac/compare/v2.0.0...v2.1.0) (2026-10-27)
+
+
+### Features
+
+* **monitoring:** add blocklist importer, metric push and web UI machine account ([#6](https://github.com/cwbitz/netbird-management-iac/issues/6)) ([8637be3](https://github.com/cwbitz/netbird-management-iac/commit/8637be3a4c2489f345ce0ec49f0d89259b2e6f90))
+
 ## [2.0.0](https://github.com/cwbitz/netbird-management-iac/compare/v1.0.0...v2.0.0) (2026-10-23)
 
 
