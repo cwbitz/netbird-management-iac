@@ -55,12 +55,52 @@ service_admin_access_token_expire_days: 365
 # the component's units and removes the Alloy stack; the packages stay installed.
 monitoring_enabled: false
 node_exporter_enabled: false
+# node_exporter collector toggles enabled on top of the package defaults.
+node_exporter_collectors:
+  - buddyinfo
+  - cgroups
+  - drm
+  - ethtool
+  - interrupts
+  - ksmd
+  - lnstat
+  - logind
+  - mountstats
+  - perf
+  - processes
+  - qdisc
+  - softirqs
+  - sysctl
+  - tcpstat
+  - wifi
+  - xfrm
+  - zoneinfo
 crowdsec_enabled: false
+# Serve the central CrowdSec web UI: create its read-only machine account on
+# this LAPI. The password is generated into this host's vault as
+# vault_crowdsec_webui_machine_password when the vault has none, and copied
+# into the reading project's vault mapping.
+crowdsec_generate_webui_machine_password: false
+
+# CrowdSec blocklist importer (optional; runs next to the local LAPI).
+# embedded ~= 20k high-confidence IPs, server = conservative server set,
+# max = all 32 feeds. Lower MAX_DECISIONS and raise INTERVAL on small VPSes.
+crowdsec_blocklist_import_enabled: false
+crowdsec_blocklist_import_preset: "server"
+crowdsec_blocklist_import_interval: 3600
+crowdsec_blocklist_import_max_decisions: 15000
+crowdsec_blocklist_import_batch_size: 1000
+crowdsec_blocklist_import_decision_duration: "24h"
+crowdsec_blocklist_import_extra_env: {}
 alloy_enabled: false                          # ship host logs to a central Loki
 # Central Loki endpoint over the overlay: an overlay IP, or preferably the central
 # peer's NetBird name ("http://<peer>.netbird.selfhosted:3100"), which survives a
 # re-enrolled central peer.
 loki_push_url: ""
+# Central Prometheus remote-write receiver over the overlay (an overlay IP or the
+# peer's NetBird name). Empty = metrics are not pushed; log shipping is
+# unaffected.
+prometheus_remote_write_url: ""
 
 # Journal sources Alloy ships to the central Loki; raw extra matches go in
 # alloy_journal_extras.
