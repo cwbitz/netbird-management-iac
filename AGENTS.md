@@ -215,7 +215,11 @@ this project's vars/vault. Rules:
   address; with `alloy_enabled: true`
   + `loki_push_url` an Alloy container ships journald SSH events to a central Loki
   over the overlay (an overlay IP, or preferably the central peer's NetBird name
-  `<peer>.netbird.selfhosted`, resolved by the container through the agent).
+  `<peer>.netbird.selfhosted`, resolved by the container through the agent). With
+  `prometheus_remote_write_url` set it also scrapes the local exporters every
+  `alloy_scrape_interval` (default `15s`, 1s-30s) and remote-writes the samples to
+  the central Prometheus, tagged `source="agent"`; the cadence has to stay inside
+  the dashboards' 60s `rate()` window.
 - `make print [HOST=<name>]` — resolved host vars incl. decrypted vault; HOST
   is auto-detected when the inventory has a single host.
 
