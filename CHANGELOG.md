@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0](https://github.com/cwbitz/netbird-management-iac/compare/v2.1.0...v2.2.0) (2026-10-28)
+
+
+### Features
+
+* **monitoring:** make the Alloy scrape interval configurable ([#8](https://github.com/cwbitz/netbird-management-iac/issues/8)) ([4360faa](https://github.com/cwbitz/netbird-management-iac/commit/4360faa72a06ad3a3d28a2c2bb7aebfb3afb97a9))
+
 ## [2.1.0](https://github.com/cwbitz/netbird-management-iac/compare/v2.0.0...v2.1.0) (2026-10-27)
 
 
