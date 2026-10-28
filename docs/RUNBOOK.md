@@ -172,6 +172,13 @@ When `alloy_enabled` is set and the central Loki does not answer from the host
 warning and still deploys the Alloy stack; it starts shipping as soon as the
 central peer is reachable.
 
+With `prometheus_remote_write_url` set, Alloy also scrapes the local exporters
+every `alloy_scrape_interval` (default `15s`, accepted range 1s-30s) and pushes
+the samples to the central Prometheus remote-write receiver, tagged
+`source="agent"`. The cadence has to stay inside the dashboards' 60s `rate()`
+window: at 60s each `rate()` query sees a single sample and every panel built on
+one renders "No data".
+
 The toggles converge **off** as well as on: setting `monitoring_enabled: false`,
 `node_exporter_enabled: false`, `crowdsec_enabled: false` or
 `alloy_enabled: false` stops and disables the matching units (node_exporter;
@@ -293,6 +300,7 @@ Verify after restore: the OIDC discovery URL answers and users can log in.
 | `make deploy TAGS=sshd` failed and the host kept password login | Expected: the role reverted the drop-in and failed. Read the failing task (the key-only login probe is the usual one): the `iac` key must be authorized by `make host-bootstrap` and accepted by OpenSSH (`make agent-load` for a `/mnt/c` key). |
 | No usable SSH login after enabling hardening | Recover from the provider console: `rm /etc/ssh/sshd_config.d/00-sshd-hardening.conf && systemctl reload ssh`, then set `sshd_hardening_enabled: false` and re-run. |
 | Readiness times out on first deploy | GeoLite2 download (§1); re-run or pre-seed the DBs. |
+| node-exporter panels show "No data" although the target is up | The push cadence is too slow for the dashboards' 60s `rate()` windows: keep `alloy_scrape_interval` at 15s (30s works, 60s yields a single sample per window). Check with `count_over_time(node_load1{instance="<host>"}[5m])` (≈20 points at 15s) and re-run `make deploy TAGS=monitoring`. |
 | Tenant run: token rejected | PAT expired — recreate it for the `admin` service user and update the vault (§2). |
 | Host reinstalled / reimaged | `vault.yml` holds stale host-returned secrets — delete those keys before deploying so a fresh PAT/setup keys are written (§2). |
 | A vault file is unreadable | It must be ansible-vault encrypted; the helpers re-encrypt a plaintext file on the next run. |
