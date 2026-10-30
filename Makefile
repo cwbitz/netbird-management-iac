@@ -315,6 +315,7 @@ lint: vault-init validate-knobs
 	python3 scripts/audit_example_knobs.py
 	python3 scripts/check_host_keys.py
 	python3 scripts/check_repo_privacy.py
+	python3 scripts/check_script_modes.py
 	gitleaks dir . --config .gitleaks.toml --no-banner --redact
 	python3 -m py_compile scripts/validate_tenant_config.py
 
