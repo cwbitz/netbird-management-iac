@@ -117,8 +117,8 @@ already applies the tenant state after the server deploy; use `apply` to change
 tenants without touching the server, or `TAGS=...` to keep `deploy` server-only.
 
 Strict mode (also remove unmanaged resources) is off by default; enable it per
-host with `tenant_strict: true` in `inventory/host_vars/<host>/main.yml` (or
-`-e tenant_strict=true`).
+host with `tenant_strict: true` in `inventory/host_vars/<host>/.config/netbird/tenant.yml`
+(or `-e tenant_strict=true`).
 
 What you can codify:
 

@@ -55,7 +55,6 @@ EXTRA = {
     "stack_dir",
     "apt_mirror", "docker_registry_mirrors", "timezone", "allow_root_login",
     "domain_name", "acme_email",
-    "tenant_strict",
 }
 
 EXAMPLE_REL = "inventory/host_vars/example/main.yml"

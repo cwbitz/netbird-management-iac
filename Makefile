@@ -336,7 +336,7 @@ plan: vault-init agent-fallback ## Tenant config-as-code: read-only diff (safe)
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml
 
 .PHONY: apply
-apply: vault-init agent-fallback ## Tenant config-as-code: apply desired state (strict via tenant_strict in host_vars)
+apply: vault-init agent-fallback ## Tenant config-as-code: apply desired state (strict via tenant_strict in .config/netbird/tenant.yml)
 	RETRY_MAX=$(TENANT_RETRY_MAX) RETRY_DELAY=$(TENANT_RETRY_DELAY) \
 		$(RETRY_RUN) $(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml -e tenant_commit=true
 

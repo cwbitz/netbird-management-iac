@@ -141,14 +141,3 @@ docker_registry_mirrors: []
 # Escape hatch: run the deploy as root instead of the service account.
 allow_root_login: false
 
-# ==============================================================================
-# Tenant configuration
-# ==============================================================================
-# Desired state for the NetBird account (users, groups, policies, networks, DNS,
-# settings, ...), applied to the running server's REST API via
-# community.ansible_netbird. `make plan` previews; `make apply` commits.
-# The defaults below manage no resources and keep the account's default settings;
-# fill them in to manage state. Dropping a settings key leaves its server value
-# untouched. tenant_strict: true additionally removes unmanaged resources.
-tenant_strict: false
-
