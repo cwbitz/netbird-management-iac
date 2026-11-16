@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.4](https://github.com/cwbitz/netbird-management-iac/compare/v2.2.3...v2.2.4) (2026-11-16)
+
+
+### Bug Fixes
+
+* **ssh:** detect a dead connection instead of hanging on it ([#18](https://github.com/cwbitz/netbird-management-iac/issues/18)) ([5c3b4f9](https://github.com/cwbitz/netbird-management-iac/commit/5c3b4f9364631721c6dec3bc249ba19e8fc97858))
+
 ## [2.2.3](https://github.com/cwbitz/netbird-management-iac/compare/v2.2.2...v2.2.3) (2026-11-16)
 
 
