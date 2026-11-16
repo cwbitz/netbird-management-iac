@@ -4,6 +4,7 @@
   connection: local
   gather_facts: false
   vars:
+    tenant_config_file: "{{ playbook_dir }}/../inventory/host_vars/{{ inventory_hostname }}/.config/netbird/tenant.yml"
     tenant_build_dir: "{{ playbook_dir }}/../.cache/tenant_config/{{ inventory_hostname }}"
     config_dir: "{{ tenant_build_dir }}"
     netbird_api_url: "https://{{ domain_name }}"
@@ -13,6 +14,9 @@
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
     ansible_become: false
   tasks:
+    - name: "[Tenant] Load the tenant desired state"
+      ansible.builtin.include_tasks: tasks/tenant_vars.yml
+
     - name: "[Tenant] Assert an access token is configured"
       ansible.builtin.assert:
         that:

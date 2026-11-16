@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Audit inventory/host_vars/example/main.yml against the project's knobs.
+"""Audit the example host files against the project's knobs.
 
 `make host-init` copies the example (comment-free) to
-``inventory/host_vars/<host>/main.yml``, so the example is the template for every
-new host and must carry every operator knob with its project default. This audit
-(run by ``make lint`` / CI) keeps that true:
+``inventory/host_vars/<host>/main.yml`` and
+``inventory/host_vars/<host>/.config/netbird/tenant.yml``, so the examples are
+the templates for every new host and must carry every operator knob with its
+project default. This audit (run by ``make lint`` / CI) keeps that true:
 
 * **Presence** — every operator knob, i.e. every variable declared in
   ``inventory/group_vars/**/main.yml`` or ``roles/*/defaults/main.yml``, must be
@@ -56,6 +57,9 @@ EXTRA = {
     "domain_name", "acme_email",
     "tenant_strict",
 }
+
+EXAMPLE_REL = "inventory/host_vars/example/main.yml"
+TENANT_EXAMPLE_REL = "inventory/host_vars/example/.config/netbird/tenant.yml.example"
 
 KEY_RE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*):\s*(.*)$")
 CKEY_RE = re.compile(r"^\s*#\s*([A-Za-z_][A-Za-z0-9_]*):\s*(.*)$")
@@ -185,39 +189,54 @@ def example_top_keys(path):
 
 def main(argv: list[str]) -> int:
     root = argv[1] if len(argv) > 1 else os.getcwd()
-    example = os.path.join(root, "inventory/host_vars/example/main.yml")
-    if not os.path.isfile(example):
-        print(f"ERROR: {example} does not exist", file=sys.stderr)
-        return 1
+    example = os.path.join(root, EXAMPLE_REL)
+    tenant_example = os.path.join(root, TENANT_EXAMPLE_REL)
+    for path in (example, tenant_example):
+        if not os.path.isfile(path):
+            print(f"ERROR: {path} does not exist", file=sys.stderr)
+            return 1
     active, commented = scan(example)
+    tenant_active, tenant_commented = scan(tenant_example)
 
     problems: list[str] = []
     schema = schema_keys(root)
     example_top = example_top_keys(example)
-    for key in sorted(example_top - schema):
+    tenant_top = example_top_keys(tenant_example)
+    for key in sorted(example_top & tenant_top):
+        problems.append(
+            f"{key}: present in both {EXAMPLE_REL} and {TENANT_EXAMPLE_REL}; "
+            f"tenant state lives only in the tenant file"
+        )
+    for key in sorted(example_top - tenant_top - schema):
         problems.append(f"{key}: present in the example but missing from inventory/knob_schema.yml")
-    for key in sorted(schema - example_top):
+    for key in sorted(tenant_top - example_top - schema):
+        problems.append(f"{key}: present in the tenant example but missing from inventory/knob_schema.yml")
+    for key in sorted(schema - (example_top | tenant_top)):
         problems.append(f"{key}: in inventory/knob_schema.yml but not the example")
     knobs = declared_knobs(root)
     for key, (default, source) in sorted(knobs.items()):
         if key in WIRING or key in INTERNAL:
             continue
+        in_tenant = key in tenant_top
+        present = tenant_active if in_tenant else active
+        still_commented = (tenant_commented if in_tenant else commented).keys()
+        label = "the tenant example" if in_tenant else "the example"
         if key in DERIVED:
-            if key in active or key in commented:
+            if key in present or key in still_commented:
                 problems.append(
-                    f"{key}: must be omitted from the example — its value is derived "
+                    f"{key}: must be omitted from {label} — its value is derived "
                     f"at run time from another setting ({source})"
                 )
             continue
-        if key not in active:
-            problems.append(f"{key}: missing from the example (default {default!r} in {source})")
+        if key not in present:
+            problems.append(f"{key}: missing from {label} (default {default!r} in {source})")
             continue
         if key in VAULT_BOUND:
             continue
-        if default is not None and active[key] != default:
+        if default is not None and present[key] != default:
             problems.append(
-                f"{key}: example value {active[key]!r} != effective default {default!r} "
-                f"({source})"
+                f"{key}: {'tenant example' if in_tenant else 'example'} value {present[key]!r} "
+                f"!= effective default {default!r} ({source})"
             )
 
     for key in sorted(EXTRA):
@@ -225,7 +244,7 @@ def main(argv: list[str]) -> int:
             problems.append(f"{key}: playbook-level knob missing (or commented out) in the example")
 
     if problems:
-        print(f"audit_example_knobs: {len(problems)} problem(s) in {example}:")
+        print(f"audit_example_knobs: {len(problems)} problem(s):")
         for problem in problems:
             print(f"  - {problem}")
         return 1

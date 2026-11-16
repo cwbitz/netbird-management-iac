@@ -194,7 +194,7 @@ def validate_settings(state: dict, report: Report) -> None:
     for key, value in settings.items():
         path = f"netbird_settings.{key}"
         if key not in ALLOWED_SETTINGS:
-            report.fail(path, "unknown setting (typo?); see inventory/host_vars/example/main.yml")
+            report.fail(path, "unknown setting (typo?); see inventory/host_vars/example/.config/netbird/tenant.yml.example")
             continue
         if key in BOOL_SETTINGS:
             if not isinstance(value, bool):
