@@ -12,6 +12,9 @@ secret/PII in `vault.yml`, using the collection's native names:
 `netbird_setup_keys`, `netbird_services` + `netbird_service_domains`,
 `netbird_users` / `netbird_service_users`.
 
+`tenant_strict` (strict mode: also remove unmanaged resources) is declared in the
+same tenant file, so the desired state and how it is applied live together.
+
 The collection's `configure` role reads raw YAML (no templating), so the play
 renders the variables into a generated, gitignored directory
 (`.cache/tenant_config/<host>/`) and passes it as `config_dir`; `commit` / `strict`

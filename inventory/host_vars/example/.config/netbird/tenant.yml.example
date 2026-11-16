@@ -1,10 +1,18 @@
 # ------------------------------------------------------------------------------
 # NetBird tenant desired state: account settings, groups, policies, DNS,
-# setup keys, users and networks, applied through the management API by
-# playbooks/tenant.yml. The real file is
+# setup keys, users and networks, applied to the running server's REST API by
+# playbooks/tenant.yml via community.ansible_netbird. `make plan` previews;
+# `make apply` commits. The real file is
 # inventory/host_vars/<hostname>/.config/netbird/tenant.yml (gitignored);
 # `make host-init` copies this template comment-free.
+#
+# The defaults below manage no resources and keep the account's default
+# settings; fill them in to manage state. Dropping a settings key leaves its
+# server value untouched.
 # ------------------------------------------------------------------------------
+
+# Strict mode also removes unmanaged resources (absent, empty or false = off).
+tenant_strict: false
 
 # --- Account settings (settings.yml) -----------------------------------------
 # Account-wide settings, each shown with its default; group lists accept plain

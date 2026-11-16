@@ -210,8 +210,8 @@ this project's vars/vault. Rules:
   unusable. Strict
   mode (also remove unmanaged resources) is off by
   default — absent, empty, or `false` `tenant_strict` means non-strict; only
-  `tenant_strict: true` in `inventory/host_vars/<host>/main.yml` (or
-  `-e tenant_strict=true`) enables it. The apply (and `deploy`'s tenant step) is
+  `tenant_strict: true` in `inventory/host_vars/<host>/.config/netbird/tenant.yml`
+  (or `-e tenant_strict=true`) enables it. The apply (and `deploy`'s tenant step) is
   retried on a transient network-level failure via `scripts/retry-transient.sh`,
   because the pinned collection does not retry its API calls; a configuration or
   token error still fails fast.
