@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/cwbitz/netbird-management-iac/compare/v2.2.6...v2.3.0) (2026-11-16)
+
+
+### Features
+
+* **make:** add a rebuilt-host reset switch ([#26](https://github.com/cwbitz/netbird-management-iac/issues/26)) ([deeb0e0](https://github.com/cwbitz/netbird-management-iac/commit/deeb0e057f9b9bb6fb7846d24f3d9a108af7760b))
+
 ## [2.2.6](https://github.com/cwbitz/netbird-management-iac/compare/v2.2.5...v2.2.6) (2026-11-16)
 
 
