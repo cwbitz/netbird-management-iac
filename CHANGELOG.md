@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.3](https://github.com/cwbitz/netbird-management-iac/compare/v2.2.2...v2.2.3) (2026-11-16)
+
+
+### Bug Fixes
+
+* **ci:** reject vault backups as tracked credential files ([#15](https://github.com/cwbitz/netbird-management-iac/issues/15)) ([a982117](https://github.com/cwbitz/netbird-management-iac/commit/a982117ab75af40a37e246a80b65ed664c31919f))
+
 ## [2.2.2](https://github.com/cwbitz/netbird-management-iac/compare/v2.2.1...v2.2.2) (2026-11-12)
 
 
