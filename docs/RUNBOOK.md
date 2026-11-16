@@ -86,6 +86,10 @@ GeoLite2 DBs from `pkgs.netbird.io`. If the readiness wait times out, re-run
   `make apply`).
   Leaving a stale non-empty value there keeps the invalid token and every tenant
   run fails with "token rejected".
+  Run the first deploy as `make deploy REBUILD=1`: it re-pins the new SSH host key
+  (printing the fingerprint), drops the cached facts and the generated tenant
+  render. The vault is never touched by that flag — deleting the stale
+  host-returned keys above remains a manual step.
 
 ## 3. Day-2 changes (server)
 
@@ -305,7 +309,7 @@ Verify after restore: the OIDC discovery URL answers and users can log in.
 | Readiness times out on first deploy | GeoLite2 download (§1); re-run or pre-seed the DBs. |
 | node-exporter panels show "No data" although the target is up | The push cadence is too slow for the dashboards' 60s `rate()` windows: keep `alloy_scrape_interval` at 15s (30s works, 60s yields a single sample per window). Check with `count_over_time(node_load1{instance="<host>"}[5m])` (≈20 points at 15s) and re-run `make deploy TAGS=monitoring`. |
 | Tenant run: token rejected | PAT expired — recreate it for the `admin` service user and update the vault (§2). |
-| Host reinstalled / reimaged | `vault.yml` holds stale host-returned secrets — delete those keys before deploying so a fresh PAT/setup keys are written (§2). |
+| Host reinstalled / reimaged | Two things: delete the stale host-returned keys from `vault.yml` (§2), then deploy with `make deploy REBUILD=1` so the new SSH host key is re-pinned and the cached facts / generated tenant render are dropped. |
 | A vault file is unreadable | It must be ansible-vault encrypted; the helpers re-encrypt a plaintext file on the next run. |
 | SSH refuses the private key (`UNPROTECTED PRIVATE KEY FILE`, `are too open`) | The shared `scripts/run-with-ssh-agent.sh` starts the pinned Keychain agent, loads the configured keys and retries once automatically. If it still fails, check the `host_*_ssh_privkey_file` paths in the host's `main.yml` and run `make agent-load`. |
 
