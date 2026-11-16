@@ -62,6 +62,13 @@
   when: crowdsec_enabled | bool
   tags: [crowdsec]
 
+- name: "[Monitoring] Check whether CrowdSec is already installed"
+  ansible.builtin.stat:
+    path: /etc/crowdsec
+  register: monitoring_crowdsec_installed
+  when: crowdsec_enabled | bool
+  tags: [crowdsec]
+
 - name: "[Monitoring] Back up CrowdSec before the pinned upgrade"
   ansible.builtin.command:
     argv:
@@ -73,7 +80,9 @@
       - etc/crowdsec
       - var/lib/crowdsec
     creates: "/var/backups/crowdsec-pre-{{ crowdsec_version }}.tgz"
-  when: crowdsec_enabled | bool
+  when:
+    - crowdsec_enabled | bool
+    - monitoring_crowdsec_installed.stat.exists | default(false)
   tags: [crowdsec]
 
 - name: "[Monitoring] Install the pinned CrowdSec engine"
@@ -110,6 +119,13 @@
       {{ ([pkg_node_exporter] if node_exporter_enabled | bool else [])
          }}
 
+- name: "[Monitoring] Check whether the firewall bouncer is already configured"
+  ansible.builtin.stat:
+    path: /etc/crowdsec/bouncers
+  register: monitoring_bouncer_configured
+  when: crowdsec_enabled | bool
+  tags: [crowdsec]
+
 - name: "[Monitoring] Back up the firewall bouncer configuration"
   ansible.builtin.command:
     argv:
@@ -120,7 +136,9 @@
       - /
       - etc/crowdsec/bouncers
     creates: "/var/backups/crowdsec-firewall-bouncer-pre-{{ crowdsec_firewall_bouncer_version }}.tgz"
-  when: crowdsec_enabled | bool
+  when:
+    - crowdsec_enabled | bool
+    - monitoring_bouncer_configured.stat.exists | default(false)
   tags: [crowdsec]
 
 - name: "[Monitoring] Install the pinned CrowdSec firewall bouncer"
