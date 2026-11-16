@@ -111,9 +111,10 @@ this project's vars/vault. Rules:
   `netbird_dns_disabled_management_groups`, `netbird_setup_keys`,
   `netbird_services` + `netbird_service_domains`, `netbird_users`,
   `netbird_service_users`). Ansible ignores hidden directories when it loads
-  inventory variables, so `playbooks/tenant.yml` and `playbooks/validate_knobs.yml`
-  load it explicitly (`playbooks/tasks/tenant_vars.yml`), and `make print` prints
-  it next to the resolved host vars. The committed template is
+  inventory variables, so `playbooks/site.yml` (its first-owner bootstrap reads the
+  owner entry), `playbooks/tenant.yml` and `playbooks/validate_knobs.yml` load it
+  explicitly (`playbooks/tasks/tenant_vars.yml`), and `make print` prints it next
+  to the resolved host vars. The committed template is
   `inventory/host_vars/example/.config/netbird/tenant.yml.example`; `make
   host-init` scaffolds it comment-free, and the example audit keeps both example
   files a complete, value-accurate mirror of the operator knobs.

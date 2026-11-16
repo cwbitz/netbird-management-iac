@@ -61,6 +61,11 @@
 - name: Deploy the NetBird self-hosted server
   hosts: management
   gather_facts: true
+  vars:
+    tenant_config_file: "{{ playbook_dir }}/../inventory/host_vars/{{ inventory_hostname }}/.config/netbird/tenant.yml"
+  pre_tasks:
+    - name: "[Tenant] Load the tenant desired state"
+      ansible.builtin.include_tasks: tasks/tenant_vars.yml
   roles:
     - role: firewall
       tags: [firewall]
