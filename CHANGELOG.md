@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.6](https://github.com/cwbitz/netbird-management-iac/compare/v2.2.5...v2.2.6) (2026-11-16)
+
+
+### Bug Fixes
+
+* **tenant:** keep the knob validation play offline ([#24](https://github.com/cwbitz/netbird-management-iac/issues/24)) ([ac59745](https://github.com/cwbitz/netbird-management-iac/commit/ac59745b44713ba728d6cbb71208fa9201161e11))
+
 ## [2.2.5](https://github.com/cwbitz/netbird-management-iac/compare/v2.2.4...v2.2.5) (2026-11-16)
 
 
