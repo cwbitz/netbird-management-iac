@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.1](https://github.com/cwbitz/netbird-management-iac/compare/v2.3.0...v2.3.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* **management:** load the tenant state for the first-owner bootstrap ([#28](https://github.com/cwbitz/netbird-management-iac/issues/28)) ([3243bcb](https://github.com/cwbitz/netbird-management-iac/commit/3243bcb1518f6bc3b6578c3575f2657a2fc32538))
+
 ## [2.3.0](https://github.com/cwbitz/netbird-management-iac/compare/v2.2.6...v2.3.0) (2026-11-16)
 
 
