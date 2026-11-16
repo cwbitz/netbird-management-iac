@@ -28,7 +28,9 @@ ssh_user: "{{ ssh_identity.user }}"
 ssh_password: "{{ ssh_identity.password }}"
 ssh_privkey_file: "{{ ssh_identity.privkey }}"
 ssh_become: "{{ ssh_identity.become }}"
-ssh_common_args: "-o PreferredAuthentications=publickey,password -o NumberOfPasswordPrompts=1"
+ssh_common_args: >-
+  -o PreferredAuthentications=publickey,password -o NumberOfPasswordPrompts=1
+  -o ServerAliveInterval=10 -o ServerAliveCountMax=3 -o TCPKeepAlive=yes
 
 ansible_user: "{{ ssh_user }}"
 ansible_password: "{{ ssh_password }}"
