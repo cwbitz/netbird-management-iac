@@ -335,7 +335,7 @@ deploy: vault-init rebuild-reset hostkey-init validate-knobs agent-fallback ## O
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml $(if $(HOST),-e bootstrap_host=$(HOST),)
 	@echo "==> Deploying the NetBird server (playbooks/site.yml)..."
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) $(PLAYBOOK) $(if $(TAGS),--tags $(TAGS),)
-	@if [ -z "$(TAGS)" ]; then \
+	@set -e; if [ -z "$(TAGS)" ]; then \
 		echo "==> Applying the tenant config-as-code state (playbooks/tenant.yml)..."; \
 		RETRY_MAX=$(TENANT_RETRY_MAX) RETRY_DELAY=$(TENANT_RETRY_DELAY) \
 			$(RETRY_RUN) $(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/tenant.yml -e tenant_commit=true; \
