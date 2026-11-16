@@ -99,7 +99,11 @@ this project's vars/vault. Rules:
   `netbird_users`, the first-owner bootstrap writes a fresh
   `vault_service_admin_access_token`; the tenant play writes the new
   `vault_<setup-key-name>` values. Without an owner entry, set the PAT manually
-  (see the Dashboard flow above).
+  (see the Dashboard flow above). The first run on the rebuilt host is
+  `make deploy REBUILD=1`: it accepts the new SSH host key (printing its
+  fingerprint), drops the cached facts and the generated tenant render. It never
+  touches the vault — deleting the stale host-returned secrets stays an explicit
+  operator step.
 - `inventory/host_vars/<hostname>/.config/netbird/tenant.yml` — **gitignored**
   operator content: the NetBird tenant desired state (`netbird_settings`,
   `netbird_groups`, `netbird_policies`, `netbird_posture_checks`,
@@ -200,7 +204,10 @@ this project's vars/vault. Rules:
   `docs/components/firewall.md`) and `sshd` (key-only SSH,
   `docs/components/sshd-hardening.md`) — `make deploy TAGS=firewall` / `TAGS=sshd`
   runs only one of them. Both are off until enabled per host
-  (`firewall_enabled` / `sshd_hardening_enabled`).
+  (`firewall_enabled` / `sshd_hardening_enabled`). `REBUILD=1` is the
+  rebuilt-host one-shot: `deploy`, `dry-run` and `host-bootstrap` then accept a
+  changed SSH host key (`hostkey-init`), drop `.cache/facts` and
+  `.cache/tenant_config`, and keep every other behaviour unchanged.
 - `make plan` — tenant config-as-code, **read-only diff** (safe default).
 - `make apply` — apply the tenant desired state. Requires
   `vault_service_admin_access_token`. Use it to change tenants without
