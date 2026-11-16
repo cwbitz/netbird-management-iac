@@ -66,3 +66,39 @@ def test_dropping_an_example_knob_is_reported(run_python_at, tracked_snapshot):
         example.write_text(original, encoding="utf-8")
 
     raise AssertionError("dropping an example knob never failed the audit")
+
+
+def tenant_example_path(root: pathlib.Path) -> pathlib.Path:
+    matches = [
+        path
+        for path in root.rglob("tenant.yml.example")
+        if path.parent.name == "netbird" and path.parent.parent.name == ".config"
+    ]
+    assert matches, "the tracked tree carries no example tenant.yml.example"
+    return matches[0]
+
+
+def test_dropping_a_tenant_example_knob_is_reported(run_python_at, tracked_snapshot):
+    tenant = tenant_example_path(tracked_snapshot)
+    original = tenant.read_text(encoding="utf-8")
+    lines = original.splitlines(keepends=True)
+    declared = declared_knobs(tracked_snapshot)
+    keyed = [
+        (index, line.split(":", 1)[0])
+        for index, line in enumerate(lines)
+        if KEY_LINE.match(line)
+    ]
+    assert keyed, "the tenant example carries no knob lines"
+    ordered = [entry for entry in keyed if entry[1] in declared] + [
+        entry for entry in keyed if entry[1] not in declared
+    ]
+
+    for index, key in ordered[:6]:
+        tenant.write_text("".join(lines[:index] + lines[index + 1:]), encoding="utf-8")
+        result = run_python_at(tracked_snapshot, "audit_example_knobs.py", tracked_snapshot)
+        tenant.write_text(original, encoding="utf-8")
+        if result.returncode == 1:
+            assert key in result.stdout, result.stdout
+            return
+
+    raise AssertionError("dropping a tenant example knob never failed the audit")

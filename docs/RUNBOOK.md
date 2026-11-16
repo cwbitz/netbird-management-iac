@@ -105,8 +105,11 @@ make apply         # apply desired state
 ```
 
 Desired state uses the `community.ansible_netbird` collection's native variables in
-`inventory/host_vars/<host>/main.yml` (secret/PII in `vault.yml`). The play renders
-a generated, gitignored directory (`.cache/tenant_config/<host>/`) and applies it.
+`inventory/host_vars/<host>/.config/netbird/tenant.yml` (secret/PII in
+`vault.yml`); the committed template is
+`inventory/host_vars/example/.config/netbird/tenant.yml.example`, and
+`make print HOST=<host>` prints the file along with the resolved host vars. The
+play renders a generated, gitignored directory (`.cache/tenant_config/<host>/`) and applies it.
 Before rendering, the play validates the effective state locally
 (`scripts/validate_tenant_config.py`) and fails with a per-field report on an
 unusable value. Requires a valid `vault_service_admin_access_token`. `make deploy`

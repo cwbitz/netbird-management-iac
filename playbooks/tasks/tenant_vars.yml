@@ -1,0 +1,10 @@
+---
+- name: "[Tenant] Stat the per-host tenant desired state"
+  ansible.builtin.stat:
+    path: "{{ tenant_config_file }}"
+  register: tenant_config_stat
+
+- name: "[Tenant] Load the per-host tenant desired state"
+  ansible.builtin.include_vars:
+    file: "{{ tenant_config_file }}"
+  when: tenant_config_stat.stat.exists

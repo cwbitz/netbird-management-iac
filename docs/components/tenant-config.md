@@ -2,9 +2,9 @@
 
 `playbooks/tenant.yml` applies the declarative NetBird account state against the
 running server's REST API via the `community.ansible_netbird` collection. Desired
-state is Ansible variables in the per-host vars: non-secret in
-`inventory/host_vars/<host>/main.yml`, secret/PII in `vault.yml`, using the
-collection's native names:
+state is Ansible variables loaded from the per-host config directory: non-secret
+tenant state in `inventory/host_vars/<host>/.config/netbird/tenant.yml`,
+secret/PII in `vault.yml`, using the collection's native names:
 
 `netbird_settings`, `netbird_groups`, `netbird_posture_checks`,
 `netbird_policies`, `netbird_dns_nameserver_groups`, `netbird_dns_zones`,

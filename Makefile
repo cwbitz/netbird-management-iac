@@ -173,6 +173,9 @@ host-init: vault-init ## Scaffold host_vars/<HOST> + the inventory entry (HOST d
 	install -d -m 0700 $(INVENTORY_DIR)/host_vars/$$host; \
 	if [ ! -e $(INVENTORY_DIR)/host_vars/$$host/main.yml ]; then python3 $(CURDIR)/scripts/render_clean_template.py --strip-blank-lines $(INVENTORY_DIR)/host_vars/example/main.yml $(INVENTORY_DIR)/host_vars/$$host/main.yml; fi; \
 	chmod 0644 $(INVENTORY_DIR)/host_vars/$$host/main.yml; \
+	install -d -m 0700 $(INVENTORY_DIR)/host_vars/$$host/.config/netbird; \
+	if [ ! -e $(INVENTORY_DIR)/host_vars/$$host/.config/netbird/tenant.yml ]; then python3 $(CURDIR)/scripts/render_clean_template.py --strip-blank-lines $(INVENTORY_DIR)/host_vars/example/.config/netbird/tenant.yml.example $(INVENTORY_DIR)/host_vars/$$host/.config/netbird/tenant.yml; fi; \
+	chmod 0644 $(INVENTORY_DIR)/host_vars/$$host/.config/netbird/tenant.yml; \
 	if [ ! -e $(INVENTORY_DIR)/host_vars/$$host/vault.yml ]; then python3 $(CURDIR)/scripts/render_clean_template.py --strip-blank-lines $(INVENTORY_DIR)/host_vars/example/vault.yml.example $(INVENTORY_DIR)/host_vars/$$host/vault.yml; fi; \
 	if grep -q 'ANSIBLE_VAULT' $(INVENTORY_DIR)/host_vars/$$host/vault.yml; then :; else \
 		echo "Encrypting $(INVENTORY_DIR)/host_vars/$$host/vault.yml..."; \
@@ -185,6 +188,7 @@ host-init: vault-init ## Scaffold host_vars/<HOST> + the inventory entry (HOST d
 	effective_port=$$(printf '%s\n' "$$entry" | sed -n 's/^effective ansible_port=//p'); \
 	echo "Scaffolded $(INVENTORY_DIR)/host_vars/$$host/ (ansible_host: $${effective_host:-unset}, ansible_port: $${effective_port:-22} in $(INVENTORY))"; \
 	echo "next: make vault-edit HOST=$$host   (fill the CHANGE_ME_* values; generated ones fill themselves)"; \
+	echo "      tenant state: $(INVENTORY_DIR)/host_vars/$$host/.config/netbird/tenant.yml"; \
 	echo "      verify: make print HOST=$$host"
 
 .PHONY: host-bootstrap
@@ -363,4 +367,6 @@ print: vault-init ## Print resolved host vars (incl. decrypted vault)
 		echo "Usage: make print HOST=<hostname> (required when the inventory has no single host)" >&2; exit 1; \
 	fi; \
 	echo "Resolved host: $$host"; \
-	ansible -i $(INVENTORY) "$$host" -m ansible.builtin.debug -a "var=hostvars[inventory_hostname]"
+	ansible -i $(INVENTORY) "$$host" -m ansible.builtin.debug -a "var=hostvars[inventory_hostname]"; \
+	tenant="$(INVENTORY_DIR)/host_vars/$$host/.config/netbird/tenant.yml"; \
+	if [ -f "$$tenant" ]; then echo "== tenant desired state ($$tenant)"; cat "$$tenant"; else echo "== tenant desired state: (none)"; fi

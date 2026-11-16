@@ -32,12 +32,16 @@ KEYS = [
 ]
 
 
-def build_tree(tmp_path: pathlib.Path, keys=None, example: str = EXAMPLE, defaults_extra: str = "") -> pathlib.Path:
+def build_tree(tmp_path: pathlib.Path, keys=None, example: str = EXAMPLE, defaults_extra: str = "", tenant_example: str = "---\n") -> pathlib.Path:
     keys = KEYS if keys is None else keys
     root = tmp_path / "repo"
     (root / "inventory/host_vars/example").mkdir(parents=True)
+    (root / "inventory/host_vars/example/.config/netbird").mkdir(parents=True)
     (root / "roles/demo/defaults").mkdir(parents=True)
     (root / "inventory/host_vars/example/main.yml").write_text(example, encoding="utf-8")
+    (root / "inventory/host_vars/example/.config/netbird/tenant.yml.example").write_text(
+        tenant_example, encoding="utf-8"
+    )
     schema = "operator_knob_schema:\n" + "".join(f"  {key}: \"is defined\"\n" for key in keys)
     (root / "inventory/knob_schema.yml").write_text(schema, encoding="utf-8")
     (root / "roles/demo/defaults/main.yml").write_text(
@@ -97,6 +101,32 @@ def test_derived_knob_omitted_passes(run_python, tmp_path):
     result = run_python("audit_example_knobs.py", root)
 
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_tenant_example_knob_passes(run_python, tmp_path):
+    root = build_tree(
+        tmp_path,
+        keys=KEYS + ["netbird_groups"],
+        tenant_example="---\nnetbird_groups: []\n",
+        defaults_extra="netbird_groups: []\n",
+    )
+    result = run_python("audit_example_knobs.py", root)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_knob_in_both_examples_is_reported(run_python, tmp_path):
+    root = build_tree(
+        tmp_path,
+        example=EXAMPLE + "netbird_groups: []\n",
+        keys=KEYS + ["netbird_groups"],
+        tenant_example="---\nnetbird_groups: []\n",
+        defaults_extra="netbird_groups: []\n",
+    )
+    result = run_python("audit_example_knobs.py", root)
+
+    assert result.returncode == 1
+    assert "present in both" in result.stdout
 
 
 def test_missing_example_is_an_error(run_python, tmp_path):

@@ -2,16 +2,29 @@
 - name: Validate operator knobs
   hosts: all
   gather_facts: false
+  vars:
+    tenant_config_file: "{{ playbook_dir }}/../inventory/host_vars/{{ inventory_hostname }}/.config/netbird/tenant.yml"
+    example_main_file: "{{ playbook_dir }}/../inventory/host_vars/example/main.yml"
+    example_tenant_file: "{{ playbook_dir }}/../inventory/host_vars/example/.config/netbird/tenant.yml.example"
   tasks:
     - name: Load the operator knob schema
       ansible.builtin.include_vars:
         file: "{{ playbook_dir }}/../inventory/knob_schema.yml"
 
+    - name: Load the tenant desired state
+      ansible.builtin.include_tasks: tasks/tenant_vars.yml
+
     - name: Assert the schema covers every example knob
+      vars:
+        example_knobs: >-
+          {{ (lookup('file', example_main_file) | from_yaml)
+             | combine(lookup('file', example_tenant_file) | from_yaml) }}
       ansible.builtin.assert:
         that:
-          - operator_knob_schema.keys() | sort == (lookup('file', playbook_dir ~ '/../inventory/host_vars/example/main.yml') | from_yaml).keys() | sort
-        fail_msg: "inventory/knob_schema.yml is out of sync with inventory/host_vars/example/main.yml"
+          - operator_knob_schema.keys() | sort == example_knobs.keys() | sort
+        fail_msg: >-
+          inventory/knob_schema.yml is out of sync with the example host files
+          (inventory/host_vars/example/main.yml and .config/netbird/tenant.yml.example)
         quiet: true
 
     - name: Validate every operator knob

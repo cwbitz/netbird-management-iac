@@ -1,0 +1,114 @@
+# ------------------------------------------------------------------------------
+# NetBird tenant desired state: account settings, groups, policies, DNS,
+# setup keys, users and networks, applied through the management API by
+# playbooks/tenant.yml. The real file is
+# inventory/host_vars/<hostname>/.config/netbird/tenant.yml (gitignored);
+# `make host-init` copies this template comment-free.
+# ------------------------------------------------------------------------------
+
+# --- Account settings (settings.yml) -----------------------------------------
+# Account-wide settings, each shown with its default; group lists accept plain
+# names (resolved to IDs). Leaving a key out keeps the server's current value.
+# ENTERPRISE-gated and extra traffic-log options stay commented.
+netbird_settings:
+  # Authentication
+  peer_login_expiration_enabled: true        # require periodic SSO re-auth (setup-key peers exempt)
+  peer_login_expire_seconds: 604800          # 7 days
+  peer_inactivity_expiration_enabled: false
+  peer_inactivity_expire_seconds: 2592000    # 30 days
+  extra_user_approval_required: false        # approve users auto-joining by email domain
+  # extra_peer_approval_enabled: false       # ENTERPRISE
+  # Permissions
+  regular_users_view_blocked: false
+  # User groups
+  groups_propagation_enabled: true
+  jwt_groups_enabled: false
+  jwt_groups_claim_name: "groups"
+  jwt_allow_groups: []
+  # Networks
+  dns_domain: "netbird.selfhosted"           # keep a non-public domain
+  network_range: "100.64.0.0/10"             # changing re-allocates all peer IPs
+  network_range_v6: "fd00::/64"
+  ipv6_enabled_groups: []                    # empty = disable IPv6 overlay
+  routing_peer_dns_resolution_enabled: true
+  # extra_network_traffic_logs_enabled: false
+  # extra_network_traffic_logs_groups: []
+  # extra_network_traffic_packet_counter_enabled: false  # ENTERPRISE
+  # Clients
+  lazy_connection_enabled: false
+  auto_update_version: "disabled"            # disabled | latest | a version
+  auto_update_always: false
+  peer_expose_enabled: false
+  peer_expose_groups: []
+
+# --- Groups (access_control/groups.yml) --------------------------------------
+# One entry per group; do NOT list the auto-managed "All" group.
+netbird_groups: []
+#   - name: "personal"
+#   - name: "guests"
+
+# --- Policies / ACL (access_control/policies.yml) ----------------------------
+netbird_policies: []
+#   - name: "personal-to-guests"
+#     description: "Let the owner reach guest machines over SSH"
+#     enabled: true
+#     rules:
+#       - name: "ssh"
+#         enabled: true
+#         sources: ["personal"]
+#         destinations: ["guests"]
+#         bidirectional: false
+#         protocol: "tcp"
+#         ports: ["22"]
+#         action: "accept"
+#     state: present
+
+# --- Posture checks (access_control/posture_checks.yml) ----------------------
+netbird_posture_checks: []
+
+# --- Networks (networks.yml) -------------------------------------------------
+# A routed network binds its gateway by peer GROUP (routers[].peer_groups), not
+# by an individual peer; the client's setup key auto-assigns that group, so the
+# network can be created on the first run.
+netbird_networks: []
+
+# --- DNS (dns/nameservers.yml, dns/zones.yml, dns/settings.yml) --------------
+netbird_dns_nameserver_groups: []
+netbird_dns_zones: []
+netbird_dns_disabled_management_groups: []
+
+# --- Setup keys (setup_keys.yml) ---------------------------------------------
+# The secret is returned only at creation and then persisted to vault.yml as
+# vault_<setup-key-name> (e.g. docker_host_setup_key ->
+# vault_docker_host_setup_key). expires_in is seconds, 1..31536000; a never-expiring key
+# (expires_in: 0) is not expressible here (create it once via the API instead).
+netbird_setup_keys: []
+#   - name: "server-enrollment"
+#     key_type: "reusable"          # one-off | reusable
+#     expires_in: 31536000          # seconds, 1..31536000 (1 year max)
+#     auto_groups: ["servers"]
+#     usage_limit: 0                # 0 = unlimited
+#     ephemeral: false
+#     state: present
+
+# --- Services (services.yml) -------------------------------------------------
+# Services and custom domains need a registered proxy cluster, which only the
+# self-hosted proxy software itself can create.
+netbird_services: []
+netbird_service_domains: []
+
+# --- Users / service users (applied directly, not via a config file) ---------
+# Local-user passwords are returned once (not persisted); prefer invites, and put
+# sensitive emails in vault.yml. IdP-driven provisioning (SCIM/IdP sync) is
+# Enterprise; manual users are Community.
+netbird_users: []
+#   - email: "owner@example.com"
+#     name: "Owner"
+#     role: "user"            # owner | admin | user | network_admin | auditor
+#     auto_groups: ["personal"]
+#     state: present
+netbird_service_users: []
+#   - name: "automation"
+#     role: "admin"
+#     auto_groups: []
+#     state: present
