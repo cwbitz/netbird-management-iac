@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.5](https://github.com/cwbitz/netbird-management-iac/compare/v2.2.4...v2.2.5) (2026-11-16)
+
+
+### Bug Fixes
+
+* **monitoring:** skip the pre-upgrade backups on a fresh host ([#20](https://github.com/cwbitz/netbird-management-iac/issues/20)) ([ad87431](https://github.com/cwbitz/netbird-management-iac/commit/ad874313ba6ef46e551b01201d3b137681a8f436))
+
 ## [2.2.4](https://github.com/cwbitz/netbird-management-iac/compare/v2.2.3...v2.2.4) (2026-11-16)
 
 
