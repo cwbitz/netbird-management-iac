@@ -209,7 +209,7 @@ this project's vars/vault. Rules:
   `docs/components/firewall.md`) and `sshd` (key-only SSH,
   `docs/components/sshd-hardening.md`) — `make deploy TAGS=firewall` / `TAGS=sshd`
   runs only one of them. Both are off until enabled per host
-  (`firewall_enabled` / `sshd_hardening_enabled`). `REBUILD=1` is the
+  (`firewall_enabled` / `sshd.hardening_enabled`). `REBUILD=1` is the
   rebuilt-host one-shot: `deploy`, `dry-run` and `host-bootstrap` then accept a
   changed SSH host key (`hostkey-init`), drop `.cache/facts` and
   `.cache/tenant_config`, and keep every other behaviour unchanged.
@@ -290,10 +290,10 @@ this project's vars/vault. Rules:
   firewall (`firewall_enabled`) enforces exactly that contract rather than
   replacing it — it defaults to the same three ports and re-verifies them from the
   control node after applying.
-- SSH hardening (`sshd_hardening_enabled`, `roles/sshd`) is **opt-in and
+- SSH hardening (`sshd.hardening_enabled`, `roles/sshd`) is **opt-in and
   self-protecting**: it closes password login, so it refuses to run unless a
   keyed login survives it — the `iac` account's key, or root's key with
-  `sshd_permit_root_login: prohibit-password` — and it reverts itself when a
+  `sshd.permit_root_login: prohibit-password` — and it reverts itself when a
   verification fails. Enable it only after `make host-bootstrap` has authorized
   the key. The human `admin` account keeps
   its password for the console only; give it a public key

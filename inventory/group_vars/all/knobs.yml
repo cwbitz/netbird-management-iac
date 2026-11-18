@@ -1,4 +1,12 @@
 ---
+sshd_defaults:
+  hardening_enabled: false
+  permit_root_login: "no"
+
+sshd_cfg: "{{ sshd_defaults | combine(sshd | default({}, true), recursive=True) }}"
+sshd_hardening_enabled: "{{ sshd_cfg.hardening_enabled }}"
+sshd_permit_root_login: "{{ sshd_cfg.permit_root_login }}"
+
 monitoring_defaults:
   node_exporter:
     enabled: false

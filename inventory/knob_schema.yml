@@ -17,9 +17,7 @@ operator_knob_schema:
     (docker_registry_mirrors is mapping))
   create_admin_account: "create_admin_account is not defined or create_admin_account is boolean"
   allow_root_login: "allow_root_login is not defined or allow_root_login is boolean"
-  sshd_hardening_enabled: "sshd_hardening_enabled is not defined or sshd_hardening_enabled is boolean"
-  sshd_permit_root_login: >-
-    sshd_permit_root_login is not defined or (sshd_permit_root_login | string) in ["yes", "no", "prohibit-password", "without-password"]
+  sshd: "sshd is not defined or sshd is mapping"
   firewall_enabled: "firewall_enabled is not defined or firewall_enabled is boolean"
   firewall_allow_icmp: "firewall_allow_icmp is not defined or firewall_allow_icmp is boolean"
   monitoring: "monitoring is not defined or monitoring is mapping"
@@ -88,9 +86,14 @@ operator_knob_schema:
     netbird_service_users is not defined or ((netbird_service_users is sequence) and not (netbird_service_users is string) and not
     (netbird_service_users is mapping))
 
-# Per-key expressions of the grouped mapping (monitoring), keyed by the
-# dotted path the operator sees in the host's main.yml.
+# Per-key expressions of the grouped mappings (sshd, monitoring), keyed by
+# the dotted path the operator sees in the host's main.yml.
 operator_knob_nested:
+  sshd.hardening_enabled: >-
+    ((sshd | default({}, true)).hardening_enabled | default(false)) is boolean
+  sshd.permit_root_login: >-
+    ((sshd | default({}, true)).permit_root_login | default('no') | string)
+    in ["no", "prohibit-password"]
   monitoring.node_exporter.enabled: >-
     (((monitoring | default({}, true)).node_exporter | default({})).enabled
      | default(false)) is boolean

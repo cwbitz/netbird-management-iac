@@ -128,11 +128,12 @@ firewall_allow_icmp: true
 # Key-only SSH administration, opt-in (make deploy TAGS=sshd). Enable it only
 # once a keyed login works for `iac` (or root when that is the only admin
 # path); the role verifies that and rolls back otherwise.
-sshd_hardening_enabled: false
-# Root SSH policy, independent of the toggle above: "no" disables root SSH;
-# "prohibit-password" keeps root reachable by public key only (needed on a host
-# administered only through root).
-sshd_permit_root_login: "no"
+sshd:
+  hardening_enabled: false
+  # Root SSH policy, applied only while the hardening toggle above is true: "no"
+  # disables root SSH; "prohibit-password" keeps root reachable by public key
+  # only (needed on a host administered only through root).
+  permit_root_login: "no"
 
 # --- Host bootstrap (make host-bootstrap) ------------------------------------
 # install_docker false requires a preinstalled Docker. Mirrors for hosts where the

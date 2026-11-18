@@ -227,7 +227,7 @@ make deploy TAGS=sshd       # key-only SSH (roles/sshd)
 ```yaml
 # inventory/host_vars/<host>/main.yml
 firewall_enabled: true
-sshd_hardening_enabled: true     # only after host-bootstrap keyed `iac`
+sshd.hardening_enabled: true     # only after host-bootstrap keyed `iac`
 ```
 
 - **Firewall**: enforces the mesh contract (TCP 80/443, UDP 3478 —
@@ -237,7 +237,7 @@ sshd_hardening_enabled: true     # only after host-bootstrap keyed `iac`
   while the stack is not running). Details:
   [`components/firewall.md`](components/firewall.md).
 - **SSH hardening**: closes password login (plus the PAM keyboard-interactive and
-  empty-password paths) and applies `sshd_permit_root_login` (default `no`). It
+  empty-password paths) and applies `sshd.permit_root_login` (default `no`). It
   proves a key-only login as the chosen identity (`iac`, or root when allowed)
   first and rolls itself back on any failed verification. The human `admin`
   account keeps its password for the **console** only — set
@@ -304,7 +304,7 @@ Verify after restore: the OIDC discovery URL answers and users can log in.
   `firewall_enabled: false` and re-run.
 - **SSH hardening rollback**: `rm /etc/ssh/sshd_config.d/00-sshd-hardening.conf
   && systemctl reload ssh` (provider console), then set
-  `sshd_hardening_enabled: false` and re-run.
+  `sshd.hardening_enabled: false` and re-run.
 
 ## 9. Troubleshooting
 
@@ -315,7 +315,7 @@ Verify after restore: the OIDC discovery URL answers and users can log in.
 | `prometheus-node-exporter` failed after a reboot | The overlay address was never created: the drop-in waits ~90s then gives up (5 retries). Check `docker ps` / `ip -br addr show wt0` / `journalctl -u prometheus-node-exporter`. A manual `systemctl start prometheus-node-exporter` clears it once the overlay is up. |
 | Dashboard/API answer locally but not from the internet (firewall applied) | `nft list table inet basefw` — the declared TCP ports must be there (the NetBird agent adds one extra `iifname "wt0" counter … accept` rule of its own; that is expected). `make deploy TAGS=firewall` re-verifies them from the control node. Roll back with `systemctl disable --now firewall && nft delete table inet basefw`. |
 | `make deploy TAGS=sshd` failed and the host kept password login | Expected: the role reverted the drop-in and failed. Read the failing task (the key-only login probe is the usual one): the `iac` key must be authorized by `make host-bootstrap` and accepted by OpenSSH (`make agent-load` for a `/mnt/c` key). |
-| No usable SSH login after enabling hardening | Recover from the provider console: `rm /etc/ssh/sshd_config.d/00-sshd-hardening.conf && systemctl reload ssh`, then set `sshd_hardening_enabled: false` and re-run. |
+| No usable SSH login after enabling hardening | Recover from the provider console: `rm /etc/ssh/sshd_config.d/00-sshd-hardening.conf && systemctl reload ssh`, then set `sshd.hardening_enabled: false` and re-run. |
 | Readiness times out on first deploy | GeoLite2 download (§1); re-run or pre-seed the DBs. |
 | node-exporter panels show "No data" although the target is up | The push cadence is too slow for the dashboards' 60s `rate()` windows: keep `monitoring.alloy.scrape_interval` at 15s (30s works, 60s yields a single sample per window). Check with `count_over_time(node_load1{instance="<host>"}[5m])` (≈20 points at 15s) and re-run `make deploy TAGS=monitoring`. |
 | Tenant run: token rejected | PAT expired — recreate it for the `admin` service user and update the vault (§2). |
@@ -364,9 +364,9 @@ to skip.
       journal events arrive; an unreachable Loki is a warning, not a failure.
 - [ ] `firewall_enabled: true`: only 80/TCP, 443/TCP and 3478/UDP (plus SSH and
       WireGuard) are open; the rule set is identical on a re-run.
-- [ ] `sshd_hardening_enabled: true` without a keyed login: refuses before writing;
+- [ ] `sshd.hardening_enabled: true` without a keyed login: refuses before writing;
       break the verification on purpose and the config rolls back.
-- [ ] Each `sshd_permit_root_login` value matches `sshd -T`.
+- [ ] Each `sshd.permit_root_login` value matches `sshd -T`.
 - [ ] Run each role with an empty and then a pre-filled vault: missing secrets are
       generated once, non-empty values are never rotated, the file stays encrypted
       and `-vvv` shows no value.
