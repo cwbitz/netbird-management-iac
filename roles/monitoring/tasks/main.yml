@@ -7,8 +7,8 @@
     that:
       - ansible_os_family == 'Debian'
     fail_msg: >-
-      monitoring is Debian-family only (apt). Set monitoring_enabled: false on
-      unsupported hosts.
+      monitoring is Debian-family only (apt). Leave every monitoring component
+      disabled on unsupported hosts.
 
 
 - name: "[Monitoring] Ensure gnupg is present"

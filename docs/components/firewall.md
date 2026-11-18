@@ -26,7 +26,7 @@ re-verified from the control node after applying.
 | — | — | `iif lo`, plus `ct state established,related` (ACME, DNS, image pulls, apt, GeoLite2) |
 | `wt0` | — | the overlay: only authenticated mesh peers can appear there |
 | `firewall_netbird_wg_port` (51820) | UDP | the overlay's WireGuard port, so direct P2P paths keep working (before any conntrack rule) |
-| `firewall_ssh_port` (inventory `ansible_port`, then 22) | TCP | SSH (CrowdSec bans the brute force when `monitoring_enabled`) |
+| `firewall_ssh_port` (inventory `ansible_port`, then 22) | TCP | SSH (CrowdSec bans the brute force when `monitoring.crowdsec.enabled`) |
 | 80 | TCP | Traefik: ACME TLS-ALPN-01 + HTTP→HTTPS redirect |
 | `exposed_port` (443) | TCP | Traefik: dashboard, REST API/gRPC, OAuth2, relay WebSocket |
 | `stun_port` (3478) | UDP | STUN/TURN of the signal/relay service |
