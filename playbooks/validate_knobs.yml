@@ -39,6 +39,24 @@
       loop_control:
         label: "{{ item.key }}"
 
+    - name: Validate the CrowdSec knobs
+      ansible.builtin.assert:
+        that:
+          - ((crowdsec | default({}, true)).blocklist_import | default({}, true)) is mapping
+          - crowdsec_enabled is boolean
+          - crowdsec_generate_webui_machine_password is boolean
+          - crowdsec_blocklist_import_enabled is boolean
+          - (crowdsec_blocklist_import_preset | string) in ['embedded', 'server', 'max']
+          - (crowdsec_blocklist_import_interval | int) >= 0
+          - (crowdsec_blocklist_import_max_decisions | int) >= 0
+          - (crowdsec_blocklist_import_batch_size | int) >= 1
+          - (crowdsec_blocklist_import_decision_duration | string) is match('^[0-9]+[smh]$')
+          - crowdsec_blocklist_import_extra_env is mapping
+        fail_msg: >-
+          {{ inventory_hostname }}: invalid crowdsec mapping; see
+          inventory/host_vars/example/main.yml
+        quiet: true
+
     - name: Validate NetBird settings
       ansible.builtin.assert:
         that:

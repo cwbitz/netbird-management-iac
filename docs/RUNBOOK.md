@@ -187,7 +187,7 @@ window: at 60s each `rate()` query sees a single sample and every panel built on
 one renders "No data".
 
 The toggles converge **off** as well as on: setting `monitoring_enabled: false`,
-`node_exporter_enabled: false`, `crowdsec_enabled: false` or
+`node_exporter_enabled: false`, `crowdsec.enabled: false` or
 `alloy_enabled: false` stops and disables the matching units (node_exporter;
 crowdsec + crowdsec-firewall-bouncer) and removes the Alloy containers (the
 compose project in `/opt/monitoring`) on the next run. Packages, the compose file
@@ -431,14 +431,14 @@ is written to `/var/backups/crowdsec-pre-<version>.tgz`.
 
 The optional blocklist importer runs next to the LAPI and is controlled by:
 
-- `crowdsec_blocklist_import_enabled` — deploy the importer;
-- `crowdsec_blocklist_import_preset` — `embedded` (~20k high-confidence IPs),
+- `crowdsec.blocklist_import.enabled` — deploy the importer;
+- `crowdsec.blocklist_import.preset` — `embedded` (~20k high-confidence IPs),
   `server` (conservative server set), or `max` (all feeds);
-- `crowdsec_blocklist_import_interval` — seconds between runs;
-- `crowdsec_blocklist_import_max_decisions` — total decision cap (`0` = no cap);
-- `crowdsec_blocklist_import_batch_size` — API batch size;
-- `crowdsec_blocklist_import_decision_duration` — decision TTL;
-- `crowdsec_blocklist_import_extra_env` — extra importer environment variables
+- `crowdsec.blocklist_import.interval` — seconds between runs;
+- `crowdsec.blocklist_import.max_decisions` — total decision cap (`0` = no cap);
+- `crowdsec.blocklist_import.batch_size` — API batch size;
+- `crowdsec.blocklist_import.decision_duration` — decision TTL;
+- `crowdsec.blocklist_import.extra_env` — extra importer environment variables
   (for example per-feed `ENABLE_*` toggles).
 
 Credentials are generated into the host vault as
