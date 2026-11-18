@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.1](https://github.com/cwbitz/netbird-management-iac/compare/v2.4.0...v2.4.1) (2026-11-18)
+
+
+### Bug Fixes
+
+* **docs:** align the runbook firewall and sshd examples with the cascaded knobs ([#38](https://github.com/cwbitz/netbird-management-iac/issues/38)) ([c7953b6](https://github.com/cwbitz/netbird-management-iac/commit/c7953b635b56a67b479b41cb0927773948171adf))
+
 ## [2.4.0](https://github.com/cwbitz/netbird-management-iac/compare/v2.3.1...v2.4.0) (2026-11-18)
 
 
