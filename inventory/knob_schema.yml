@@ -18,8 +18,7 @@ operator_knob_schema:
   create_admin_account: "create_admin_account is not defined or create_admin_account is boolean"
   allow_root_login: "allow_root_login is not defined or allow_root_login is boolean"
   sshd: "sshd is not defined or sshd is mapping"
-  firewall_enabled: "firewall_enabled is not defined or firewall_enabled is boolean"
-  firewall_allow_icmp: "firewall_allow_icmp is not defined or firewall_allow_icmp is boolean"
+  firewall: "firewall is not defined or firewall is mapping"
   monitoring: "monitoring is not defined or monitoring is mapping"
   domain_name: >-
     (domain_name is not defined or domain_name is string) and (domain_name is defined) and ((domain_name | default('', true) | string | trim |
@@ -86,9 +85,13 @@ operator_knob_schema:
     netbird_service_users is not defined or ((netbird_service_users is sequence) and not (netbird_service_users is string) and not
     (netbird_service_users is mapping))
 
-# Per-key expressions of the grouped mappings (sshd, monitoring), keyed by
-# the dotted path the operator sees in the host's main.yml.
+# Per-key expressions of the grouped mappings (firewall, sshd, monitoring),
+# keyed by the dotted path the operator sees in the host's main.yml.
 operator_knob_nested:
+  firewall.enabled: >-
+    ((firewall | default({}, true)).enabled | default(false)) is boolean
+  firewall.allow_icmp: >-
+    ((firewall | default({}, true)).allow_icmp | default(true)) is boolean
   sshd.hardening_enabled: >-
     ((sshd | default({}, true)).hardening_enabled | default(false)) is boolean
   sshd.permit_root_login: >-

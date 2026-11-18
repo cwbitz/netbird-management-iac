@@ -1,4 +1,12 @@
 ---
+firewall_defaults:
+  enabled: false
+  allow_icmp: true
+
+firewall_cfg: "{{ firewall_defaults | combine(firewall | default({}, true), recursive=True) }}"
+firewall_enabled: "{{ firewall_cfg.enabled }}"
+firewall_allow_icmp: "{{ firewall_cfg.allow_icmp }}"
+
 sshd_defaults:
   hardening_enabled: false
   permit_root_login: "no"
