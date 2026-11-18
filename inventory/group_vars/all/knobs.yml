@@ -82,3 +82,29 @@ prometheus_remote_write_url: "{{ monitoring_cfg.alloy.prometheus_remote_write_ur
 alloy_scrape_interval: "{{ monitoring_cfg.alloy.scrape_interval }}"
 alloy_journal_presets: "{{ monitoring_cfg.alloy.journal_presets }}"
 alloy_journal_extras: "{{ monitoring_cfg.alloy.journal_extras }}"
+
+server_defaults:
+  domain_name: "netbird.example.com"
+  acme_email: "admin@example.com"
+  exposed_port: 443
+  stun_port: 3478
+  log_level: "info"
+  stack_dir: "/opt/netbird"
+  disable_geolite_update: false
+  server_ready_retries: 120
+  tls_wait_retries: 24
+  trusted_peers: []
+  service_admin_access_token_expire_days: 365
+
+server_cfg: "{{ server_defaults | combine(server | default({}, true), recursive=True) }}"
+domain_name: "{{ server_cfg.domain_name }}"
+acme_email: "{{ server_cfg.acme_email }}"
+exposed_port: "{{ server_cfg.exposed_port }}"
+stun_port: "{{ server_cfg.stun_port }}"
+log_level: "{{ server_cfg.log_level }}"
+stack_dir: "{{ server_cfg.stack_dir }}"
+disable_geolite_update: "{{ server_cfg.disable_geolite_update }}"
+server_ready_retries: "{{ server_cfg.server_ready_retries }}"
+tls_wait_retries: "{{ server_cfg.tls_wait_retries }}"
+trusted_peers: "{{ server_cfg.trusted_peers }}"
+service_admin_access_token_expire_days: "{{ server_cfg.service_admin_access_token_expire_days }}"

@@ -28,18 +28,19 @@ re-verified from the control node after applying.
 | `firewall_netbird_wg_port` (51820) | UDP | the overlay's WireGuard port, so direct P2P paths keep working (before any conntrack rule) |
 | `firewall_ssh_port` (inventory `ansible_port`, then 22) | TCP | SSH (CrowdSec bans the brute force when `monitoring.crowdsec.enabled`) |
 | 80 | TCP | Traefik: ACME TLS-ALPN-01 + HTTP→HTTPS redirect |
-| `exposed_port` (443) | TCP | Traefik: dashboard, REST API/gRPC, OAuth2, relay WebSocket |
-| `stun_port` (3478) | UDP | STUN/TURN of the signal/relay service |
+| `server.exposed_port` (443) | TCP | Traefik: dashboard, REST API/gRPC, OAuth2, relay WebSocket |
+| `server.stun_port` (3478) | UDP | STUN/TURN of the signal/relay service |
 | ICMP/ICMPv6 | — | path-MTU discovery, diagnostics (`firewall.allow_icmp`) |
 
 The SSH port and the public lists are role constants
 (`roles/firewall/vars/main.yml`): `firewall_ssh_port` follows the inventory's
 `ansible_port` (then 22), while `firewall_public_tcp_ports` /
-`firewall_public_udp_ports` derive from `exposed_port` / `stun_port`
-(`roles/management/defaults/main.yml`), with Traefik's 80 literal in the compose
-template. Because they live in `vars/`, a host var cannot override them: the host
-always enforces the mesh contract, and changing `exposed_port` / `stun_port` (or
-`ansible_port`) moves the matrix with it.
+`firewall_public_udp_ports` derive from the cascaded `exposed_port` /
+`stun_port` (sourced from `server.exposed_port` / `server.stun_port`), with
+Traefik's 80 literal in the compose template. Because they live in `vars/`, a
+host var cannot override them: the host always enforces the mesh contract, and
+changing `server.exposed_port` / `server.stun_port` (or `ansible_port`) moves the
+matrix with it.
 
 ## How
 
@@ -71,12 +72,12 @@ traffic has no prior conntrack entry and can be classified `invalid`; a
    never leave the host unfirewalled.
 3. After applying, the SSH connection is re-checked (`wait_for_connection`), so a
    mistake fails loudly instead of silently locking the operator out.
-4. Once the stack is running locally (`netbird-traefik` up), every declared
-   public **TCP** port must still answer from the control node. This is the check
+4. Once the stack is running locally (`netbird-traefik` up), every public **TCP**
+   port in the matrix must still answer from the control node. This is the check
    that catches a wrong matrix before the mesh is silently cut off. On a host
    where the stack is not deployed yet it is skipped by design.
 
-UDP cannot be probed this way (STUN/TURN): declare `stun_port` correctly and
+UDP cannot be probed this way (STUN/TURN): declare `server.stun_port` correctly and
 verify from a client (`netbird status`).
 
 ## Persistence and rollback

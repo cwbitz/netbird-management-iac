@@ -15,5 +15,5 @@ and the server:
   management trusts (`reverseProxy.trustedHTTPProxies`).
 
 The image is pinned by `traefik_version` (Renovate-tracked). External reverse
-proxies are supported through `trusted_peers` (an extra trusted proxy address per
+proxies are supported through `server.trusted_peers` (an extra trusted proxy address per
 entry).

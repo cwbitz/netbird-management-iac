@@ -11,8 +11,9 @@ The public domain's A record must point at the host, and these ports must be ope
 | 443 | TCP | dashboard, REST API, gRPC, OAuth2 |
 | 3478 | UDP | STUN |
 
-Defaults live in `roles/management/defaults/main.yml`
-(`http_protocol`, `exposed_port`, `stun_port`).
+Defaults live in the `server` mapping (`server.exposed_port`,
+`server.stun_port`); `inventory/group_vars/all/knobs.yml` flattens them to
+`exposed_port` / `stun_port` for the roles (`http_protocol` is a role constant).
 
 ## Container network
 

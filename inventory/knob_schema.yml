@@ -17,38 +17,10 @@ operator_knob_schema:
     (docker_registry_mirrors is mapping))
   create_admin_account: "create_admin_account is not defined or create_admin_account is boolean"
   allow_root_login: "allow_root_login is not defined or allow_root_login is boolean"
-  sshd: "sshd is not defined or sshd is mapping"
   firewall: "firewall is not defined or firewall is mapping"
+  sshd: "sshd is not defined or sshd is mapping"
   monitoring: "monitoring is not defined or monitoring is mapping"
-  domain_name: >-
-    (domain_name is not defined or domain_name is string) and (domain_name is defined) and ((domain_name | default('', true) | string | trim |
-    length) > 0)
-  acme_email: >-
-    ((acme_email | default('', true) | string | trim) == '' or (acme_email | string) is match('^[^@\s]+@[^@\s]+\.[^@\s]+$')) and (acme_email
-    is defined) and ((acme_email | default('', true) | string | trim | length) > 0)
-  exposed_port: >-
-    (exposed_port | default('', true) | string | trim) == '' or (((exposed_port | string) is match('^[0-9]+(-[0-9]+)?$')) and ((exposed_port |
-    string | regex_replace('-[0-9]+$', '') | int) >= 1) and ((exposed_port | string | regex_replace('^[0-9]+-', '') | int) <= 65535))
-  stun_port: >-
-    (stun_port | default('', true) | string | trim) == '' or (((stun_port | string) is match('^[0-9]+(-[0-9]+)?$')) and ((stun_port | string |
-    regex_replace('-[0-9]+$', '') | int) >= 1) and ((stun_port | string | regex_replace('^[0-9]+-', '') | int) <= 65535))
-  stack_dir: >-
-    stack_dir is not defined or (stack_dir is string and
-    stack_dir is match('^/[^\s]+$'))
-  log_level: "log_level is not defined or (log_level | string) in [\"trace\", \"debug\", \"info\", \"warn\", \"error\"]"
-  server_ready_retries: >-
-    (server_ready_retries | default('', true) | string | trim) == ''
-    or ((server_ready_retries | string) is match('^[0-9]+$')
-    and (server_ready_retries | int) >= 1 and (server_ready_retries | int) <= 1000)
-  tls_wait_retries: >-
-    (tls_wait_retries | default('', true) | string | trim) == ''
-    or ((tls_wait_retries | string) is match('^[0-9]+$')
-    and (tls_wait_retries | int) >= 1 and (tls_wait_retries | int) <= 1000)
-  disable_geolite_update: "disable_geolite_update is not defined or disable_geolite_update is boolean"
-  trusted_peers: "trusted_peers is not defined or ((trusted_peers is sequence) and not (trusted_peers is string) and not (trusted_peers is mapping))"
-  service_admin_access_token_expire_days: >-
-    service_admin_access_token_expire_days is not defined or ((service_admin_access_token_expire_days is number) and not
-    (service_admin_access_token_expire_days is boolean))
+  server: "server is not defined or server is mapping"
   tenant_strict: "tenant_strict is not defined or tenant_strict is boolean"
   netbird_settings: "netbird_settings is not defined or netbird_settings is mapping"
   netbird_groups: >-
@@ -85,8 +57,8 @@ operator_knob_schema:
     netbird_service_users is not defined or ((netbird_service_users is sequence) and not (netbird_service_users is string) and not
     (netbird_service_users is mapping))
 
-# Per-key expressions of the grouped mappings (firewall, sshd, monitoring),
-# keyed by the dotted path the operator sees in the host's main.yml.
+# Per-key expressions of the grouped mappings (firewall, sshd, monitoring,
+# server), keyed by the dotted path the operator sees in the host's main.yml.
 operator_knob_nested:
   firewall.enabled: >-
     ((firewall | default({}, true)).enabled | default(false)) is boolean
@@ -169,3 +141,51 @@ operator_knob_nested:
      | default([])) is string) and
     not ((((monitoring | default({}, true)).alloy | default({})).journal_extras
      | default([])) is mapping)
+  server.domain_name: >-
+    ((server | default({}, true)).domain_name | default('netbird.example.com')) is string
+    and (((server | default({}, true)).domain_name | default('netbird.example.com'))
+    | string | trim | length) > 0
+  server.acme_email: >-
+    ((server | default({}, true)).acme_email | default('admin@example.com')) is string
+    and (((server | default({}, true)).acme_email | default('admin@example.com'))
+    | string | trim) is match('^[^@\s]+@[^@\s]+\.[^@\s]+$')
+  server.exposed_port: >-
+    (((server | default({}, true)).exposed_port | default(443, true) | string)
+     is match('^[0-9]+(-[0-9]+)?$')) and
+    (((server | default({}, true)).exposed_port | default(443, true) | string
+     | regex_replace('-[0-9]+$', '') | int) >= 1) and
+    (((server | default({}, true)).exposed_port | default(443, true) | string
+     | regex_replace('^[0-9]+-', '') | int) <= 65535)
+  server.stun_port: >-
+    (((server | default({}, true)).stun_port | default(3478, true) | string)
+     is match('^[0-9]+(-[0-9]+)?$')) and
+    (((server | default({}, true)).stun_port | default(3478, true) | string
+     | regex_replace('-[0-9]+$', '') | int) >= 1) and
+    (((server | default({}, true)).stun_port | default(3478, true) | string
+     | regex_replace('^[0-9]+-', '') | int) <= 65535)
+  server.log_level: >-
+    ((server | default({}, true)).log_level | default('info') | string)
+    in ["trace", "debug", "info", "warn", "error"]
+  server.stack_dir: >-
+    ((server | default({}, true)).stack_dir | default('/opt/netbird')) is string
+    and (((server | default({}, true)).stack_dir | default('/opt/netbird'))
+    is match('^/[^\s]+$'))
+  server.disable_geolite_update: >-
+    ((server | default({}, true)).disable_geolite_update | default(false)) is boolean
+  server.server_ready_retries: >-
+    ((server | default({}, true)).server_ready_retries | default(120, true) | string)
+    is match('^[0-9]+$') and
+    ((server | default({}, true)).server_ready_retries | default(120, true) | int) >= 1 and
+    ((server | default({}, true)).server_ready_retries | default(120, true) | int) <= 1000
+  server.tls_wait_retries: >-
+    ((server | default({}, true)).tls_wait_retries | default(24, true) | string)
+    is match('^[0-9]+$') and
+    ((server | default({}, true)).tls_wait_retries | default(24, true) | int) >= 1 and
+    ((server | default({}, true)).tls_wait_retries | default(24, true) | int) <= 1000
+  server.trusted_peers: >-
+    ((server | default({}, true)).trusted_peers | default([])) is sequence and
+    not (((server | default({}, true)).trusted_peers | default([])) is string) and
+    not (((server | default({}, true)).trusted_peers | default([])) is mapping)
+  server.service_admin_access_token_expire_days: >-
+    ((server | default({}, true)).service_admin_access_token_expire_days | default(365)) is number
+    and not (((server | default({}, true)).service_admin_access_token_expire_days | default(365)) is boolean)

@@ -20,34 +20,38 @@ host_admin_ssh_privkey_file: ""
 host_root_ssh_pubkey_file: ""
 host_root_ssh_privkey_file: ""
 
-# --- Public endpoint (per host, not a secret) --------------------------------
-# The FQDN the server is reachable at; its A record must point at this host, with
-# TCP 80/443 and UDP 3478 open. The placeholder fails the deploy.
-domain_name: "netbird.example.com"
-acme_email: "admin@example.com"
+# --- Host baseline (make host-bootstrap) --------------------------------------
+# install_docker false requires a preinstalled Docker. Mirrors for hosts where the
+# defaults are slow or blocked; the security repo follows apt_mirror.
+install_docker: true
+# IANA timezone for the host clock and journal timestamps (empty keeps the
+# image's setting).
+timezone: "UTC"
+apt_mirror: ""
+# Docker Hub pull-through mirrors; e.g. ["https://mirror.gcr.io"] is the fastest
+# from an APAC/JP host (it also lifts Docker Hub's anonymous pull limit).
+docker_registry_mirrors: []
+# Escape hatch: run the deploy as root instead of the service account.
+allow_root_login: false
 
-# --- Server -------------------------------------------------------------------
-# The advertised HTTPS port, STUN/TURN port and log level. The firewall follows
-# these two ports; the scheme is always https (Traefik + ACME).
-exposed_port: 443
-stun_port: 3478
-log_level: "info"
-stack_dir: "/opt/netbird"
-# Skip the GeoLite2 download at startup (needs pkgs.netbird.io; set true on
-# air-gapped or slow-CDN hosts; disables geo-based posture checks).
-disable_geolite_update: false
-# Start-up waits: the server logs a started HTTP listener (the geolocation
-# databases download on first boot and can take minutes), then the public TLS
-# endpoint must answer. Raise the first one on a slow link, lower the second to
-# fail faster when ACME cannot issue.
-server_ready_retries: 120
-tls_wait_retries: 24
-# Extra management addresses trusted as a reverse proxy (external proxy
-# setups); Traefik is covered by traefik_ip. Example: ["203.0.113.20/32"].
-trusted_peers: []
-# Lifetime (days) of the 'admin' service-user PAT minted by the first-owner
-# bootstrap (NetBird caps PATs at 365 days).
-service_admin_access_token_expire_days: 365
+# --- SSH hardening (make deploy TAGS=sshd) ------------------------------------
+# Key-only SSH administration, opt-in (make deploy TAGS=sshd). Enable it only
+# once a keyed login works for `iac` (or root when that is the only admin
+# path); the role verifies that and rolls back otherwise.
+sshd:
+  hardening_enabled: false
+  # Root SSH policy, applied only while the hardening toggle above is true: "no"
+  # disables root SSH; "prohibit-password" keeps root reachable by public key
+  # only (needed on a host administered only through root).
+  permit_root_login: "no"
+
+# --- Host firewall -------------------------------------------------------------
+# Default-deny inbound, opt-in (make deploy TAGS=firewall). Keeps the public
+# surface at the mesh contract (TCP 80/443, UDP 3478) plus SSH and the overlay;
+# the port matrix is fixed, not configurable.
+firewall:
+  enabled: false
+  allow_icmp: true
 
 # --- Host monitoring + host security (make monitoring) -----------------------
 # prometheus-node-exporter + CrowdSec (+ the nftables firewall bouncer) and the
@@ -117,36 +121,30 @@ monitoring:
     journal_presets: [ssh, security, kernel, services]
     journal_extras: []
 
-# --- Host firewall -------------------------------------------------------------
-# Default-deny inbound, opt-in (make deploy TAGS=firewall). Keeps the public
-# surface at the mesh contract (TCP 80/443, UDP 3478) plus SSH and the overlay;
-# the port matrix is fixed, not configurable.
-firewall:
-  enabled: false
-  allow_icmp: true
-
-# --- SSH hardening (make deploy TAGS=sshd) ------------------------------------
-# Key-only SSH administration, opt-in (make deploy TAGS=sshd). Enable it only
-# once a keyed login works for `iac` (or root when that is the only admin
-# path); the role verifies that and rolls back otherwise.
-sshd:
-  hardening_enabled: false
-  # Root SSH policy, applied only while the hardening toggle above is true: "no"
-  # disables root SSH; "prohibit-password" keeps root reachable by public key
-  # only (needed on a host administered only through root).
-  permit_root_login: "no"
-
-# --- Host bootstrap (make host-bootstrap) ------------------------------------
-# install_docker false requires a preinstalled Docker. Mirrors for hosts where the
-# defaults are slow or blocked; the security repo follows apt_mirror.
-install_docker: true
-# IANA timezone for the host clock and journal timestamps (empty keeps the
-# image's setting).
-timezone: "UTC"
-apt_mirror: ""
-# Docker Hub pull-through mirrors; e.g. ["https://mirror.gcr.io"] is the fastest
-# from an APAC/JP host (it also lifts Docker Hub's anonymous pull limit).
-docker_registry_mirrors: []
-# Escape hatch: run the deploy as root instead of the service account.
-allow_root_login: false
-
+# --- Server -------------------------------------------------------------------
+server:
+  # The FQDN the server is reachable at; its A record must point at this host,
+  # with TCP 80/443 and UDP 3478 open. The placeholder fails the deploy.
+  domain_name: "netbird.example.com"
+  acme_email: "admin@example.com"
+  # The advertised HTTPS port, STUN/TURN port and log level. The firewall follows
+  # these two ports; the scheme is always https (Traefik + ACME).
+  exposed_port: 443
+  stun_port: 3478
+  log_level: "info"
+  # Skip the GeoLite2 download at startup (needs pkgs.netbird.io; set true on
+  # air-gapped or slow-CDN hosts; disables geo-based posture checks).
+  disable_geolite_update: false
+  stack_dir: "/opt/netbird"
+  # Start-up waits: the server logs a started HTTP listener (the geolocation
+  # databases download on first boot and can take minutes), then the public TLS
+  # endpoint must answer. Raise the first one on a slow link, lower the second to
+  # fail faster when ACME cannot issue.
+  server_ready_retries: 120
+  tls_wait_retries: 24
+  # Extra management addresses trusted as a reverse proxy (external proxy
+  # setups); Traefik is covered by traefik_ip. Example: ["203.0.113.20/32"].
+  trusted_peers: []
+  # Lifetime (days) of the 'admin' service-user PAT minted by the first-owner
+  # bootstrap (NetBird caps PATs at 365 days).
+  service_admin_access_token_expire_days: 365
