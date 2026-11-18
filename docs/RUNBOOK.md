@@ -227,15 +227,18 @@ make deploy TAGS=sshd       # key-only SSH (roles/sshd)
 
 ```yaml
 # inventory/host_vars/<host>/main.yml
-firewall.enabled: true
-sshd.hardening_enabled: true     # only after host-bootstrap keyed `iac`
+firewall:
+  enabled: true
+sshd:
+  hardening_enabled: true        # only after host-bootstrap keyed `iac`
 ```
 
 - **Firewall**: enforces the mesh contract (TCP 80/443, UDP 3478 —
   [`components/networking.md`](components/networking.md)) plus SSH and the
-  overlay; everything else is reachable over the overlay only. The declared
-  public TCP ports are re-verified from the control node after applying (skipped
-  while the stack is not running). Details:
+  overlay; everything else is reachable over the overlay only. The port matrix
+  is not configurable: it follows `server.exposed_port` / `server.stun_port` and is
+  re-verified from the control node after applying (skipped while the stack is
+  not running). Details:
   [`components/firewall.md`](components/firewall.md).
 - **SSH hardening**: closes password login (plus the PAM keyboard-interactive and
   empty-password paths) and applies `sshd.permit_root_login` (default `no`). It
