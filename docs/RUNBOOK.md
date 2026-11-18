@@ -13,10 +13,11 @@ contracts, conventions and gotchas.
   `host-bootstrap` password probe needs it) and the Keychain ssh-agent fallback.
 - A host entry: `make host-init HOST=<hostname> HOST_IP=<address> [HOST_PORT=22]`
   — writes the connection address/port into `inventory/hosts.yml`, scaffolds
-  `host_vars/<host>/` (comment-free) and encrypts a vault. Then set `domain_name`
-  in `inventory/host_vars/<host>/main.yml` and the SSH creds / ACME email /
-  optional owner in the vault (`make vault-edit HOST=<host>`). The connection
-  address/port live in the inventory, not the vault.
+  `host_vars/<host>/` (comment-free) and encrypts a vault. Then set
+  `server.domain_name` and `server.acme_email` in
+  `inventory/host_vars/<host>/main.yml` and the SSH creds / optional owner in
+  the vault (`make vault-edit HOST=<host>`). The connection address/port live
+  in the inventory, not the vault.
 - Create the non-root service account (as root, once): `make host-bootstrap`,
   then point the connection at it in `vault.yml`. Deploys refuse root unless
   `allow_root_login=true`.
@@ -37,8 +38,8 @@ make deploy      # deploy the server, apply the tenant state, then monitoring
 `make deploy` is the one-shot entry point: it runs `bootstrap.yml` (host init),
 then the server deploy, then the tenant apply, then `monitoring.yml` (host
 monitoring plus the overlay agent). The server deploy waits for the process to
-log its HTTP listener (`server_ready_retries`, default 120 attempts) before it
-checks the public TLS endpoint (`tls_wait_retries`, default 24) — a fresh volume
+log its HTTP listener (`server.server_ready_retries`, default 120 attempts) before it
+checks the public TLS endpoint (`server.tls_wait_retries`, default 24) — a fresh volume
 downloads the geolocation databases first, which can take several minutes on a
 slow link. It probes `iac → admin → root`, creates the `iac` automation account when needed, ensures Docker Engine + Compose
 v2, generates missing secrets into the encrypted `vault.yml`, renders
@@ -65,7 +66,7 @@ ssh <host> 'cd /opt/netbird && docker compose ps'
 **First deploy / GeoLite2**: the server blocks startup while downloading the
 GeoLite2 DBs from `pkgs.netbird.io`. If the readiness wait times out, re-run
 `make deploy` (the DBs persist), or pre-seed the DBs into the volume and set
-`disable_geolite_update: true`.
+`server.disable_geolite_update: true`.
 
 ## 2. First owner and access token
 
@@ -351,10 +352,10 @@ to skip.
 - [ ] Re-run the `management` role: `changed=0`, both containers healthy.
 - [ ] Hand-edit `/opt/netbird/config.yaml`, re-run: the file is restored (rendering
       is the source of truth).
-- [ ] `exposed_port: 8443`: compose publishes `8443:443`, `config.yaml` advertises
-      it, the firewall allows it.
-- [ ] A moved `stack_dir`: deploy and restore both use it; the project name stays
-      pinned.
+- [ ] `server.exposed_port: 8443`: compose publishes `8443:443`, `config.yaml`
+      advertises it, the firewall allows it.
+- [ ] A moved `server.stack_dir`: deploy and restore both use it; the project
+      name stays pinned.
 - [ ] Unset `vault_endpoint_setup_key` and run `make monitoring`: fails before
       starting the container and names the variable.
 - [ ] `make monitoring` with a key: the peer joins `endpoint` with no routes; the

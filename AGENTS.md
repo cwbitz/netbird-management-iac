@@ -66,7 +66,7 @@ this project's vars/vault. Rules:
   `vault_relay_auth_secret`, `vault_owner_password`, `vault_host_iac_password`,
   `vault_host_admin_password` (only when `create_admin_account` is set)), and the
   secrets the host returns (see below). Every non-secret value — the ACME
-  contact email (`acme_email`), the first owner (the `netbird_users` entry with
+  contact email (`server.acme_email`), the first owner (the `netbird_users` entry with
   `role: owner`), hostnames, URLs, paths and toggles — lives in the `main.yml`
   next to it, with its real value, and the tenant desired state lives in
   `.config/netbird/tenant.yml` (next bullet); nothing non-secret is mirrored
@@ -316,9 +316,10 @@ this project's vars/vault. Rules:
 - The vault file must never stay plaintext: `write_vault` always encrypts, and a
   plaintext `vault.yml` (e.g. restored from backup) is re-encrypted on the next
   write by the vault helpers.
-- Config files are rendered to `{{ stack_dir }}` and applied with
-  `community.docker.docker_compose_v2`. **Rendering is the source of truth**; never
-  edit the files on the target host (see `docs/components/roles.md`).
+- Config files are rendered to `server.stack_dir` (`stack_dir` for the roles) and
+  applied with `community.docker.docker_compose_v2`. **Rendering is the source of
+  truth**; never edit the files on the target host (see
+  `docs/components/roles.md`).
 - `vault_service_admin_access_token` expires (max 365 days) and cannot be
   renewed — recreate it from the Dashboard when a tenant run reports it rejected
   (see Secrets above).
@@ -424,7 +425,7 @@ Two layers, and only one of them is executable:
   secrets (store in vault), and **audit/events** (read-only).
 - **Out of scope (here)**: the client agent (owned by `docker-stack-iac`) and the
   NetBird Proxy / Agent Network quickstart components, plus external
-  reverse-proxy modes beyond `trusted_peers`.
+  reverse-proxy modes beyond `server.trusted_peers`.
 
 ## Detailed documentation
 

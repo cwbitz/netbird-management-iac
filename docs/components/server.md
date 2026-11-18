@@ -13,7 +13,8 @@ plane needs:
 
 Deployed by `roles/management`: it renders `config.yaml` (from
 `roles/management/templates/config.yaml.j2`), `dashboard.env`, and
-`docker-compose.yml` into `{{ stack_dir }}` (`/opt/netbird`) and applies them with
+`docker-compose.yml` into `{{ stack_dir }}` (`/opt/netbird`, from
+`server.stack_dir`) and applies them with
 `community.docker.docker_compose_v2` (see [roles.md](roles.md)). The image is
 pinned by `server_version` (Renovate-tracked).
 
@@ -44,7 +45,7 @@ Keys come from the encrypted per-host vault (`vault_relay_auth_secret`,
   disables *updates*, not the initial load. On hosts where that CDN is slow the
   readiness wait times out (the container keeps downloading and the DBs persist, so
   a re-run succeeds). For such hosts, pre-seed `GeoLite2-City_*.mmdb` + `geonames_*.db`
-  into the `netbird_data` volume and set `disable_geolite_update: true`.
+  into the `netbird_data` volume and set `server.disable_geolite_update: true`.
 - A bind-mounted config change does **not** recreate the container, so the
   `config.yaml` / `dashboard.env` template tasks notify the `[NetBird] Restart the
   stack` handler.

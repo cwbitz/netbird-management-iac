@@ -56,7 +56,7 @@ make install
 # 2. Scaffold the host from the committed template: writes the inventory entry
 #    (address/port) and an encrypted vault.yml, and creates host_vars/.
 make host-init HOST=netbird-1 HOST_IP=203.0.113.10 HOST_PORT=22
-#    - inventory/host_vars/netbird-1/main.yml  -> domain_name
+#    - inventory/host_vars/netbird-1/main.yml  -> server.domain_name
 #    - the encrypted vault (make vault-edit HOST=netbird-1)
 #      -> SSH creds, ACME email, optional owner
 
