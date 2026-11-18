@@ -86,7 +86,7 @@ defaulting to the single management node.
 |---|---|---|
 | Tenant config-as-code (groups, policies, networks, DNS, setup keys, users, ...) | per-host vars | [Runbook §4](docs/RUNBOOK.md) |
 | Host monitoring & security (node_exporter, CrowdSec, Alloy) | `monitoring.node_exporter.enabled: true` | [Runbook §5](docs/RUNBOOK.md) |
-| Host firewall (default-deny inbound; mesh contract 80/443/tcp, 3478/udp) | `firewall_enabled: true` | [Runbook §5b](docs/RUNBOOK.md) |
+| Host firewall (default-deny inbound; mesh contract 80/443/tcp, 3478/udp) | `firewall.enabled: true` | [Runbook §5b](docs/RUNBOOK.md) |
 | SSH hardening (key-only admin; root policy via `sshd.permit_root_login`) | `sshd.hardening_enabled: true` | [Runbook §5b](docs/RUNBOOK.md) |
 | Region-restricted APT / Docker mirrors | `apt_mirror`, `docker_registry_mirrors` | [Runbook §6](docs/RUNBOOK.md) |
 | Backup & restore | — | [Runbook §7](docs/RUNBOOK.md) |

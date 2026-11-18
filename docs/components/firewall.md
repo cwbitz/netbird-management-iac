@@ -2,7 +2,7 @@
 
 `roles/firewall/` — the host's **base firewall**: default-deny inbound, applied
 as a dedicated nftables table (`inet basefw`) and persisted by a oneshot systemd
-unit. Opt-in per host (`firewall_enabled`, off by default). Reached via
+unit. Opt-in per host (`firewall.enabled`, off by default). Reached via
 `make deploy TAGS=firewall` or `playbooks/site.yml`. Debian-family only.
 
 ## Why
@@ -30,7 +30,7 @@ re-verified from the control node after applying.
 | 80 | TCP | Traefik: ACME TLS-ALPN-01 + HTTP→HTTPS redirect |
 | `exposed_port` (443) | TCP | Traefik: dashboard, REST API/gRPC, OAuth2, relay WebSocket |
 | `stun_port` (3478) | UDP | STUN/TURN of the signal/relay service |
-| ICMP/ICMPv6 | — | path-MTU discovery, diagnostics (`firewall_allow_icmp`) |
+| ICMP/ICMPv6 | — | path-MTU discovery, diagnostics (`firewall.allow_icmp`) |
 
 The SSH port and the public lists are role constants
 (`roles/firewall/vars/main.yml`): `firewall_ssh_port` follows the inventory's
@@ -91,7 +91,7 @@ race with Docker/CrowdSec/NetBird at boot).
 ssh <host> 'systemctl disable --now firewall && nft delete table inet basefw'
 ```
 
-Then set `firewall_enabled: false` in the host's `main.yml` so a later deploy
+Then set `firewall.enabled: false` in the host's `main.yml` so a later deploy
 does not re-apply it.
 
 ## See also

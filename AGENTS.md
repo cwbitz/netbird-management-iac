@@ -209,7 +209,7 @@ this project's vars/vault. Rules:
   `docs/components/firewall.md`) and `sshd` (key-only SSH,
   `docs/components/sshd-hardening.md`) — `make deploy TAGS=firewall` / `TAGS=sshd`
   runs only one of them. Both are off until enabled per host
-  (`firewall_enabled` / `sshd.hardening_enabled`). `REBUILD=1` is the
+  (`firewall.enabled` / `sshd.hardening_enabled`). `REBUILD=1` is the
   rebuilt-host one-shot: `deploy`, `dry-run` and `host-bootstrap` then accept a
   changed SSH host key (`hostkey-init`), drop `.cache/facts` and
   `.cache/tenant_config`, and keep every other behaviour unchanged.
@@ -287,7 +287,7 @@ this project's vars/vault. Rules:
 - The public domain's A record must point at the host and **TCP 80/443 + UDP 3478**
   must be open **before** deploy, or Let's Encrypt (TLS-ALPN-01) and STUN will not
   work. The full contract is in `docs/components/networking.md`. The optional host
-  firewall (`firewall_enabled`) enforces exactly that contract rather than
+  firewall (`firewall.enabled`) enforces exactly that contract rather than
   replacing it — it defaults to the same three ports and re-verifies them from the
   control node after applying.
 - SSH hardening (`sshd.hardening_enabled`, `roles/sshd`) is **opt-in and

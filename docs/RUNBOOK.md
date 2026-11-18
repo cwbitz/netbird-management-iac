@@ -226,7 +226,7 @@ make deploy TAGS=sshd       # key-only SSH (roles/sshd)
 
 ```yaml
 # inventory/host_vars/<host>/main.yml
-firewall_enabled: true
+firewall.enabled: true
 sshd.hardening_enabled: true     # only after host-bootstrap keyed `iac`
 ```
 
@@ -301,7 +301,7 @@ Verify after restore: the OIDC discovery URL answers and users can log in.
   deploy`.
 - **Firewall rollback**: `systemctl disable --now firewall && nft delete
   table inet basefw` (provider console if SSH is affected), then set
-  `firewall_enabled: false` and re-run.
+  `firewall.enabled: false` and re-run.
 - **SSH hardening rollback**: `rm /etc/ssh/sshd_config.d/00-sshd-hardening.conf
   && systemctl reload ssh` (provider console), then set
   `sshd.hardening_enabled: false` and re-run.
@@ -362,7 +362,7 @@ to skip.
       both CrowdSec units are active and the bouncer is loaded.
 - [ ] `monitoring.alloy.enabled: true` with a reachable `loki_push_url`: SSH
       journal events arrive; an unreachable Loki is a warning, not a failure.
-- [ ] `firewall_enabled: true`: only 80/TCP, 443/TCP and 3478/UDP (plus SSH and
+- [ ] `firewall.enabled: true`: only 80/TCP, 443/TCP and 3478/UDP (plus SSH and
       WireGuard) are open; the rule set is identical on a re-run.
 - [ ] `sshd.hardening_enabled: true` without a keyed login: refuses before writing;
       break the verification on purpose and the config rolls back.

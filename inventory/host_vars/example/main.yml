@@ -121,8 +121,9 @@ monitoring:
 # Default-deny inbound, opt-in (make deploy TAGS=firewall). Keeps the public
 # surface at the mesh contract (TCP 80/443, UDP 3478) plus SSH and the overlay;
 # the port matrix is fixed, not configurable.
-firewall_enabled: false
-firewall_allow_icmp: true
+firewall:
+  enabled: false
+  allow_icmp: true
 
 # --- SSH hardening (make deploy TAGS=sshd) ------------------------------------
 # Key-only SSH administration, opt-in (make deploy TAGS=sshd). Enable it only
