@@ -164,7 +164,7 @@ Order for routed networks and exit nodes:
 make monitoring
 ```
 
-Opt-in per host with `monitoring_enabled: true` in
+Opt-in per host by enabling a component under `monitoring:` in
 `inventory/host_vars/<host>/main.yml` (default off). Installs
 `prometheus-node-exporter` and `crowdsec` (journald-based detection) plus the
 `crowdsec-firewall-bouncer` (nftables enforcement), and joins the host to the
@@ -176,30 +176,33 @@ waits for the overlay so the bind survives a reboot.
 
 ```yaml
 # inventory/host_vars/<host>/main.yml
-monitoring_enabled: true
-alloy_enabled: true                            # ship host logs to a central Loki
-loki_push_url: "http://<central-peer>.netbird.selfhosted:3100"   # or "<overlay-ip>:3100"
+monitoring:
+  node_exporter:
+    enabled: true
+  alloy:
+    enabled: true                              # ship host logs to a central Loki
+    loki_push_url: "http://<central-peer>.netbird.selfhosted:3100"   # or "<overlay-ip>:3100"
 ```
 
-When `alloy_enabled` is set and the central Loki does not answer from the host
-(the peer has not enrolled yet after a rebuild, for example), the run prints a
-warning and still deploys the Alloy stack; it starts shipping as soon as the
-central peer is reachable.
+When `monitoring.alloy.enabled` is set and the central Loki does not answer from
+the host (the peer has not enrolled yet after a rebuild, for example), the run
+prints a warning and still deploys the Alloy stack; it starts shipping as soon
+as the central peer is reachable.
 
-With `prometheus_remote_write_url` set, Alloy also scrapes the local exporters
-every `alloy_scrape_interval` (default `15s`, accepted range 1s-30s) and pushes
-the samples to the central Prometheus remote-write receiver, tagged
-`source="agent"`. The cadence has to stay inside the dashboards' 60s `rate()`
-window: at 60s each `rate()` query sees a single sample and every panel built on
-one renders "No data".
+With `monitoring.alloy.prometheus_remote_write_url` set, Alloy also scrapes the
+local exporters every `monitoring.alloy.scrape_interval` (default `15s`,
+accepted range 1s-30s) and pushes the samples to the central Prometheus
+remote-write receiver, tagged `source="agent"`. The cadence has to stay inside
+the dashboards' 60s `rate()` window: at 60s each `rate()` query sees a single
+sample and every panel built on one renders "No data".
 
-The toggles converge **off** as well as on: setting `monitoring_enabled: false`,
-`node_exporter_enabled: false`, `crowdsec.enabled: false` or
-`alloy_enabled: false` stops and disables the matching units (node_exporter;
-crowdsec + crowdsec-firewall-bouncer) and removes the Alloy containers (the
-compose project in `/opt/monitoring`) on the next run. Packages, the compose file
-and the rendered configuration are kept, so re-enabling needs no reinstall. The playbook includes only the cleanup tasks
-when `monitoring_enabled` is false, and a unit that does not exist on the host is
+The toggles converge **off** as well as on: setting `node_exporter.enabled: false`,
+`crowdsec.enabled: false` or `alloy.enabled: false` stops and disables the
+matching units (node_exporter; crowdsec + crowdsec-firewall-bouncer) and removes
+the Alloy containers (the compose project in `/opt/monitoring`) on the next run.
+Packages, the compose file and the rendered configuration are kept, so
+re-enabling needs no reinstall. With every component disabled the playbook
+includes only the cleanup tasks, and a unit that does not exist on the host is
 left alone instead of failing.
 
 node_exporter has no listen-address knob: it binds the host's **overlay address
@@ -314,7 +317,7 @@ Verify after restore: the OIDC discovery URL answers and users can log in.
 | `make deploy TAGS=sshd` failed and the host kept password login | Expected: the role reverted the drop-in and failed. Read the failing task (the key-only login probe is the usual one): the `iac` key must be authorized by `make host-bootstrap` and accepted by OpenSSH (`make agent-load` for a `/mnt/c` key). |
 | No usable SSH login after enabling hardening | Recover from the provider console: `rm /etc/ssh/sshd_config.d/00-sshd-hardening.conf && systemctl reload ssh`, then set `sshd_hardening_enabled: false` and re-run. |
 | Readiness times out on first deploy | GeoLite2 download (§1); re-run or pre-seed the DBs. |
-| node-exporter panels show "No data" although the target is up | The push cadence is too slow for the dashboards' 60s `rate()` windows: keep `alloy_scrape_interval` at 15s (30s works, 60s yields a single sample per window). Check with `count_over_time(node_load1{instance="<host>"}[5m])` (≈20 points at 15s) and re-run `make deploy TAGS=monitoring`. |
+| node-exporter panels show "No data" although the target is up | The push cadence is too slow for the dashboards' 60s `rate()` windows: keep `monitoring.alloy.scrape_interval` at 15s (30s works, 60s yields a single sample per window). Check with `count_over_time(node_load1{instance="<host>"}[5m])` (≈20 points at 15s) and re-run `make deploy TAGS=monitoring`. |
 | Tenant run: token rejected | PAT expired — recreate it for the `admin` service user and update the vault (§2). |
 | Host reinstalled / reimaged | Two things: delete the stale host-returned keys from `vault.yml` (§2), then deploy with `make deploy REBUILD=1` so the new SSH host key is re-pinned and the cached facts / generated tenant render are dropped. |
 | A vault file is unreadable | It must be ansible-vault encrypted; the helpers re-encrypt a plaintext file on the next run. |
@@ -357,8 +360,8 @@ to skip.
 - [ ] `make monitoring` with a key: the peer joins `endpoint` with no routes; the
       exporter listens on the overlay only (`ss -lntp`, plus a probe from off-host);
       both CrowdSec units are active and the bouncer is loaded.
-- [ ] `alloy_enabled: true` with a reachable `loki_push_url`: SSH journal events
-      arrive; an unreachable Loki is a warning, not a failure.
+- [ ] `monitoring.alloy.enabled: true` with a reachable `loki_push_url`: SSH
+      journal events arrive; an unreachable Loki is a warning, not a failure.
 - [ ] `firewall_enabled: true`: only 80/TCP, 443/TCP and 3478/UDP (plus SSH and
       WireGuard) are open; the rule set is identical on a re-run.
 - [ ] `sshd_hardening_enabled: true` without a keyed login: refuses before writing;
@@ -420,7 +423,7 @@ to skip.
 
 ### Convergence and contracts
 
-- [ ] Disable `monitoring_enabled`, then a single component: the units stop and are
+- [ ] Disable each monitoring component in turn: the units stop and are
       disabled, the Alloy stack is removed, packages are kept; re-enabling restores
       it without reinstalling.
 - [ ] A component whose package was never installed is skipped, not failed.

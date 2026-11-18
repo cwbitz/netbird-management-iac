@@ -22,6 +22,9 @@
       ansible.builtin.assert:
         that:
           - operator_knob_schema.keys() | sort == example_knobs.keys() | sort
+          - >-
+            operator_knob_nested.keys() | map('regex_replace', '\..*$', '') | unique | sort
+            | difference(operator_knob_schema.keys()) | length == 0
         fail_msg: >-
           inventory/knob_schema.yml is out of sync with the example host files
           (inventory/host_vars/example/main.yml and .config/netbird/tenant.yml.example)
@@ -39,22 +42,27 @@
       loop_control:
         label: "{{ item.key }}"
 
-    - name: Validate the CrowdSec knobs
+    - name: Validate every nested operator knob
       ansible.builtin.assert:
         that:
-          - ((crowdsec | default({}, true)).blocklist_import | default({}, true)) is mapping
-          - crowdsec_enabled is boolean
-          - crowdsec_generate_webui_machine_password is boolean
-          - crowdsec_blocklist_import_enabled is boolean
-          - (crowdsec_blocklist_import_preset | string) in ['embedded', 'server', 'max']
-          - (crowdsec_blocklist_import_interval | int) >= 0
-          - (crowdsec_blocklist_import_max_decisions | int) >= 0
-          - (crowdsec_blocklist_import_batch_size | int) >= 1
-          - (crowdsec_blocklist_import_decision_duration | string) is match('^[0-9]+[smh]$')
-          - crowdsec_blocklist_import_extra_env is mapping
+          - "{{ item.value }}"
         fail_msg: >-
-          {{ inventory_hostname }}: invalid crowdsec mapping; see
-          inventory/host_vars/example/main.yml
+          {{ inventory_hostname }}: invalid {{ item.key }} =
+          {{ vars[item.key.split('.')[0]] | default('<unset>') | to_json }}
+        quiet: true
+      loop: "{{ operator_knob_nested | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Reject a monitoring master switch
+      ansible.builtin.assert:
+        that:
+          - (monitoring | default({}, true)).enabled is not defined
+        fail_msg: >-
+          {{ inventory_hostname }}: monitoring.enabled is not an operator knob.
+          The slice runs when monitoring.node_exporter.enabled,
+          monitoring.crowdsec.enabled or monitoring.alloy.enabled is true; drop
+          the key and toggle the components themselves.
         quiet: true
 
     - name: Validate NetBird settings

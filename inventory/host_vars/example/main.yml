@@ -50,67 +50,73 @@ trusted_peers: []
 service_admin_access_token_expire_days: 365
 
 # --- Host monitoring + host security (make monitoring) -----------------------
-# Opt-in: prometheus-node-exporter + CrowdSec (+ nftables bouncer), and joins the
-# host to the overlay. Each toggle converges off too: false stops and disables
-# the component's units and removes the Alloy stack; the packages stay installed.
-monitoring_enabled: false
-node_exporter_enabled: false
-# node_exporter collector toggles enabled on top of the package defaults.
-node_exporter_collectors:
-  - buddyinfo
-  - cgroups
-  - drm
-  - ethtool
-  - interrupts
-  - ksmd
-  - lnstat
-  - logind
-  - mountstats
-  - perf
-  - processes
-  - qdisc
-  - softirqs
-  - sysctl
-  - tcpstat
-  - wifi
-  - xfrm
-  - zoneinfo
-crowdsec:
-  enabled: false
-  # Serve the central CrowdSec web UI: create its read-only machine account on
-  # this LAPI. The password is generated into this host's vault as
-  # vault_crowdsec_webui_machine_password when the vault has none, and copied
-  # into the reading project's vault mapping.
-  generate_webui_machine_password: false
-  # CrowdSec blocklist importer (optional; runs next to the local LAPI).
-  # embedded ~= 20k high-confidence IPs, server = conservative server set,
-  # max = all 32 feeds. Lower max_decisions and raise interval on small VPSes.
-  blocklist_import:
+# prometheus-node-exporter + CrowdSec (+ the nftables firewall bouncer) and the
+# NetBird overlay join, so the central Prometheus/Alloy scrapes the host over the
+# overlay with no public port. Opt-in per host: enable any component below and
+# the monitoring slice runs; disabling all three retires it and each toggle
+# converges off too (the packages stay installed).
+monitoring:
+  node_exporter:
     enabled: false
-    preset: "server"
-    interval: 3600
-    max_decisions: 15000
-    batch_size: 1000
-    decision_duration: "24h"
-    extra_env: {}
-alloy_enabled: false                          # ship host logs to a central Loki
-# Central Loki endpoint over the overlay: an overlay IP, or preferably the central
-# peer's NetBird name ("http://<peer>.netbird.selfhosted:3100"), which survives a
-# re-enrolled central peer.
-loki_push_url: ""
-# Central Prometheus remote-write receiver over the overlay (an overlay IP or the
-# peer's NetBird name). Empty = metrics are not pushed; log shipping is
-# unaffected.
-prometheus_remote_write_url: ""
-# Metric scrape cadence behind the remote-write push. It has to stay inside the
-# dashboards' 60s `rate()` window (1s-30s); a 60s cadence leaves every `rate()`
-# panel empty.
-alloy_scrape_interval: "15s"
+    # node_exporter collector toggles enabled on top of the package defaults.
+    collectors:
+      - buddyinfo
+      - cgroups
+      - drm
+      - ethtool
+      - interrupts
+      - ksmd
+      - lnstat
+      - logind
+      - mountstats
+      - perf
+      - processes
+      - qdisc
+      - softirqs
+      - sysctl
+      - tcpstat
+      - wifi
+      - xfrm
+      - zoneinfo
+  crowdsec:
+    enabled: false
+    # Serve the central CrowdSec web UI: create its read-only machine account on
+    # this LAPI. The password is generated into this host's vault as
+    # vault_crowdsec_webui_machine_password when the vault has none, and copied
+    # into the reading project's vault mapping.
+    generate_webui_machine_password: false
+    # CrowdSec blocklist importer (optional; runs next to the local LAPI).
+    # embedded ~= 20k high-confidence IPs, server = conservative server set,
+    # max = all 32 feeds. Lower max_decisions and raise interval on small VPSes.
+    blocklist_import:
+      enabled: false
+      preset: "server"
+      interval: 3600
+      max_decisions: 15000
+      batch_size: 1000
+      decision_duration: "24h"
+      extra_env: {}
+  alloy:
+    # Ship host logs to a central Loki reachable over the overlay (alloy.enabled
+    # requires loki_push_url).
+    enabled: false
+    # Central Loki endpoint over the overlay: an overlay IP, or preferably the
+    # central peer's NetBird name ("http://<peer>.netbird.selfhosted:3100"), which
+    # survives a re-enrolled central peer.
+    loki_push_url: ""
+    # Central Prometheus remote-write receiver over the overlay (an overlay IP or
+    # the peer's NetBird name). Empty = metrics are not pushed; log shipping is
+    # unaffected.
+    prometheus_remote_write_url: ""
+    # Metric scrape cadence behind the remote-write push. It has to stay inside
+    # the dashboards' 60s `rate()` window (1s-30s); a 60s cadence leaves every
+    # `rate()` panel empty.
+    scrape_interval: "15s"
+    # Journal sources Alloy ships to the central Loki; raw extra matches go in
+    # journal_extras.
+    journal_presets: [ssh, security, kernel, services]
+    journal_extras: []
 
-# Journal sources Alloy ships to the central Loki; raw extra matches go in
-# alloy_journal_extras.
-alloy_journal_presets: [ssh, security, kernel, services]
-alloy_journal_extras: []
 # --- Host firewall -------------------------------------------------------------
 # Default-deny inbound, opt-in (make deploy TAGS=firewall). Keeps the public
 # surface at the mesh contract (TCP 80/443, UDP 3478) plus SSH and the overlay;

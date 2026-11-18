@@ -48,7 +48,7 @@ table inet {{ firewall_table }} {
 {% endif %}
 
 		# SSH (CrowdSec's firewall bouncer handles the brute force when
-		# monitoring_enabled).
+		# monitoring.crowdsec.enabled).
 		tcp dport {{ firewall_ssh_port | int }} accept
 {% if firewall_public_tcp_specs | length > 0 %}
 

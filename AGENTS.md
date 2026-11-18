@@ -233,20 +233,20 @@ this project's vars/vault. Rules:
 - `make monitoring` — optional host monitoring + host security (Debian-family):
   installs `prometheus-node-exporter`, `crowdsec` (journald-based detection) and
   the `crowdsec-firewall-bouncer` (nftables enforcement), and joins the host to
-  the overlay through the shared `agent` role. Opt-in per host with
-  `monitoring_enabled: true` in
-  `host_vars/<host>/main.yml`; default off. node_exporter binds the overlay
+  the overlay through the shared `agent` role. Opt-in per host by enabling a
+  component under `monitoring` in `host_vars/<host>/main.yml`
+  (`node_exporter`, `crowdsec`, `alloy`); default off. node_exporter binds the overlay
   address only (no local or public listener; a boot drop-in waits for the overlay
   so the bind survives a reboot). The agent resolves its setup key
   (`netbird_peer_setup_key`) from the host's own vault
   (the route-less `endpoint` key by default, which grants no exit/LAN routes)
   and the exporters bind the overlay
-  address; with `alloy_enabled: true`
+  address; with `monitoring.alloy.enabled: true`
   + `loki_push_url` an Alloy container ships journald SSH events to a central Loki
   over the overlay (an overlay IP, or preferably the central peer's NetBird name
   `<peer>.netbird.selfhosted`, resolved by the container through the agent). With
   `prometheus_remote_write_url` set it also scrapes the local exporters every
-  `alloy_scrape_interval` (default `15s`, 1s-30s) and remote-writes the samples to
+  `scrape_interval` (default `15s`, 1s-30s) and remote-writes the samples to
   the central Prometheus, tagged `source="agent"`; the cadence has to stay inside
   the dashboards' 60s `rate()` window.
 - `make print [HOST=<name>]` — resolved host vars incl. decrypted vault; HOST

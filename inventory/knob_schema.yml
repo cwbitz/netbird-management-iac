@@ -22,26 +22,7 @@ operator_knob_schema:
     sshd_permit_root_login is not defined or (sshd_permit_root_login | string) in ["yes", "no", "prohibit-password", "without-password"]
   firewall_enabled: "firewall_enabled is not defined or firewall_enabled is boolean"
   firewall_allow_icmp: "firewall_allow_icmp is not defined or firewall_allow_icmp is boolean"
-  monitoring_enabled: "monitoring_enabled is not defined or monitoring_enabled is boolean"
-  node_exporter_enabled: "node_exporter_enabled is not defined or node_exporter_enabled is boolean"
-  node_exporter_collectors: >-
-    node_exporter_collectors is not defined
-    or (node_exporter_collectors is sequence and not (node_exporter_collectors is string)
-        and not (node_exporter_collectors is mapping))
-  crowdsec: "crowdsec is not defined or crowdsec is mapping"
-  alloy_enabled: "alloy_enabled is not defined or alloy_enabled is boolean"
-  loki_push_url: "(loki_push_url | default('', true) | string | trim) == '' or (loki_push_url | string) is match('^https?://[^\\s]+$')"
-  prometheus_remote_write_url: >-
-    (prometheus_remote_write_url | default('', true) | string | trim) == '' or (prometheus_remote_write_url | string) is
-    match('^https?://[^\\s]+$')
-  alloy_scrape_interval: >-
-    (alloy_scrape_interval | default('15s', true) | string) is match('^([1-9]|[12][0-9]|30)s$')
-  alloy_journal_presets: >-
-    alloy_journal_presets is not defined or ((alloy_journal_presets is sequence) and not (alloy_journal_presets is string) and not
-    (alloy_journal_presets is mapping))
-  alloy_journal_extras: >-
-    alloy_journal_extras is not defined or ((alloy_journal_extras is sequence) and not (alloy_journal_extras is string) and not
-    (alloy_journal_extras is mapping))
+  monitoring: "monitoring is not defined or monitoring is mapping"
   domain_name: >-
     (domain_name is not defined or domain_name is string) and (domain_name is defined) and ((domain_name | default('', true) | string | trim |
     length) > 0)
@@ -106,3 +87,79 @@ operator_knob_schema:
   netbird_service_users: >-
     netbird_service_users is not defined or ((netbird_service_users is sequence) and not (netbird_service_users is string) and not
     (netbird_service_users is mapping))
+
+# Per-key expressions of the grouped mapping (monitoring), keyed by the
+# dotted path the operator sees in the host's main.yml.
+operator_knob_nested:
+  monitoring.node_exporter.enabled: >-
+    (((monitoring | default({}, true)).node_exporter | default({})).enabled
+     | default(false)) is boolean
+  monitoring.node_exporter.collectors: >-
+    (((monitoring | default({}, true)).node_exporter | default({})).collectors
+     | default([])) is sequence and
+    not ((((monitoring | default({}, true)).node_exporter | default({})).collectors
+     | default([])) is string) and
+    not ((((monitoring | default({}, true)).node_exporter | default({})).collectors
+     | default([])) is mapping)
+  monitoring.crowdsec.enabled: >-
+    (((monitoring | default({}, true)).crowdsec | default({})).enabled
+     | default(false)) is boolean
+  monitoring.crowdsec.generate_webui_machine_password: >-
+    (((monitoring | default({}, true)).crowdsec | default({})).generate_webui_machine_password
+     | default(false)) is boolean
+  monitoring.crowdsec.blocklist_import: >-
+    (((monitoring | default({}, true)).crowdsec | default({})).blocklist_import
+     | default({})) is mapping
+  monitoring.crowdsec.blocklist_import.enabled: >-
+    ((((monitoring | default({}, true)).crowdsec | default({})).blocklist_import
+     | default({})).enabled | default(false)) is boolean
+  monitoring.crowdsec.blocklist_import.preset: >-
+    ((((monitoring | default({}, true)).crowdsec | default({})).blocklist_import
+     | default({})).preset | default('server') | string)
+    in ['embedded', 'server', 'max']
+  monitoring.crowdsec.blocklist_import.interval: >-
+    ((((monitoring | default({}, true)).crowdsec | default({})).blocklist_import
+     | default({})).interval | default(3600) | int) >= 0
+  monitoring.crowdsec.blocklist_import.max_decisions: >-
+    ((((monitoring | default({}, true)).crowdsec | default({})).blocklist_import
+     | default({})).max_decisions | default(15000) | int) >= 0
+  monitoring.crowdsec.blocklist_import.batch_size: >-
+    ((((monitoring | default({}, true)).crowdsec | default({})).blocklist_import
+     | default({})).batch_size | default(1000) | int) >= 1
+  monitoring.crowdsec.blocklist_import.decision_duration: >-
+    ((((monitoring | default({}, true)).crowdsec | default({})).blocklist_import
+     | default({})).decision_duration | default('24h') | string)
+    is match('^[0-9]+[smh]$')
+  monitoring.crowdsec.blocklist_import.extra_env: >-
+    ((((monitoring | default({}, true)).crowdsec | default({})).blocklist_import
+     | default({})).extra_env | default({})) is mapping
+  monitoring.alloy.enabled: >-
+    (((monitoring | default({}, true)).alloy | default({})).enabled
+     | default(false)) is boolean
+  monitoring.alloy.loki_push_url: >-
+    (((monitoring | default({}, true)).alloy | default({})).loki_push_url
+     | default('', true) | string | trim) == ''
+    or (((monitoring | default({}, true)).alloy | default({})).loki_push_url
+    | string) is match('^https?://[^\s]+$')
+  monitoring.alloy.prometheus_remote_write_url: >-
+    (((monitoring | default({}, true)).alloy | default({})).prometheus_remote_write_url
+     | default('', true) | string | trim) == ''
+    or (((monitoring | default({}, true)).alloy | default({})).prometheus_remote_write_url
+    | string) is match('^https?://[^\s]+$')
+  monitoring.alloy.scrape_interval: >-
+    (((monitoring | default({}, true)).alloy | default({})).scrape_interval
+     | default('15s') | string) is match('^([1-9]|[12][0-9]|30)s$')
+  monitoring.alloy.journal_presets: >-
+    (((monitoring | default({}, true)).alloy | default({})).journal_presets
+     | default([])) is sequence and
+    not ((((monitoring | default({}, true)).alloy | default({})).journal_presets
+     | default([])) is string) and
+    not ((((monitoring | default({}, true)).alloy | default({})).journal_presets
+     | default([])) is mapping)
+  monitoring.alloy.journal_extras: >-
+    (((monitoring | default({}, true)).alloy | default({})).journal_extras
+     | default([])) is sequence and
+    not ((((monitoring | default({}, true)).alloy | default({})).journal_extras
+     | default([])) is string) and
+    not ((((monitoring | default({}, true)).alloy | default({})).journal_extras
+     | default([])) is mapping)
