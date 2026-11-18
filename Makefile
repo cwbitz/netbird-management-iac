@@ -19,6 +19,8 @@ GROUP ?= management
 FROM ?=
 REFRESH ?=
 REBUILD ?=
+PRUNE_REBUILD_SECRETS ?= 1
+REBUILD_BACKUP_DIR ?= backup/vaults
 KNOWN_HOSTS ?= $(HOME)/.ssh/known_hosts
 
 export ANSIBLE_VAULT_PASSWORD_FILE := $(HOME)/.config/projects/netbird-management-iac/ansible_vault_password
@@ -193,15 +195,41 @@ host-init: vault-init ## Scaffold host_vars/<HOST> + the inventory entry (HOST d
 	echo "      verify: make print HOST=$$host"
 
 .PHONY: host-bootstrap
+host-bootstrap: PRUNE_REBUILD_SECRETS := 0
 host-bootstrap: vault-init rebuild-reset hostkey-init agent-fallback ## Create the iac automation account on one host (HOST=<name>, default the management host); REFRESH=1 refreshes host keys first; REBUILD=1 after a host rebuild
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/bootstrap.yml $(if $(HOST),-e bootstrap_host=$(HOST),)
 
 .PHONY: rebuild-reset
-rebuild-reset:
-	@if [ -n "$(REBUILD)" ]; then \
+rebuild-reset: vault-init
+	@set -e; if [ -n "$(REBUILD)" ]; then \
 		echo "REBUILD=1: a changed host key will be accepted, cached facts and generated tenant state are dropped"; \
-		echo "           delete host-returned secrets from vault.yml (service PAT, setup keys) before the first run"; \
 		rm -rf .cache/facts .cache/tenant_config; \
+		if [ "$(PRUNE_REBUILD_SECRETS)" != "1" ]; then \
+			echo "           PRUNE_REBUILD_SECRETS=$(PRUNE_REBUILD_SECRETS): leaving host-returned vault secrets untouched"; \
+		else \
+			host="$(HOST)"; \
+			if [ -z "$$host" ]; then \
+				hosts="$$($(INVENTORY_HOSTS))"; \
+				set -- $$hosts; \
+				if [ "$$#" -eq 1 ]; then host="$$1"; else \
+					echo "ERROR: REBUILD=1 requires HOST=<name> to prune host-returned vault secrets (the inventory has $$# hosts)." >&2; \
+					exit 1; \
+				fi; \
+			fi; \
+			if ! $(INVENTORY_HOSTS) | grep -qx "$$host"; then \
+				echo "ERROR: REBUILD=1 HOST=$$host is not in $(INVENTORY)." >&2; exit 1; \
+			fi; \
+			vault="$(INVENTORY_DIR)/host_vars/$$host/vault.yml"; \
+			tenant="$(INVENTORY_DIR)/host_vars/$$host/.config/netbird/tenant.yml"; \
+			if [ -f "$$vault" ]; then \
+				keysfile="$$(mktemp)"; trap 'rm -f "$$keysfile"' EXIT; \
+				python3 $(CURDIR)/scripts/rebuild_vault_keys.py "$$tenant" > "$$keysfile"; \
+				python3 $(CURDIR)/scripts/prune_rebuild_secrets.py "$$vault" \
+					--backup-dir "$(REBUILD_BACKUP_DIR)/$$host" --keys-file "$$keysfile"; \
+			else \
+				echo "           no vault at $$vault; nothing to prune"; \
+			fi; \
+		fi; \
 	fi
 
 .PHONY: hostkey-init
@@ -325,6 +353,7 @@ TENANT_RETRY_MAX   ?= 5
 TENANT_RETRY_DELAY ?= 8
 
 .PHONY: dry-run
+dry-run: PRUNE_REBUILD_SECRETS := 0
 dry-run: vault-init rebuild-reset validate-knobs agent-fallback ## Dry-run (--check --diff); REFRESH=1 refreshes host keys first; REBUILD=1 after a host rebuild
 	@if [ -n "$(REFRESH)" ]; then $(MAKE) --no-print-directory hostkey-init; fi; \
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) $(PLAYBOOK) --check --diff $(if $(TAGS),--tags $(TAGS),)

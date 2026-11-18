@@ -79,17 +79,24 @@ GeoLite2 DBs from `pkgs.netbird.io`. If the readiness wait times out, re-run
   set `vault_service_admin_access_token` in `vault.yml`.
 - PATs expire (max 365 days). When a tenant run reports the token rejected,
   recreate it in the Dashboard and update the vault.
-- **Host reinstalled/reimaged**: the host-returned secrets in `vault.yml` are stale
-  (they existed only on the old server). Move the file aside — or delete it — and
-  redeploy: a missing file is regenerated (a fresh PAT via the first-owner
-  bootstrap when an owner entry exists in `netbird_users`; new setup keys via
-  `make apply`).
-  Leaving a stale non-empty value there keeps the invalid token and every tenant
-  run fails with "token rejected".
-  Run the first deploy as `make deploy REBUILD=1`: it re-pins the new SSH host key
-  (printing the fingerprint), drops the cached facts and the generated tenant
-  render. The vault is never touched by that flag — deleting the stale
-  host-returned keys above remains a manual step.
+- **Host reinstalled/reimaged**: `make deploy REBUILD=1` prunes the declared
+  host-returned secrets from the target host's `vault.yml` automatically — the
+  `admin` service-user PAT plus one `vault_<setup-key-name>` per
+  `netbird_setup_keys` entry — after backing the vault up under
+  `backup/vaults/<host>/`. It prints the removed key names, never a value.
+  - `PRUNE_REBUILD_SECRETS=0` keeps the vault untouched; `dry-run` and
+    `host-bootstrap` never prune.
+  - If the server's data volume survived the reinstall, keep the token with
+    `PRUNE_REBUILD_SECRETS=0`; the prune assumes a fresh server.
+  - A multi-host inventory requires `HOST=<name>` for the prune.
+  - Keep everything else: deleting the whole vault would lose
+    `vault_datastore_encryption_key` (a restore needs the same value), the SSH
+    account passwords, `vault_owner_password` and the CrowdSec
+    machine/bouncer credentials.
+  - With an owner entry in `netbird_users`, the first-owner bootstrap writes a
+    fresh PAT; the tenant play creates the new setup keys. Without an owner
+    entry, set the PAT manually (see above). If the prune was skipped, delete
+    the stale keys with `make vault-edit` before the first run.
 
 ## 3. Day-2 changes (server)
 

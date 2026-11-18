@@ -94,16 +94,20 @@ this project's vars/vault. Rules:
   (`vault_service_admin_access_token` and the `vault_<setup-key-name>` keys)
   no longer exist on the new server. Because a present non-empty value is
   preserved, a stale token would survive and every tenant run would fail with
-  "token rejected". Delete those keys from `vault.yml` (e.g. via `make vault-edit`)
-  before the first deploy on the rebuilt host. With an owner entry in
-  `netbird_users`, the first-owner bootstrap writes a fresh
+  "token rejected". The first run on the rebuilt host is
+  `make deploy REBUILD=1`: it accepts the new SSH host key (printing its
+  fingerprint), drops the cached facts and the generated tenant render, and
+  prunes the declared host-returned keys from the host's vault — the service PAT
+  plus one `vault_<setup-key-name>` per `netbird_setup_keys` entry. The vault is
+  backed up under `backup/vaults/<host>/` first and only the removed key names
+  are printed, never a value. `PRUNE_REBUILD_SECRETS=0` keeps the vault
+  untouched; a multi-host inventory requires `HOST=<name>`. With an owner entry
+  in `netbird_users`, the first-owner bootstrap writes a fresh
   `vault_service_admin_access_token`; the tenant play writes the new
   `vault_<setup-key-name>` values. Without an owner entry, set the PAT manually
-  (see the Dashboard flow above). The first run on the rebuilt host is
-  `make deploy REBUILD=1`: it accepts the new SSH host key (printing its
-  fingerprint), drops the cached facts and the generated tenant render. It never
-  touches the vault — deleting the stale host-returned secrets stays an explicit
-  operator step.
+  (see the Dashboard flow above). If the prune is skipped
+  (`PRUNE_REBUILD_SECRETS=0` or a missing tenant file), delete the stale keys
+  with `make vault-edit` before the first run.
 - `inventory/host_vars/<hostname>/.config/netbird/tenant.yml` — **gitignored**
   operator content: the NetBird tenant desired state (`netbird_settings`,
   `netbird_groups`, `netbird_policies`, `netbird_posture_checks`,
