@@ -7,6 +7,7 @@ operator_knob_schema:
   host_admin_ssh_privkey_file: "host_admin_ssh_privkey_file is not defined or host_admin_ssh_privkey_file is string"
   host_root_ssh_pubkey_file: "host_root_ssh_pubkey_file is not defined or host_root_ssh_pubkey_file is string"
   host_root_ssh_privkey_file: "host_root_ssh_privkey_file is not defined or host_root_ssh_privkey_file is string"
+  agent_key_lifetime: "agent_key_lifetime is not defined or agent_key_lifetime is match('^[0-9]+[smhdw]?$')"
   install_docker: "install_docker is not defined or install_docker is boolean"
   timezone: >-
     (timezone | default('', true) | string | trim) == ''

@@ -156,7 +156,10 @@ this project's vars/vault. Rules:
   `scripts/run-with-ssh-agent.sh` (driven by the `SSH_AGENT_*` environment
   variables), the internal `agent-fallback` prepares the agent (probe-gated by
   the internal `agent-needed`; `agent-ensure` is the unconditional variant) and
-  loads the keys via `playbooks/ssh_agent_load.yml`, and the runner retries once
+  loads the keys via `playbooks/ssh_agent_load.yml` — a key OpenSSH refuses is
+  loaded only as an explicit escape hatch (`AGENT_ALLOW_INSECURE=1`) that goes
+  through stdin with a warning, and identities expire after `agent_key_lifetime`
+  (default `8h`) — and the runner retries once
   on a refused-key failure. The `keychain-*` / `ensure-keychain` /
   `verify-keychain-pin` / `agent-*` targets are internal and are never exposed as
   public `make` commands.

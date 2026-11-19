@@ -19,6 +19,9 @@ host_admin_ssh_pubkey_file: ""
 host_admin_ssh_privkey_file: ""
 host_root_ssh_pubkey_file: ""
 host_root_ssh_privkey_file: ""
+# Lifetime of the identities loaded into the control node's ssh-agent
+# (OpenSSH duration, e.g. 8h, 1d, 30m; 0 keeps them until the agent exits).
+agent_key_lifetime: "8h"
 
 # --- Host baseline (make host-bootstrap) --------------------------------------
 # install_docker false requires a preinstalled Docker. Mirrors for hosts where the
