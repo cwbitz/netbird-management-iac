@@ -157,6 +157,12 @@
         name: "{{ timezone }}"
       when: timezone | default('', true) | trim | length > 0
 
+    - name: "[Bootstrap] Wait for a busy package-manager lock instead of failing"
+      ansible.builtin.include_role:
+        name: helpers
+        tasks_from: apt_lock_timeout
+      when: ansible_os_family == 'Debian'
+
     - name: "[Bootstrap] Validate the APT mirror settings"
       ansible.builtin.assert:
         that:

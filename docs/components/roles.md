@@ -31,7 +31,7 @@
   off (see [RUNBOOK §5](../RUNBOOK.md)).
 - `roles/helpers/` — a real role (no `tasks/main.yml`), always invoked via
   `include_role` + `tasks_from`: `control_node_prereqs.yml`, `install_docker.yml`,
-  `read_vault.yml` / `write_vault.yml`, and
+  `apt_lock_timeout.yml`, `read_vault.yml` / `write_vault.yml`, and
   `dispatch_secrets.yml` / `generate_secrets.yml` / `store_secret.yml`.
 
 ## Supported platform
@@ -40,7 +40,10 @@ Debian-family Linux with Docker Engine + Compose v2. When Docker is missing the
 preflight installs Docker CE via Docker's official install script
 (`https://get.docker.com`; disable with `install_docker: false`, which then fails
 with install guidance). Non-Debian support is best-effort; automatic install is
-Debian-only.
+Debian-only. On Debian-family hosts the bootstrap and Docker install render
+`/etc/apt/apt.conf.d/99-lock-timeout`, so `apt` waits up to
+`helper_apt_lock_timeout` seconds for a lock held by a concurrent
+`unattended-upgrades` / `apt-daily` run instead of failing.
 
 ## Image version baseline
 
