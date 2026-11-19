@@ -10,20 +10,20 @@ contracts, conventions and gotchas.
   **UDP 3478** open — verify *before* the first deploy.
 - Control node: ansible-core (pinned), Python 3, `openssl`, and the Galaxy
   collections: `make install`. It also installs `sshpass` (only the
-  `host-bootstrap` password probe needs it) and the Keychain ssh-agent fallback.
-- A host entry: `make host-init HOST=<hostname> HOST_IP=<address> [HOST_PORT=22]`
+  `deploy` password probe needs it) and the Keychain ssh-agent fallback.
+- A host entry: `make prep HOST=<hostname> IP=<address> [PORT=22]`
   — writes the connection address/port into `inventory/hosts.yml`, scaffolds
   `host_vars/<host>/` (comment-free) and encrypts a vault. Then set
   `server.domain_name` and `server.acme_email` in
   `inventory/host_vars/<host>/main.yml` and the SSH creds / optional owner in
-  the vault (`make vault-edit HOST=<host>`). The connection address/port live
+  the vault (`make edit HOST=<host>`). The connection address/port live
   in the inventory, not the vault.
-- Create the non-root service account (as root, once): `make host-bootstrap`,
+- Create the non-root service account (as root, once): `make deploy`,
   then point the connection at it in `vault.yml`. Deploys refuse root unless
   `allow_root_login=true`.
 - Host security is opt-in per host and safe to add later: enable the base
   firewall (the mesh contract stays open) and key-only SSH hardening only after
-  `make host-bootstrap` has authorized the `iac` key — see §5b.
+  `make deploy` has authorized the `iac` key — see §5b.
 - The vault password file is auto-created by the make targets
   (`~/.config/projects/netbird-management-iac/ansible_vault_password`); keep it safe.
 
@@ -45,8 +45,9 @@ slow link. It probes `iac → admin → root`, creates the `iac` automation acco
 v2, generates missing secrets into the encrypted `vault.yml`, renders
 `config.yaml` / `dashboard.env` / `docker-compose.yml` to `{{ stack_dir }}`
 (`/opt/netbird`), starts the stack, waits for TLS, then optionally creates the
-first owner. `make host-bootstrap` does the host init alone (no deploy). Exact
-bootstrap rules (key vs. generated password, `create_admin_account`): `AGENTS.md`.
+first owner. The host init (`playbooks/bootstrap.yml`) runs first inside every
+`make deploy`. Exact bootstrap rules (key vs. generated password,
+`create_admin_account`): `AGENTS.md`.
 
 `make lint` (syntax check + `ansible-lint`) is an internal CI check; it is hidden
 from `make help`, but developers can still run it locally.
@@ -85,10 +86,9 @@ GeoLite2 DBs from `pkgs.netbird.io`. If the readiness wait times out, re-run
   `admin` service-user PAT plus one `vault_<setup-key-name>` per
   `netbird_setup_keys` entry — after backing the vault up under
   `backup/vaults/<host>/`. It prints the removed key names, never a value.
-  - `PRUNE_REBUILD_SECRETS=0` keeps the vault untouched; `dry-run` and
-    `host-bootstrap` never prune.
-  - If the server's data volume survived the reinstall, keep the token with
-    `PRUNE_REBUILD_SECRETS=0`; the prune assumes a fresh server.
+  - Only `deploy` prunes; `dry-run` never touches the vault.
+  - The prune assumes a fresh server; if the server's data volume survived the
+    reinstall, restore the token from the backup under `backup/vaults/<host>/`.
   - A multi-host inventory requires `HOST=<name>` for the prune.
   - Keep everything else: deleting the whole vault would lose
     `vault_datastore_encryption_key` (a reinstall needs the same value), the SSH
@@ -97,7 +97,7 @@ GeoLite2 DBs from `pkgs.netbird.io`. If the readiness wait times out, re-run
   - With an owner entry in `netbird_users`, the first-owner bootstrap writes a
     fresh PAT; the tenant play creates the new setup keys. Without an owner
     entry, set the PAT manually (see above). If the prune was skipped, delete
-    the stale keys with `make vault-edit` before the first run.
+    the stale keys with `make edit` before the first run.
 
 ## 3. Day-2 changes (server)
 
@@ -231,7 +231,7 @@ make deploy TAGS=sshd       # key-only SSH (roles/sshd)
 firewall:
   enabled: true
 sshd:
-  hardening_enabled: true        # only after host-bootstrap keyed `iac`
+  hardening_enabled: true        # only after `deploy` keyed `iac`
 ```
 
 - **Firewall**: enforces the mesh contract (TCP 80/443, UDP 3478 —
@@ -257,8 +257,8 @@ sshd:
 
 ## 6. Mirrors for region-restricted hosts (optional)
 
-`make host-bootstrap` (also run by `make deploy`) can point a host at alternative
-package mirrors for hosts where the defaults are slow or blocked. It is a no-op
+`make deploy` can point a host at alternative package mirrors for hosts where
+the defaults are slow or blocked. It is a no-op
 unless the variables are set, and touches nothing in the deploy baseline. The
 Debian security suite derives from the single base mirror (a `…/debian` path
 maps to its `…/debian-security` sibling), so there is no separate security knob:
@@ -294,7 +294,7 @@ docker_registry_mirrors:
 | STUN / relay clients fail | UDP 3478 open; Traefik owns `172.30.0.10`. |
 | `prometheus-node-exporter` failed after a reboot | The overlay address was never created: the drop-in waits ~90s then gives up (5 retries). Check `docker ps` / `ip -br addr show wt0` / `journalctl -u prometheus-node-exporter`. A manual `systemctl start prometheus-node-exporter` clears it once the overlay is up. |
 | Dashboard/API answer locally but not from the internet (firewall applied) | `nft list table inet basefw` — the declared TCP ports must be there (the NetBird agent adds one extra `iifname "wt0" counter … accept` rule of its own; that is expected). `make deploy TAGS=firewall` re-verifies them from the control node. Roll back with `systemctl disable --now firewall && nft delete table inet basefw`. |
-| `make deploy TAGS=sshd` failed and the host kept password login | Expected: the role reverted the drop-in and failed. Read the failing task (the key-only login probe is the usual one): the `iac` key must be authorized by `make host-bootstrap` and accepted by OpenSSH (`make agent-load` for a `/mnt/c` key). |
+| `make deploy TAGS=sshd` failed and the host kept password login | Expected: the role reverted the drop-in and failed. Read the failing task (the key-only login probe is the usual one): the `iac` key must be authorized by `make deploy` and accepted by OpenSSH (`make agent-load` for a `/mnt/c` key). |
 | No usable SSH login after enabling hardening | Recover from the provider console: `rm /etc/ssh/sshd_config.d/00-sshd-hardening.conf && systemctl reload ssh`, then set `sshd.hardening_enabled: false` and re-run. |
 | Readiness times out on first deploy | GeoLite2 download (§1); re-run or pre-seed the DBs. |
 | node-exporter panels show "No data" although the target is up | The push cadence is too slow for the dashboards' 60s `rate()` windows: keep `monitoring.alloy.scrape_interval` at 15s (30s works, 60s yields a single sample per window). Check with `count_over_time(node_load1{instance="<host>"}[5m])` (≈20 points at 15s) and re-run `make deploy TAGS=monitoring`. |
@@ -332,8 +332,8 @@ to skip.
       is the source of truth).
 - [ ] `server.exposed_port: 8443`: compose publishes `8443:443`, `config.yaml`
       advertises it, the firewall allows it.
-- [ ] A moved `server.stack_dir`: deploy and restore both use it; the project
-      name stays pinned.
+- [ ] A moved `server.stack_dir`: the deploy renders there; the project name
+      stays pinned.
 - [ ] Unset `vault_rhost_setup_key` and run `make monitoring`: fails before
       starting the container and names the variable.
 - [ ] `make monitoring` with a key: the peer joins `rhost` with no routes; the
@@ -353,8 +353,8 @@ to skip.
 ### End-to-end
 
 - [ ] `make dry-run` on a fresh host exits 0; a placeholder `ansible_host` is
-      refused with `make host-init` named.
-- [ ] `make host-bootstrap`: `iac` created with passwordless sudo and the configured
+      refused with `make prep` named.
+- [ ] `make deploy`: `iac` created with passwordless sudo and the configured
       keys; a second run changes nothing.
 - [ ] `make deploy`: server, dashboard and proxy up; 80/443 and 3478 reachable, the
       certificate valid for the throwaway domain, dashboard 200, API 401, relay
@@ -364,11 +364,11 @@ to skip.
 - [ ] `make plan` writes nothing; `make apply` converges and a second apply is
       empty; an expired token stops with the Dashboard recovery steps; an invalid
       value fails locally before any API call.
-- [ ] `make vault-view` / `make vault-edit`: per-host decrypt, edits stay encrypted
+- [ ] `make view` / `make edit`: per-host decrypt, edits stay encrypted
       and sorted, and a save is refused when the vault changed during the edit.
-- [ ] `make host-init HOST=<name> HOST_IP=<addr>`: comment-free scaffold, encrypted
+- [ ] `make prep HOST=<name> IP=<addr>`: comment-free scaffold, encrypted
       vault, idempotent; `FORCE=1` replaces the address.
-- [ ] `make hostkey-init`: refreshes the entries; a changed key is refused with its
+- [ ] `make hostkeys`: refreshes the entries; a changed key is refused with its
       fingerprint and the `FORCE=1` hint; one unreachable host leaves the file
       intact.
 

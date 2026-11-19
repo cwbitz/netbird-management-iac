@@ -2,7 +2,7 @@
 # ==============================================================================
 # Per-host configuration template (inventory/host_vars/example/main.yml)
 # ==============================================================================
-# `make host-init` copies this file to inventory/host_vars/<hostname>/main.yml.
+# `make prep` copies this file to inventory/host_vars/<hostname>/main.yml.
 # Every knob is listed below with its default. Secrets and PII live in the
 # vault.yml next to it.
 
@@ -23,7 +23,7 @@ host_root_ssh_privkey_file: ""
 # (OpenSSH duration, e.g. 8h, 1d, 30m; 0 keeps them until the agent exits).
 agent_key_lifetime: "8h"
 
-# --- Host baseline (make host-bootstrap) --------------------------------------
+# --- Host baseline (make deploy) ----------------------------------------------
 # install_docker false requires a preinstalled Docker. Mirrors for hosts where the
 # defaults are slow or blocked; the security repo follows apt_mirror.
 install_docker: true

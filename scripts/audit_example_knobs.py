@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Audit the example host files against the project's knobs.
 
-`make host-init` copies the example (comment-free) to
+`make prep` copies the example (comment-free) to
 ``inventory/host_vars/<host>/main.yml`` and
 ``inventory/host_vars/<host>/.config/netbird/tenant.yml``, so the examples are
 the templates for every new host and must carry every operator knob with its

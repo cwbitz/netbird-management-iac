@@ -44,7 +44,7 @@ gotchas in [`AGENTS.md`](AGENTS.md).
   false` to require a preinstalled Docker instead.
 - On the control node: `mise` (or `asdf`), Python 3, `openssl`, and SSH access.
   `make install` installs the pinned toolchain and collections, `sshpass` (only
-  the `host-bootstrap` password probe needs it) and the Keychain ssh-agent
+  the `deploy` password probe needs it) and the Keychain ssh-agent
   fallback.
 
 ## Quickstart
@@ -55,9 +55,9 @@ make install
 
 # 2. Scaffold the host from the committed template: writes the inventory entry
 #    (address/port) and an encrypted vault.yml, and creates host_vars/.
-make host-init HOST=netbird-1 HOST_IP=203.0.113.10 HOST_PORT=22
+make prep HOST=netbird-1 IP=203.0.113.10 PORT=22
 #    - inventory/host_vars/netbird-1/main.yml  -> server.domain_name
-#    - the encrypted vault (make vault-edit HOST=netbird-1)
+#    - the encrypted vault (make edit HOST=netbird-1)
 #      -> SSH creds, ACME email, optional owner
 
 # 3. Dry-run, then deploy (deploy also applies the tenant state)
@@ -66,10 +66,11 @@ make deploy
 ```
 
 `make deploy` is the one-shot entry point: it bootstraps the host, deploys the
-server, then applies the tenant state (`TAGS=...` keeps it server-only);
-`make host-bootstrap` does the host init on its own. Deploys run as a non-root
-service account. Connections, secrets and the first-owner bootstrap are covered
-in the [runbook](docs/RUNBOOK.md).
+server, then applies the tenant state (`TAGS=...` keeps it server-only).
+`HOST=<name>` narrows every step to that host, e.g.
+`make deploy HOST=<hostname> TAGS=netbird`. Deploys run as a non-root service
+account. Connections, secrets and the first-owner bootstrap are covered in the
+[runbook](docs/RUNBOOK.md).
 
 ## Node type
 
@@ -77,7 +78,7 @@ The host runs the self-hosted server stack; its inventory group
 `management` is the single source of truth for `hosts:` play patterns and
 `group_vars/<group>/`. The project-owned baseline for every managed host (engine
 range) lives in the committed `inventory/group_vars/all/main.yml`, so `hosts.yml`
-carries topology only. `make host-bootstrap HOST=<name>` targets one host,
+carries topology only. `make deploy HOST=<name>` targets one host,
 defaulting to the single management node.
 
 ## Features
@@ -114,8 +115,8 @@ Never commit vaults. The single per-host encrypted vault
 generated inputs passed to the host (the datastore/session/relay keys, the
 owner/iac passwords), and secrets the host returns (the `admin` PAT,
 setup-key secrets). Only `vault_datastore_encryption_key` is user-critical:
-**keep `vault.yml`** and reuse the same value after a reinstall, or encrypted
-user data is unrecoverable. See [Runbook §9](docs/RUNBOOK.md).
+**keep `vault.yml`** and reuse the same value after a reinstall, or encrypted user
+data is unrecoverable. See [Runbook §9](docs/RUNBOOK.md).
 
 ## License
 
