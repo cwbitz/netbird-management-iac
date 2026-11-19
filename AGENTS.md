@@ -100,8 +100,8 @@ this project's vars/vault. Rules:
   prunes the declared host-returned keys from the host's vault — the service PAT
   plus one `vault_<setup-key-name>` per `netbird_setup_keys` entry. The vault is
   backed up under `backup/vaults/<host>/` first and only the removed key names
-  are printed, never a value. `PRUNE_REBUILD_SECRETS=0` keeps the vault
-  untouched; a multi-host inventory requires `HOST=<name>`. With an owner entry
+  are printed, never a value. Only `deploy` prunes (`dry-run` never touches
+  the vault); a multi-host inventory requires `HOST=<name>`. With an owner entry
   in `netbird_users`, the first-owner bootstrap writes a fresh
   `vault_service_admin_access_token`; the tenant play writes the new
   `vault_<setup-key-name>` values. Without an owner entry, set the PAT manually
