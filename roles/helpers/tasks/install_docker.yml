@@ -35,6 +35,9 @@
           hosts. Install Docker on {{ inventory_hostname }} manually and
           re-run, or set install_docker=false to require it preinstalled.
 
+    - name: "[Docker] Wait for a busy package-manager lock instead of failing"
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/apt_lock_timeout.yml"
+
     - name: "[Docker] Ensure curl and CA certificates are present"
       ansible.builtin.apt:
         name:
