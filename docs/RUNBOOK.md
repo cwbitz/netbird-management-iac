@@ -170,8 +170,9 @@ Opt-in per host by enabling a component under `monitoring:` in
 `prometheus-node-exporter` and `crowdsec` (journald-based detection) plus the
 `crowdsec-firewall-bouncer` (nftables enforcement), and joins the host to the
 overlay through the `agent` role so a central Prometheus/Alloy can reach it with
-no public port. The agent uses the route-less `endpoint` setup key by default
-(`netbird_peer_setup_key`, resolved from the host's own vault); node_exporter
+no public port. The agent uses the route-less `rhost_setup_key` (group
+`rhost`) by default (`netbird_peer_setup_key`, resolved from the host's own
+vault); node_exporter
 binds the overlay address only (no local or public listener), and a boot drop-in
 waits for the overlay so the bind survives a reboot.
 
@@ -333,9 +334,9 @@ to skip.
       advertises it, the firewall allows it.
 - [ ] A moved `server.stack_dir`: deploy and restore both use it; the project
       name stays pinned.
-- [ ] Unset `vault_endpoint_setup_key` and run `make monitoring`: fails before
+- [ ] Unset `vault_rhost_setup_key` and run `make monitoring`: fails before
       starting the container and names the variable.
-- [ ] `make monitoring` with a key: the peer joins `endpoint` with no routes; the
+- [ ] `make monitoring` with a key: the peer joins `rhost` with no routes; the
       exporter listens on the overlay only (`ss -lntp`, plus a probe from off-host);
       both CrowdSec units are active and the bouncer is loaded.
 - [ ] `monitoring.alloy.enabled: true` with a reachable `loki_push_url`: SSH
