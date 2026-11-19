@@ -337,10 +337,8 @@ lint: vault-init validate-knobs
 	$(ANS_PLAY) --syntax-check playbooks/site.yml
 	$(ANS_PLAY) --syntax-check playbooks/tenant.yml
 	$(ANS_PLAY) --syntax-check playbooks/bootstrap.yml
-	$(ANS_PLAY) --syntax-check playbooks/backup.yml
-	$(ANS_PLAY) --syntax-check playbooks/restore.yml
 	$(ANS_PLAY) --syntax-check playbooks/monitoring.yml
-	ansible-lint playbooks/site.yml playbooks/tenant.yml playbooks/bootstrap.yml playbooks/backup.yml playbooks/restore.yml playbooks/monitoring.yml
+	ansible-lint playbooks/site.yml playbooks/tenant.yml playbooks/bootstrap.yml playbooks/monitoring.yml
 	python3 scripts/audit_example_knobs.py
 	python3 scripts/check_host_keys.py
 	python3 scripts/check_repo_privacy.py
@@ -384,17 +382,6 @@ apply: vault-init agent-fallback ## Tenant config-as-code: apply desired state (
 .PHONY: monitoring
 monitoring: vault-init agent-fallback ## Optional host monitoring + host security (CrowdSec + node_exporter); opt-in per component under monitoring
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/monitoring.yml
-
-.PHONY: backup
-backup: vault-init agent-fallback ## Back up the netbird_data volume (key stays in vault.yml)
-	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/backup.yml
-
-.PHONY: restore
-restore: vault-init agent-fallback ## Restore FROM=backup/<host>/<stamp>
-	@if [ -z "$(FROM)" ]; then echo "Usage: make restore FROM=backup/<host>/<timestamp>" >&2; exit 1; fi
-	@restore_dir="$(abspath $(FROM))"; \
-	if [ ! -d "$$restore_dir" ]; then echo "No such backup directory: $$restore_dir" >&2; exit 1; fi; \
-	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INVENTORY) playbooks/restore.yml -e restore_from="$$restore_dir"
 
 .PHONY: print
 print: vault-init ## Print resolved host vars (incl. decrypted vault)

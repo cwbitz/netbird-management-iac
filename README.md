@@ -89,7 +89,6 @@ defaulting to the single management node.
 | Host firewall (default-deny inbound; mesh contract 80/443/tcp, 3478/udp) | `firewall.enabled: true` | [Runbook §5b](docs/RUNBOOK.md) |
 | SSH hardening (key-only admin; root policy via `sshd.permit_root_login`) | `sshd.hardening_enabled: true` | [Runbook §5b](docs/RUNBOOK.md) |
 | Region-restricted APT / Docker mirrors | `apt_mirror`, `docker_registry_mirrors` | [Runbook §6](docs/RUNBOOK.md) |
-| Backup & restore | — | [Runbook §7](docs/RUNBOOK.md) |
 | External identity providers (OIDC) | Dashboard / API | [`docs/IDP.md`](docs/IDP.md) |
 
 ## Layout
@@ -104,7 +103,7 @@ roles/monitoring     # optional host security + exporters (+ the agent role)
 roles/firewall       # optional base firewall (nftables; the mesh port contract)
 roles/sshd           # optional key-only SSH (sshd drop-in)
 roles/helpers/       # shared vault-secret provisioning
-docs/RUNBOOK.md      # operations runbook (deploy, backup/restore, rollback)
+docs/RUNBOOK.md      # operations runbook (deploy, rollback)
 docs/IDP.md          # external identity providers (runtime, not managed here)
 ```
 
@@ -115,8 +114,8 @@ Never commit vaults. The single per-host encrypted vault
 generated inputs passed to the host (the datastore/session/relay keys, the
 owner/iac passwords), and secrets the host returns (the `admin` PAT,
 setup-key secrets). Only `vault_datastore_encryption_key` is user-critical:
-**back up `vault.yml`** and reuse the same value on restore, or encrypted user
-data is unrecoverable. See [Runbook §10](docs/RUNBOOK.md).
+**keep `vault.yml`** and reuse the same value after a reinstall, or encrypted
+user data is unrecoverable. See [Runbook §9](docs/RUNBOOK.md).
 
 ## License
 
