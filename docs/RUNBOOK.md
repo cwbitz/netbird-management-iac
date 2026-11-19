@@ -91,7 +91,7 @@ GeoLite2 DBs from `pkgs.netbird.io`. If the readiness wait times out, re-run
     `PRUNE_REBUILD_SECRETS=0`; the prune assumes a fresh server.
   - A multi-host inventory requires `HOST=<name>` for the prune.
   - Keep everything else: deleting the whole vault would lose
-    `vault_datastore_encryption_key` (a restore needs the same value), the SSH
+    `vault_datastore_encryption_key` (a reinstall needs the same value), the SSH
     account passwords, `vault_owner_password` and the CrowdSec
     machine/bouncer credentials.
   - With an owner entry in `netbird_users`, the first-owner bootstrap writes a
@@ -269,38 +269,13 @@ docker_registry_mirrors:
   - "https://docker.1ms.run"
 ```
 
-## 7. Backup and restore
-
-```bash
-make backup                              # -> backup/<host>/<stamp>/
-make restore FROM=backup/<host>/<stamp>
-```
-
-- `backup` stops the container, archives the `netbird_data` volume
-  (`netbird_data.tgz`), and always restarts it, even if the archive fails. The
-  archive holds user PII and hashed credentials.
-- The encryption key is **not** in the archive. It is
-  `inventory/host_vars/<host>/vault.yml` on the control node — **back it
-  up separately and protect it**. Losing `vault_datastore_encryption_key` makes
-  the archived data unrecoverable.
-- `restore` verifies the archive before stopping the stack, replaces the data
-  volume, then always redeploys. `config.yaml` is
-  re-rendered from the control node's current `vault.yml`, so that file
-  must hold the **same** datastore key as when the data was archived.
-- Only `vault_datastore_encryption_key` is restore-critical.
-  `vault_session_cookie_encryption_key` and `vault_relay_auth_secret` are
-  auto-generated internals and can be ignored (regenerating them only drops
-  sessions / re-auths the relay).
-
-Verify after restore: the OIDC discovery URL answers and users can log in.
-
-## 8. Upgrade and rollback
+## 7. Upgrade and rollback
 
 - **Upgrade**: let Renovate bump the pinned tags (or edit
   `roles/management/defaults/main.yml`), then `make deploy`.
 - **Version rollback**: set the previous tag and re-run `make deploy`.
-- **Full rollback**: restore from a matching backup (data **and** the same
-  `vault.yml`).
+- **Full rollback**: reinstall from a snapshot you keep outside this project
+  (the data volume **and** the same `vault.yml`).
 - **Config rollback**: `git revert` or edit the per-host vars, then `make
   deploy`.
 - **Firewall rollback**: `systemctl disable --now firewall && nft delete
@@ -310,7 +285,7 @@ Verify after restore: the OIDC discovery URL answers and users can log in.
   && systemctl reload ssh` (provider console), then set
   `sshd.hardening_enabled: false` and re-run.
 
-## 9. Troubleshooting
+## 8. Troubleshooting
 
 | Symptom | Check / action |
 |---|---|
@@ -335,14 +310,13 @@ ssh <host> 'cd /opt/netbird && docker compose logs -f netbird-server'
 ssh <host> 'cd /opt/netbird && docker compose ps'
 ```
 
-## 10. Secrets and safety
+## 9. Secrets and safety
 
-- Never commit `vault.yml` or `backup/` (all gitignored).
+- Never commit `vault.yml` (gitignored).
 - The vault password file is required to decrypt any vault.
-- Keep a copy of `vault.yml` (which holds the datastore key) off-host,
-  separate from data backups.
+- Keep a copy of `vault.yml` (which holds the datastore key) off-host.
 
-## 11. Manual verification on a disposable host
+## 10. Manual verification on a disposable host
 
 The cases `tests/` cannot cover. Run them on a throwaway host with a throwaway
 domain (never a live one): read-only checks first, destructive ones last, and keep
@@ -389,8 +363,6 @@ to skip.
 - [ ] `make plan` writes nothing; `make apply` converges and a second apply is
       empty; an expired token stops with the Dashboard recovery steps; an invalid
       value fails locally before any API call.
-- [ ] `make backup` leaves the container running; `make restore FROM=...` with the
-      same datastore key restores the data and keeps the external contract intact.
 - [ ] `make vault-view` / `make vault-edit`: per-host decrypt, edits stay encrypted
       and sorted, and a save is refused when the vault changed during the edit.
 - [ ] `make host-init HOST=<name> HOST_IP=<addr>`: comment-free scaffold, encrypted
@@ -401,15 +373,7 @@ to skip.
 
 ### Negative and destructive
 
-- [ ] Backup with a forced archive failure: the container ends up running and the
-      error names the failed step.
-- [ ] Restore from a truncated archive: fails before stopping the stack, data
-      untouched.
-- [ ] Restore with a missing or mismatched datastore key: fails with the recovery
-      instructions before touching data.
 - [ ] A plaintext `vault.yml`: the next write re-encrypts it.
-- [ ] An interrupted backup/restore: the stack ends up running and no half-written
-      archive is treated as valid.
 - [ ] Kill the agent and exporter containers: they come back on their own; after a
       reboot the overlay binds before the exporter starts.
 

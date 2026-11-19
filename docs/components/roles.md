@@ -7,8 +7,6 @@
   API (see [tenant-config.md](tenant-config.md)).
 - `playbooks/bootstrap.yml` — optional, opt-in host tuning (APT/Docker mirrors,
   Docker install, SSH service account); never runs as part of `site.yml`.
-- `playbooks/backup.yml` / `playbooks/restore.yml` — volume snapshot and paired
-  restore.
 - `playbooks/monitoring.yml` — optional host monitoring + host security.
 - `playbooks/host_keys.yml` / `ssh_agent_load.yml` — control-node SSH helpers.
 
