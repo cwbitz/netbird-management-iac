@@ -25,7 +25,7 @@ role constants: `network_name`, `network_subnet`, `network_gateway`, `traefik_ip
 ## Overlay
 
 Peers join the overlay with a setup key; the monitoring host joins as the route-less
-`endpoint` peer (see [roles.md](roles.md)). The overlay's embedded DNS domain and
+`rhost` peer (see [roles.md](roles.md)). The overlay's embedded DNS domain and
 address ranges are account settings (`netbird_settings`): keep `dns_domain`
 non-public, and note `network_range` re-allocates all peer IPs when changed.
 Routed networks and exit nodes are tenant config — see

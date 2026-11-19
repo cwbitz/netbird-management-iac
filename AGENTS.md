@@ -41,11 +41,11 @@ this project's vars/vault. Rules:
 - **Contract (the documented interface):** the tenant guarantees these groups,
   referenced by consumers by name:
   - `home-router` — routed-network gateways;
-  - `observability` — the central monitoring stack host (scrapes `endpoint` and
+  - `observability` — the central monitoring stack host (scrapes `rhost` and
     `home-router`; their peers push logs to it);
-  - `endpoint` — observed-only clients with no routes (e.g. this server host).
+  - `rhost` — observed-only remote hosts with no routes (e.g. this server host).
   Setup keys assign them: `docker_host_setup_key` → [home-router, observability];
-  `endpoint_setup_key` → [endpoint]; `admin_setup_key` → [admin].
+  `rhost_setup_key` → [rhost]; `admin_setup_key` → [admin].
 - **Discovery inputs** for a consumer (held in the consumer's own vault): the
   management URL and a service-user PAT. Per-peer `ip` / `dns_label` / `groups`
   come straight from `GET /api/peers`; nothing needs to be exported from here.
@@ -235,7 +235,8 @@ this project's vars/vault. Rules:
   address only (no local or public listener; a boot drop-in waits for the overlay
   so the bind survives a reboot). The agent resolves its setup key
   (`netbird_peer_setup_key`) from the host's own vault
-  (the route-less `endpoint` key by default, which grants no exit/LAN routes)
+  (the route-less `rhost_setup_key`, which assigns the `rhost` group and
+  grants no exit/LAN routes)
   and the exporters bind the overlay
   address; with `monitoring.alloy.enabled: true`
   + `loki_push_url` an Alloy container ships journald SSH events to a central Loki

@@ -1,2 +1,2 @@
 ---
-netbird_peer_setup_key: "{{ vault_endpoint_setup_key | default('', true) }}"
+netbird_peer_setup_key: "{{ vault_rhost_setup_key | default('', true) }}"

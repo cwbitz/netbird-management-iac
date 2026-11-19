@@ -5,7 +5,7 @@
       - (netbird_peer_setup_key | default('', true) | length) > 0
     fail_msg: >-
       An agent node requires a setup key so it joins the mesh. netbird_peer_setup_key is
-      resolved from this host's vault (vault_endpoint_setup_key); run
+      resolved from this host's vault (vault_rhost_setup_key); run
       the tenant apply first (it creates the setup keys), or set
       netbird_peer_setup_key explicitly in host_vars.
 
