@@ -94,7 +94,9 @@ agent-check: ensure-keychain
 		exit 1; \
 	fi
 
-HELP_TARGETS := install prep edit view print dry-run deploy plan apply help
+HELP_TARGETS := install prep edit view \
+                deploy dry-run print \
+                help
 
 .PHONY: help
 help: ## Show this help
@@ -106,7 +108,7 @@ help: ## Show this help
 	@printf '\n'
 
 .PHONY: install
-install: ensure-sshpass ensure-keychain ## Install the pinned toolchain, collections, and control-node dependencies
+install: ensure-sshpass ensure-keychain ## Install the pinned toolchain, Ansible collections and control-node dependencies
 	@if command -v mise >/dev/null 2>&1; then mise install; \
 	elif command -v asdf >/dev/null 2>&1; then asdf install; \
 	else echo "Neither mise nor asdf found; install one, or ensure ansible-core 2.19.x is on PATH." >&2; exit 1; fi
@@ -175,7 +177,7 @@ ensure-keychain: verify-keychain-pin
 	echo "keychain installed: $(KEYCHAIN_BIN) (v$(KEYCHAIN_VERSION))"
 
 .PHONY: prep
-prep: vault-init ## Scaffold host_vars/<HOST> + the inventory entry (HOST default netbird-1, IP default CHANGE_ME_HOST_IP), FORCE=1 replaces an existing entry
+prep: vault-init ## Scaffold a host: inventory entry and host_vars pair; HOST=<host>, IP=<address>, FORCE=1 overwrites
 	@$(HOST_SINGLE_GUARD); host="$(HOST)"; host="$${host:-netbird-1}"; group="management"; ip="$(IP)"; ip="$${ip:-CHANGE_ME_HOST_IP}"; port="$(PORT)"; \
 	if [ -e "$(INV)" ]; then :; else python3 $(CURDIR)/scripts/render_clean_template.py inventory/hosts.yml.example $(INV); echo "Created $(INV) from example (comments stripped)"; fi; \
 	install -d -m 0700 $(INVENTORY_DIR)/host_vars/$$host; \
@@ -286,7 +288,7 @@ vault-init:
 	fi
 
 .PHONY: edit
-edit: vault-init ## Edit one host's vault (keys re-sorted alphabetically; refuses a save when the vault changed during the edit; HOST=<name>; auto when a single host)
+edit: vault-init ## Edit a host vault, keys sorted; HOST=<host> required when the inventory has several hosts
 	@host="$(HOST)"; \
 	if [ -z "$$host" ]; then \
 		hosts="$$($(INVENTORY_HOSTS))"; \
@@ -308,7 +310,7 @@ edit: vault-init ## Edit one host's vault (keys re-sorted alphabetically; refuse
 	python3 $(CURDIR)/scripts/edit_vault.py "$$p"
 
 .PHONY: view
-view: vault-init ## View vault.yml for EVERY host, or one with HOST=<name> (read-only)
+view: vault-init ## Print every host's vault, or one with HOST=<host>
 	@hosts="$(HOST)"; \
 	[ -n "$$hosts" ] || hosts="$$($(INVENTORY_HOSTS))"; \
 	if [ -z "$$hosts" ]; then \
@@ -350,11 +352,11 @@ RETRY_RUN          ?= $(CURDIR)/scripts/retry-transient.sh
 
 .PHONY: dry-run
 dry-run: REBUILD_PRUNE_SECRETS := 0
-dry-run: vault-init rebuild-reset validate-knobs agent-fallback ## Dry-run (--check --diff; HOST=<name> or a comma-separated list); REBUILD=1 after a host rebuild
+dry-run: vault-init rebuild-reset validate-knobs agent-fallback ## Preview the deploy with --check --diff; HOST=<hosts>, REBUILD=1 after a rebuild
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INV) $(PLAYBOOK) $(HOST_ARG) --check --diff $(TAGS_ARG)
 
 .PHONY: deploy
-deploy: vault-init rebuild-reset hostkeys validate-knobs agent-fallback ## One-shot: bootstrap the hosts, deploy the server, apply the tenant state, then converge monitoring; TAGS=... runs only the server; HOST=<name> or a comma-separated list; REBUILD=1 after a host rebuild
+deploy: vault-init rebuild-reset hostkeys validate-knobs agent-fallback ## Bootstrap the hosts, deploy the server, apply the tenant state, then converge monitoring; HOST=<hosts>, TAGS=<tags> limits it to the server, REBUILD=1 after a rebuild
 	@set -e; \
 	hosts="$(HOST_LIST)"; \
 	if [ -z "$$hosts" ]; then \
@@ -391,7 +393,7 @@ monitoring: vault-init agent-fallback ## Optional host monitoring + host securit
 	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INV) playbooks/monitoring.yml
 
 .PHONY: print
-print: vault-init ## Print resolved host vars (incl. decrypted vault)
+print: vault-init ## Print a host's resolved variables, including decrypted vault values; HOST=<host>
 	@host="$(HOST)"; \
 	if [ -z "$$host" ]; then \
 		hosts="$$($(INVENTORY_HOSTS))"; \
