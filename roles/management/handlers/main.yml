@@ -1,5 +1,5 @@
 ---
-- name: "[NetBird] Restart the stack"
+- name: "NetBird | Restart the stack"
   tags: [netbird, netbird_deploy]
   community.docker.docker_compose_v2:
     project_src: "{{ stack_dir }}"

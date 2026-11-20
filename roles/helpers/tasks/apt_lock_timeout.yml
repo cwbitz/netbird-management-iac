@@ -1,5 +1,5 @@
 ---
-- name: "[APT] Wait for a busy package-manager lock instead of failing"
+- name: "APT | Wait for a busy package-manager lock instead of failing"
   ansible.builtin.copy:
     content: |
       DPkg::Lock::Timeout "{{ helper_apt_lock_timeout }}";

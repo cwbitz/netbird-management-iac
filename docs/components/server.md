@@ -47,7 +47,7 @@ Keys come from the encrypted per-host vault (`vault_relay_auth_secret`,
   a re-run succeeds). For such hosts, pre-seed `GeoLite2-City_*.mmdb` + `geonames_*.db`
   into the `netbird_data` volume and set `server.disable_geolite_update: true`.
 - A bind-mounted config change does **not** recreate the container, so the
-  `config.yaml` / `dashboard.env` template tasks notify the `[NetBird] Restart the
+  `config.yaml` / `dashboard.env` template tasks notify the `NetBird | Restart the
   stack` handler.
 
 ## First-owner bootstrap

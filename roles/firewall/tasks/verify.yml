@@ -1,5 +1,5 @@
 ---
-- name: "[Firewall] Check whether the server stack is running"
+- name: "Firewall | Check whether the server stack is running"
   community.docker.docker_container_info:
     name: netbird-traefik
   register: firewall_traefik
@@ -7,7 +7,7 @@
   check_mode: false
   when: not ansible_check_mode
 
-- name: "[Firewall] Verify the public endpoints are still reachable from outside"
+- name: "Firewall | Verify the public endpoints are still reachable from outside"
   ansible.builtin.wait_for:
     host: "{{ ansible_host | default(inventory_hostname) }}"
     port: "{{ item | int }}"
