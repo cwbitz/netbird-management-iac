@@ -177,8 +177,15 @@ ensure-keychain: verify-keychain-pin
 	echo "keychain installed: $(KEYCHAIN_BIN) (v$(KEYCHAIN_VERSION))"
 
 .PHONY: prep
-prep: vault-init ## Scaffold a host: inventory entry and host_vars pair; HOST=<host>, IP=<address>, FORCE=1 overwrites
-	@$(HOST_SINGLE_GUARD); host="$(HOST)"; host="$${host:-netbird-1}"; group="management"; ip="$(IP)"; ip="$${ip:-CHANGE_ME_HOST_IP}"; port="$(PORT)"; \
+prep: vault-init ## Scaffold a host: inventory entry and host_vars pair; HOST=<host> (default: the single inventory host), IP=<address>, FORCE=1 overwrites
+	@$(HOST_SINGLE_GUARD); host="$(HOST)"; \
+	if [ -z "$$host" ]; then \
+		hosts="$$($(INVENTORY_HOSTS))"; \
+		set -- $$hosts; \
+		if [ "$$#" -gt 1 ]; then echo "ERROR: $(INV) holds $$# hosts; pass HOST=<hostname>." >&2; exit 1; fi; \
+		[ "$$#" -eq 1 ] && host="$$1"; \
+	fi; \
+	host="$${host:-netbird-1}"; group="management"; ip="$(IP)"; ip="$${ip:-CHANGE_ME_HOST_IP}"; port="$(PORT)"; \
 	if [ -e "$(INV)" ]; then :; else python3 $(CURDIR)/scripts/render_clean_template.py inventory/hosts.yml.example $(INV); echo "Created $(INV) from example (comments stripped)"; fi; \
 	install -d -m 0700 $(INVENTORY_DIR)/host_vars/$$host; \
 	if [ ! -e $(INVENTORY_DIR)/host_vars/$$host/main.yml ]; then python3 $(CURDIR)/scripts/render_clean_template.py --strip-blank-lines $(INVENTORY_DIR)/host_vars/example/main.yml $(INVENTORY_DIR)/host_vars/$$host/main.yml; fi; \

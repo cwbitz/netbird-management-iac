@@ -180,7 +180,9 @@ this project's vars/vault. Rules:
   host to the inventory group (`GROUP`, default `management`) with its
   connection address/port (`IP` defaults to the `CHANGE_ME_HOST_IP`
   placeholder the site preflight rejects until replaced; `PORT` is omitted
-  when unset). HOST defaults to `netbird-1`. Idempotent: existing files are kept,
+  when unset). HOST defaults to the single inventory host, and a multi-host
+  inventory requires HOST=<name> (`netbird-1` applies only when the inventory
+  holds no host). Idempotent: existing files are kept,
   and an already-present host is left unchanged unless `FORCE=1`, which
   overwrites a conflicting address/port. Edit the vault with
   `make edit HOST=<name>`.
