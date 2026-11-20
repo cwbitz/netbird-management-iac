@@ -14,10 +14,10 @@
     ansible_python_interpreter: "{{ ansible_playbook_python }}"
     ansible_become: false
   tasks:
-    - name: "[Tenant] Load the tenant desired state"
+    - name: "Tenant | Load the tenant desired state"
       ansible.builtin.include_tasks: tasks/tenant_vars.yml
 
-    - name: "[Tenant] Assert an access token is configured"
+    - name: "Tenant | Assert an access token is configured"
       ansible.builtin.assert:
         that:
           - netbird_api_token | length > 0
@@ -28,7 +28,7 @@
           'admin' service user and its Access Token in the NetBird Dashboard
           (Team -> Service Users) and store it there. Re-run afterwards.
 
-    - name: "[Tenant] Probe the access token against the API"
+    - name: "Tenant | Probe the access token against the API"
       ansible.builtin.uri:
         url: "{{ netbird_api_url }}/api/users"
         method: GET
@@ -45,7 +45,7 @@
       changed_when: false
       no_log: true
 
-    - name: "[Tenant] Stop with recovery instructions when the token is rejected"
+    - name: "Tenant | Stop with recovery instructions when the token is rejected"
       ansible.builtin.assert:
         that:
           - token_probe.status | default(0) == 200
@@ -59,12 +59,12 @@
           vault_service_admin_access_token in
           inventory/host_vars/{{ inventory_hostname }}/vault.yml and re-run.
 
-    - name: "[Tenant] Clean the generated config directory"
+    - name: "Tenant | Clean the generated config directory"
       ansible.builtin.file:
         path: "{{ tenant_build_dir }}"
         state: absent
 
-    - name: "[Tenant] Create the generated config directory tree"
+    - name: "Tenant | Create the generated config directory tree"
       ansible.builtin.file:
         path: "{{ tenant_build_dir }}/{{ item }}"
         state: directory
@@ -74,7 +74,7 @@
         - "access_control"
         - "dns"
 
-    - name: "[Tenant] Write the effective desired state for the value gate"
+    - name: "Tenant | Write the effective desired state for the value gate"
       ansible.builtin.copy:
         dest: "{{ tenant_build_dir }}/_validate.json"
         content: >-
@@ -95,7 +95,7 @@
              } | to_json }}
         mode: "0600"
 
-    - name: "[Tenant] Run the value gate"
+    - name: "Tenant | Run the value gate"
       ansible.builtin.command:
         argv:
           - "{{ ansible_playbook_python }}"
@@ -103,12 +103,12 @@
           - "{{ tenant_build_dir }}/_validate.json"
       changed_when: false
 
-    - name: "[Tenant] Remove the value-gate input"
+    - name: "Tenant | Remove the value-gate input"
       ansible.builtin.file:
         path: "{{ tenant_build_dir }}/_validate.json"
         state: absent
 
-    - name: "[Tenant] Map project expiry durations to the collection's settings fields"
+    - name: "Tenant | Map project expiry durations to the collection's settings fields"
       ansible.builtin.set_fact:
         netbird_settings: >-
           {%- set field_map = {
@@ -120,7 +120,7 @@
           {%- endfor -%}
           {{ ns.out }}
 
-    - name: "[Tenant] Render the single-variable config files"
+    - name: "Tenant | Render the single-variable config files"
       ansible.builtin.copy:
         dest: "{{ tenant_build_dir }}/{{ item.path }}"
         content: "{{ {item.var: lookup('vars', item.var, default=item.default)} | to_nice_yaml(indent=2) }}"
@@ -138,7 +138,7 @@
       loop_control:
         label: "{{ item.path }}"
 
-    - name: "[Tenant] Render services.yml (two variables per file)"
+    - name: "Tenant | Render services.yml (two variables per file)"
       ansible.builtin.copy:
         dest: "{{ tenant_build_dir }}/services.yml"
         content: >-
@@ -147,14 +147,14 @@
              | to_nice_yaml(indent=2) }}
         mode: "0600"
 
-    - name: "[Tenant] Apply the config-as-code desired state"
+    - name: "Tenant | Apply the config-as-code desired state"
       ansible.builtin.include_role:
         name: community.ansible_netbird.configure
       vars:
         commit: "{{ tenant_commit }}"
         strict: "{{ tenant_strict | default(false, true) | bool }}"
 
-    - name: "[Tenant] Persist newly created setup key values in the vault"
+    - name: "Tenant | Persist newly created setup key values in the vault"
       ansible.builtin.include_role:
         name: helpers
         tasks_from: store_secret
@@ -171,7 +171,7 @@
         - key_result.changed | default(false)
         - (key_result.setup_key.key | default('', true)) | length > 0
 
-    - name: "[Tenant] Fetch groups for user auto_groups resolution"
+    - name: "Tenant | Fetch groups for user auto_groups resolution"
       community.ansible_netbird.netbird_info:
         api_url: "{{ netbird_api_url }}"
         api_token: "{{ netbird_api_token }}"
@@ -185,7 +185,7 @@
         - ((netbird_users | default([]) | length)
            + (netbird_service_users | default([]) | length)) > 0
 
-    - name: "[Tenant] Map group names to IDs"
+    - name: "Tenant | Map group names to IDs"
       ansible.builtin.set_fact:
         tenant_group_ids: >-
           {{ dict((tenant_groups_info.data | default([]) | map(attribute='name') | list)
@@ -195,7 +195,7 @@
         - tenant_commit | bool
         - tenant_groups_info is defined and tenant_groups_info.data is defined
 
-    - name: "[Tenant] Build the flat user list (mark service users, resolve auto_groups)"
+    - name: "Tenant | Build the flat user list (mark service users, resolve auto_groups)"
       ansible.builtin.set_fact:
         tenant_users_flat: >-
           {%- set ns = namespace(items=[]) -%}
@@ -210,7 +210,7 @@
           {{ ns.items }}
       when: tenant_commit | bool
 
-    - name: "[Tenant] Manage users and service users"
+    - name: "Tenant | Manage users and service users"
       community.ansible_netbird.netbird_user:
         api_url: "{{ netbird_api_url }}"
         api_token: "{{ netbird_api_token }}"

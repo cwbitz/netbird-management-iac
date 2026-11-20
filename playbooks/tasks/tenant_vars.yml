@@ -1,5 +1,5 @@
 ---
-- name: "[Tenant] Load the per-host tenant desired state"
+- name: "Tenant | Load the per-host tenant desired state"
   ansible.builtin.include_vars:
     file: "{{ tenant_config_file }}"
   when: tenant_config_file is file

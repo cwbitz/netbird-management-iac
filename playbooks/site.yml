@@ -8,7 +8,7 @@
   vars:
     ansible_become: false
   tasks:
-    - name: "[Preflight] Require a real management address for every host"
+    - name: "Preflight | Require a real management address for every host"
       ansible.builtin.assert:
         that:
           - (hostvars[item].ansible_host | default('', true) | string | trim | length) > 0
@@ -31,7 +31,7 @@
   gather_facts: false
   run_once: true
   tasks:
-    - name: "[Preflight] Assert a supported ansible-core engine on the control node"
+    - name: "Preflight | Assert a supported ansible-core engine on the control node"
       ansible.builtin.assert:
         that:
           - ansible_version.full is version(ansible_core_min_version | default('2.19.0'), '>=')
@@ -47,7 +47,7 @@
       vars:
         ansible_become: false
 
-    - name: "[Preflight] Require the service account (not root) for the deploy"
+    - name: "Preflight | Require the service account (not root) for the deploy"
       ansible.builtin.assert:
         that:
           - (ssh_user | default('root')) != 'root' or (allow_root_login | default(false) | bool)
@@ -64,7 +64,7 @@
   vars:
     tenant_config_file: "{{ playbook_dir }}/../inventory/host_vars/{{ inventory_hostname }}/.config/netbird/tenant.yml"
   pre_tasks:
-    - name: "[Tenant] Load the tenant desired state"
+    - name: "Tenant | Load the tenant desired state"
       ansible.builtin.include_tasks: tasks/tenant_vars.yml
   roles:
     - role: firewall
@@ -75,7 +75,7 @@
       tags: [sshd]
       when: sshd_hardening_enabled | default(false) | bool
   tasks:
-    - name: "[Firewall] Verify the public contract from the control node"
+    - name: "Firewall | Verify the public contract from the control node"
       tags: [firewall]
       ansible.builtin.include_role:
         name: firewall
