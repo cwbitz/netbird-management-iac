@@ -6,6 +6,11 @@
 # Every knob is listed below with its default. Secrets and PII live in the
 # vault.yml next to it.
 
+# --- Deployment scope ---------------------------------------------------------
+# Test-purpose host: `make deploy` without HOST skips it; an explicit
+# HOST=<name> still deploys it.
+is_test_host: false
+
 # --- SSH connection identities ------------------------------------------------
 # Account name and key paths are non-secret (passwords stay in vault.yml).
 # The optional human `admin` account may be renamed; `iac` is a fixed name. It is

@@ -69,8 +69,9 @@ make deploy
 server, then applies the tenant state (`TAGS=...` keeps it server-only).
 `HOST=<name>` narrows every step to that host, e.g.
 `make deploy HOST=<hostname> TAGS=netbird`. Deploys run as a non-root service
-account. Connections, secrets and the first-owner bootstrap are covered in the
-[runbook](docs/RUNBOOK.md).
+account. Hosts marked `is_test_host: true` are skipped by `make deploy`/`dry-run`
+unless named explicitly with `HOST=<name>`. Connections, secrets and the
+first-owner bootstrap are covered in the [runbook](docs/RUNBOOK.md).
 
 ## Node type
 

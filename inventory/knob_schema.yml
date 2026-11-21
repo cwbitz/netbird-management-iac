@@ -1,5 +1,6 @@
 ---
 operator_knob_schema:
+  is_test_host: "is_test_host is not defined or is_test_host is boolean"
   admin_username: "admin_username is not defined or admin_username is string"
   ssh_keys: >-
     ssh_keys is not defined

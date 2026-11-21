@@ -14,6 +14,7 @@ allow_root_login: false
 create_admin_user: false
 admin_username: "admin"
 ssh_keys: {}
+is_test_host: false
 mirrors:
   apt: ""
   docker_registry: []
@@ -30,6 +31,7 @@ KEYS = [
     "create_admin_user",
     "admin_username",
     "ssh_keys",
+    "is_test_host",
     "mirrors",
     "timezone",
     "tenant_strict",
