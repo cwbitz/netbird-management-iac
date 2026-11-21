@@ -196,6 +196,7 @@
     - name: "Bootstrap | Refresh the APT cache"
       ansible.builtin.apt:
         update_cache: true
+        lock_timeout: "{{ apt_lock_timeout }}"
       when:
         - apt_mirror | default('', true) | length > 0
         - apt_sources.changed | default(false)
@@ -401,6 +402,7 @@
         name: sudo
         state: present
         update_cache: true
+        lock_timeout: "{{ apt_lock_timeout }}"
       when:
         - ansible_os_family == 'Debian'
         - (bootstrap_sudo_nopasswd_users | length

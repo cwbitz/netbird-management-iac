@@ -4,5 +4,3 @@ helper_vault_password_file: >-
      | default(lookup('ansible.builtin.env', 'HOME') ~ '/.config/projects/netbird-management-iac/ansible_vault_password', true) }}
 
 helper_ansible_vault_bin: "{{ (ansible_playbook_python | dirname) ~ '/ansible-vault' }}"
-
-helper_apt_lock_timeout: 900

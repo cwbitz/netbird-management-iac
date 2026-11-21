@@ -16,6 +16,7 @@
     name: gnupg
     state: present
     update_cache: true
+    lock_timeout: "{{ apt_lock_timeout }}"
   when: crowdsec_enabled | bool
   tags: [crowdsec]
 
@@ -59,6 +60,7 @@
     filename: crowdsec
     state: present
     update_cache: true
+    lock_timeout: "{{ apt_lock_timeout }}"
   when: crowdsec_enabled | bool
   tags: [crowdsec]
 
@@ -90,6 +92,7 @@
     name: "crowdsec={{ crowdsec_version }}"
     state: present
     update_cache: true
+    lock_timeout: "{{ apt_lock_timeout }}"
   register: monitoring_crowdsec_install
   when: crowdsec_enabled | bool
   tags: [crowdsec]
@@ -146,6 +149,7 @@
     name: "{{ pkg_crowdsec_firewall_bouncer }}={{ crowdsec_firewall_bouncer_version }}"
     state: present
     update_cache: true
+    lock_timeout: "{{ apt_lock_timeout }}"
   register: monitoring_bouncer_install
   when: crowdsec_enabled | bool
   tags: [crowdsec]
@@ -181,6 +185,7 @@
     name: "{{ monitoring_packages }}"
     state: present
     update_cache: true
+    lock_timeout: "{{ apt_lock_timeout }}"
     cache_valid_time: 3600
   when: monitoring_packages | length > 0
 
