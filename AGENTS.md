@@ -249,10 +249,23 @@ this project's vars/vault. Rules:
   + `loki_push_url` an Alloy container ships journald SSH events to a central Loki
   over the overlay (an overlay IP, or preferably the central peer's NetBird name
   `<peer>.netbird.selfhosted`, resolved by the container through the agent). With
-  `prometheus_remote_write_url` set it also scrapes the local exporters every
+  `prometheus_remote_write_url` set (a base URL; the role appends
+  `/api/v1/write`, as it appends `/loki/api/v1/push` to `loki_push_url`) it also
+  scrapes the local exporters every
   `scrape_interval` (default `15s`, 1s-30s) and remote-writes the samples to
   the central Prometheus, tagged `source="agent"`; the cadence has to stay inside
-  the dashboards' 60s `rate()` window.
+  the dashboards' 60s `rate()` window. `verify_push` (default false) makes the
+  run assert Alloy acknowledged a new scraped sample and dropped none while the
+  check ran (counters from before are the baseline, so a re-run after a transient
+  outage can pass); leave it off where the receiver may be unreachable at deploy
+  time. On a test host,
+  `monitoring.alloy.verify_receiver.mode: ack` deploys a loopback-only
+  (`127.0.0.1:<port>`) receiver in the same compose project that answers both
+  write paths with 2xx, derives both push URLs from it (the two URL knobs stay
+  empty), and lets `verify_push` prove the pipeline with no central stack. It
+  applies only while `alloy.enabled` is true, switches `verify_push` on, and
+  discards the data; `disabled` is the default and keeps Alloy pointed at the
+  configured central URLs.
 - `make print [HOST=<name>]` — resolved host vars incl. decrypted vault; HOST
   is auto-detected when the inventory has a single host.
 
