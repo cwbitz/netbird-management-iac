@@ -2,7 +2,7 @@
 - name: "APT | Wait for a busy package-manager lock instead of failing"
   ansible.builtin.copy:
     content: |
-      DPkg::Lock::Timeout "{{ helper_apt_lock_timeout }}";
+      DPkg::Lock::Timeout "{{ apt_lock_timeout }}";
     dest: /etc/apt/apt.conf.d/99-lock-timeout
     owner: root
     group: root

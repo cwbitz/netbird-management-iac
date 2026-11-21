@@ -43,6 +43,7 @@ WIRING = {
 }
 INTERNAL = {
     "agent_dir", "monitoring_dir",
+    "apt_lock_timeout",
     "netbird_agent_version", "alloy_version",
     "server_image", "server_version", "dashboard_image", "dashboard_version",
     "traefik_image", "traefik_version",
