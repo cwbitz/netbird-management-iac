@@ -19,9 +19,9 @@
       ansible.builtin.set_fact:
         agent_privkey_files: >-
           {{ (agent_privkey_files | default([])) +
-             [ hostvars[item].host_iac_ssh_privkey_file | default('', true),
-               hostvars[item].host_admin_ssh_privkey_file | default('', true),
-               hostvars[item].host_root_ssh_privkey_file | default('', true) ] }}
+             [ (((hostvars[item].ssh_keys | default({}, true)).iac | default({}, true)).privkey | default('', true)),
+               (((hostvars[item].ssh_keys | default({}, true)).admin | default({}, true)).privkey | default('', true)),
+               (((hostvars[item].ssh_keys | default({}, true)).root | default({}, true)).privkey | default('', true)) ] }}
       loop: "{{ agent_load_hosts }}"
       loop_control:
         label: "{{ item }}"
@@ -34,7 +34,7 @@
     - name: "SSHAgent | Warn when no private-key paths are configured"
       ansible.builtin.debug:
         msg: >-
-          No host_*_ssh_privkey_file values found (no hosts, or empty main.yml).
+          No ssh_keys.*.privkey values found (no hosts, or empty main.yml).
           Nothing to load.
       when: agent_privkeys | length == 0
 

@@ -89,7 +89,7 @@ defaulting to the single management node.
 | Host monitoring & security (node_exporter, CrowdSec, Alloy) | `monitoring.node_exporter.enabled: true` | [Runbook §5](docs/RUNBOOK.md) |
 | Host firewall (default-deny inbound; mesh contract 80/443/tcp, 3478/udp) | `firewall.enabled: true` | [Runbook §5b](docs/RUNBOOK.md) |
 | SSH hardening (key-only admin; root policy via `sshd.permit_root_login`) | `sshd.hardening_enabled: true` | [Runbook §5b](docs/RUNBOOK.md) |
-| Region-restricted APT / Docker mirrors | `apt_mirror`, `docker_registry_mirrors` | [Runbook §6](docs/RUNBOOK.md) |
+| Region-restricted APT / Docker mirrors | `mirrors.apt`, `mirrors.docker_registry` | [Runbook §6](docs/RUNBOOK.md) |
 | External identity providers (OIDC) | Dashboard / API | [`docs/IDP.md`](docs/IDP.md) |
 
 ## Layout

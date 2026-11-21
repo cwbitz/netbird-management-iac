@@ -9,31 +9,39 @@
 # --- SSH connection identities ------------------------------------------------
 # Account name and key paths are non-secret (passwords stay in vault.yml).
 # The optional human `admin` account may be renamed; `iac` is a fixed name. It is
-# created only while create_admin_account is true (it always gets a password,
+# created only while create_admin_user is true (it always gets a password,
 # generated into vault.yml when empty, plus any configured key).
-create_admin_account: false
-host_admin_username: "admin"
-host_iac_ssh_pubkey_file: ""
-host_iac_ssh_privkey_file: ""
-host_admin_ssh_pubkey_file: ""
-host_admin_ssh_privkey_file: ""
-host_root_ssh_pubkey_file: ""
-host_root_ssh_privkey_file: ""
+create_admin_user: false
+admin_username: "admin"
+ssh_keys:
+  root:
+    pubkey: ""
+    privkey: ""
+  admin:
+    pubkey: ""
+    privkey: ""
+  iac:
+    pubkey: ""
+    privkey: ""
 # Lifetime of the identities loaded into the control node's ssh-agent
 # (OpenSSH duration, e.g. 8h, 1d, 30m; 0 keeps them until the agent exits).
 agent_key_lifetime: "8h"
 
 # --- Host baseline (make deploy) ----------------------------------------------
 # install_docker false requires a preinstalled Docker. Mirrors for hosts where the
-# defaults are slow or blocked; the security repo follows apt_mirror.
+# defaults are slow or blocked; the security repo follows mirrors.apt.
 install_docker: true
 # IANA timezone for the host clock and journal timestamps (empty keeps the
 # image's setting).
 timezone: "UTC"
-apt_mirror: ""
-# Docker Hub pull-through mirrors; e.g. ["https://mirror.gcr.io"] is the fastest
-# from an APAC/JP host (it also lifts Docker Hub's anonymous pull limit).
-docker_registry_mirrors: []
+mirrors:
+  # Debian suite root (empty keeps the image's official sources); the security
+  # suite derives from it.
+  apt: ""
+  # Docker Hub pull-through mirrors; e.g. ["https://mirror.gcr.io"] is the
+  # fastest from an APAC/JP host (it also lifts Docker Hub's anonymous pull
+  # limit).
+  docker_registry: []
 # Escape hatch: run the deploy as root instead of the service account.
 allow_root_login: false
 

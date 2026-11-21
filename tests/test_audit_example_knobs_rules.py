@@ -11,8 +11,12 @@ EXAMPLE = """---
 domain_name: "netbird.example.com"
 acme_email: "admin@example.com"
 allow_root_login: false
-apt_mirror: ""
-docker_registry_mirrors: []
+create_admin_user: false
+admin_username: "admin"
+ssh_keys: {}
+mirrors:
+  apt: ""
+  docker_registry: []
 timezone: "UTC"
 tenant_strict: false
 stack_dir: "/opt/netbird"
@@ -23,8 +27,10 @@ KEYS = [
     "domain_name",
     "acme_email",
     "allow_root_login",
-    "apt_mirror",
-    "docker_registry_mirrors",
+    "create_admin_user",
+    "admin_username",
+    "ssh_keys",
+    "mirrors",
     "timezone",
     "tenant_strict",
     "stack_dir",

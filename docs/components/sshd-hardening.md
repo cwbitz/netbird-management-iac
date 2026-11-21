@@ -14,8 +14,8 @@ the root password — so password login stays open until this role is opted into
 It is **opt-in per host** (`sshd.hardening_enabled`, off by default): closing
 password login removes the very path the bootstrap probe relies on, so it is only
 safe once a keyed login survives it — the `iac` automation account's key
-(installed by `make deploy` from `host_iac_ssh_pubkey_file`),
-or root's key on a root-administered host (`host_root_ssh_pubkey_file` with
+(installed by `make deploy` from `ssh_keys.iac.pubkey`),
+or root's key on a root-administered host (`ssh_keys.root.pubkey` with
 `sshd.permit_root_login: prohibit-password`).
 
 ## How
@@ -79,10 +79,10 @@ provider console and `sudo` only.
 
 ## The human `admin` account
 
-`create_admin_account: true` creates the optional human `admin` account, which
+`create_admin_user: true` creates the optional human `admin` account, which
 **always gets a password** (for console login and password `sudo`). Once password
 authentication is closed that password only works on the console — for SSH, set
-`host_admin_ssh_pubkey_file` (and its private-key path) so the bootstrap
+`ssh_keys.admin.pubkey` (and its private-key path) so the bootstrap
 authorizes the account's key. Keep the key in a client profile; the account is not
 a second automation identity.
 

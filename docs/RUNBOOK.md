@@ -47,7 +47,7 @@ v2, generates missing secrets into the encrypted `vault.yml`, renders
 (`/opt/netbird`), starts the stack, waits for TLS, then optionally creates the
 first owner. The host init (`playbooks/bootstrap.yml`) runs first inside every
 `make deploy`. Exact bootstrap rules (key vs. generated password,
-`create_admin_account`): `AGENTS.md`.
+`create_admin_user`): `AGENTS.md`.
 
 `make lint` (syntax check + `ansible-lint`) is an internal CI check; it is hidden
 from `make help`, but developers can still run it locally.
@@ -246,7 +246,7 @@ sshd:
   proves a key-only login as the chosen identity (`iac`, or root when allowed)
   first and rolls itself back on any failed verification. The human `admin`
   account keeps its password for the **console** only — set
-  `host_admin_ssh_pubkey_file` (in the host's main.yml) to keep SSH for it.
+  `ssh_keys.admin.pubkey` (in the host's main.yml) to keep SSH for it.
   Details:
   [`components/sshd-hardening.md`](components/sshd-hardening.md).
 - Rollback (or console recovery):
@@ -265,9 +265,10 @@ maps to its `…/debian-security` sibling), so there is no separate security kno
 
 ```yaml
 # inventory/host_vars/<host>/main.yml
-apt_mirror: "https://mirrors.tuna.tsinghua.edu.cn/debian"
-docker_registry_mirrors:
-  - "https://docker.1ms.run"
+mirrors:
+  apt: "https://mirrors.tuna.tsinghua.edu.cn/debian"
+  docker_registry:
+    - "https://docker.1ms.run"
 ```
 
 ## 7. Upgrade and rollback

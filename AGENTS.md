@@ -64,7 +64,7 @@ this project's vars/vault. Rules:
   when the user leaves them empty and passes TO the host
   (`vault_datastore_encryption_key`, `vault_session_cookie_encryption_key`,
   `vault_relay_auth_secret`, `vault_owner_password`, `vault_host_iac_password`,
-  `vault_host_admin_password` (only when `create_admin_account` is set)), and the
+  `vault_host_admin_password` (only when `create_admin_user` is set)), and the
   secrets the host returns (see below). Every non-secret value — the ACME
   contact email (`server.acme_email`), the first owner (the `netbird_users` entry with
   `role: owner`), hostnames, URLs, paths and toggles — lives in the `main.yml`
@@ -191,7 +191,7 @@ this project's vars/vault. Rules:
   ensures Docker Engine + Compose v2 (installing Docker CE when missing), sets
   APT/Docker mirrors for region-restricted hosts, and probes [iac, admin, root]
   to create the `iac` automation account plus the `admin` account when
-  `create_admin_account` is set. The mirror parts are no-ops unless their vars
+  `create_admin_user` is set. The mirror parts are no-ops unless their vars
   are set.
 - The internal `make lint` (`--syntax-check` + `ansible-lint` +
   `scripts/audit_example_knobs.py`, the host-key and repository-privacy checks,
@@ -301,18 +301,18 @@ this project's vars/vault. Rules:
   verification fails. Enable it only after `make deploy` has authorized
   the key. The human `admin` account keeps
   its password for the console only; give it a public key
-  (`host_admin_ssh_pubkey_file`) to keep SSH access.
+  (`ssh_keys.admin.pubkey`) to keep SSH access.
 - The deploy **requires the non-root service account**: `playbooks/site.yml`
   asserts `ssh_user != root` (override with `allow_root_login=true`).
   `make deploy` probes [iac, admin, root] and uses the
   first that works; when it is not `iac` it creates `iac`. Every explicitly set
-  `host_root_ssh_pubkey_file` / `host_iac_ssh_pubkey_file` /
-  `host_admin_ssh_pubkey_file` is
+  `ssh_keys.root.pubkey` / `ssh_keys.iac.pubkey` /
+  `ssh_keys.admin.pubkey` is
   authorized for the matching account (unset ignored, never generated); for
   `iac` a missing key falls back to a password from
   `vault_host_iac_password` (generated when empty), while key mode omits the
   password. The optional human `admin` account is created only when
-  `create_admin_account` is set and always gets a password (generated into
+  `create_admin_user` is set and always gets a password (generated into
   `vault_host_admin_password` when empty) plus any configured key. Passwords are
   hashed with a per-account random salt and applied with `update_password: on_create`,
   so re-runs are idempotent and a host-side password rotation is preserved.
