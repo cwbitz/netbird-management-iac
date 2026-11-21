@@ -1,5 +1,32 @@
 # Changelog
 
+## [3.0.0](https://github.com/cwbitz/netbird-management-iac/compare/v2.4.1...v3.0.0) (2026-11-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* **make:** `make host-init`, `make host-bootstrap`, `make hostkey-init`, `make vault-edit` and `make vault-view` are renamed or folded into `prep`, `deploy`, `hostkeys`, `edit` and `view`.
+* **tenant:** the tenant group is `rhost` (was `endpoint`) and the setup key/vault key are `rhost_setup_key`/`vault_rhost_setup_key`. Rename them in the gitignored tenant file and vault before the next apply.
+* **backup:** `make backup` and `make restore` and their playbooks are removed; a full restore now starts from an external snapshot plus the same `vault.yml`.
+
+### Features
+
+* **backup:** drop the volume backup and restore playbooks ([#40](https://github.com/cwbitz/netbird-management-iac/issues/40)) ([3ebe596](https://github.com/cwbitz/netbird-management-iac/commit/3ebe596f17b0b667d4c4569bae5726dcd10310cf))
+* **make:** default prep HOST to the single inventory host ([#50](https://github.com/cwbitz/netbird-management-iac/issues/50)) ([ddab5d8](https://github.com/cwbitz/netbird-management-iac/commit/ddab5d8719e17129440cebfc6d09f9f33f8f6f2a))
+* **ssh-agent:** expire loaded identities and gate the permission fallback ([#45](https://github.com/cwbitz/netbird-management-iac/issues/45)) ([402963b](https://github.com/cwbitz/netbird-management-iac/commit/402963b0e5a4fb4be778e8c6bd811a12da76659e))
+
+
+### Bug Fixes
+
+* **agent:** restart a needs-login container and verify overlay DNS ([#43](https://github.com/cwbitz/netbird-management-iac/issues/43)) ([19d3f1f](https://github.com/cwbitz/netbird-management-iac/commit/19d3f1f25d3597da12e3083e49deb3b20561e9ca))
+* **helpers:** wait for a busy apt lock instead of failing ([#44](https://github.com/cwbitz/netbird-management-iac/issues/44)) ([f60b1a0](https://github.com/cwbitz/netbird-management-iac/commit/f60b1a0c17f839c49435161bb2244605be48dec3))
+
+
+### Code Refactoring
+
+* **make:** align the command surface with proxmox-iac ([#46](https://github.com/cwbitz/netbird-management-iac/issues/46)) ([334b0ff](https://github.com/cwbitz/netbird-management-iac/commit/334b0fff0defd615286db748ea8f71ec650b5760))
+* **tenant:** rename the endpoint group and setup key to rhost ([#42](https://github.com/cwbitz/netbird-management-iac/issues/42)) ([88ecc57](https://github.com/cwbitz/netbird-management-iac/commit/88ecc573c11f92f5a9bfafcf614e53f4aeb08db4))
+
 ## [2.4.1](https://github.com/cwbitz/netbird-management-iac/compare/v2.4.0...v2.4.1) (2026-11-18)
 
 
