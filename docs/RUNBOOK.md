@@ -184,12 +184,43 @@ monitoring:
   alloy:
     enabled: true                              # ship host logs to a central Loki
     loki_push_url: "http://<central-peer>.netbird.selfhosted:3100"   # or "<overlay-ip>:3100"
+    prometheus_remote_write_url: "http://<central-peer>.netbird.selfhosted:9090"   # base URL
+    verify_push: true                          # optional: fail when the push is not acknowledged
 ```
+
+Both URLs are **bases**: the role appends `/loki/api/v1/push` and
+`/api/v1/write` respectively, so a value that already carries one of those
+paths is rejected by the knob gate (it would otherwise be sent twice).
+
+On a test host with no central stack, let the role run an acknowledging
+receiver and derive both URLs from it instead of hand-starting one:
+
+```yaml
+# inventory/host_vars/<host>/main.yml
+monitoring:
+  alloy:
+    enabled: true
+    verify_receiver:
+      mode: ack        # loopback-only, acknowledges + discards
+      port: 3100       # optional, default 3100
+```
+
+`mode: ack` deploys a `verify-receiver` container next to Alloy (same compose
+project, `127.0.0.1:<port>`, pinned nginx) that answers `/api/v1/write` and
+`/loki/api/v1/push` with 2xx, derives `loki_push_url` and
+`prometheus_remote_write_url` from that address, and runs the `verify_push`
+check as usual. It applies only while `alloy.enabled` is true, switches
+`verify_push` on by itself, and both URL knobs must be empty (the receiver is
+the only destination). It proves Alloy's configuration, scrape and write path
+and that nothing was dropped; it does not prove that a real Loki/Prometheus
+ingests the data, so keep it to test hosts. `mode: disabled` (the default) sends
+to the configured central URLs.
 
 When `monitoring.alloy.enabled` is set and the central Loki does not answer from
 the host (the peer has not enrolled yet after a rebuild, for example), the run
 prints a warning and still deploys the Alloy stack; it starts shipping as soon
-as the central peer is reachable.
+as the central peer is reachable. That probe is skipped when the local receiver
+is enabled.
 
 With `monitoring.alloy.prometheus_remote_write_url` set, Alloy also scrapes the
 local exporters every `monitoring.alloy.scrape_interval` (default `15s`,
@@ -198,10 +229,22 @@ remote-write receiver, tagged `source="agent"`. The cadence has to stay inside
 the dashboards' 60s `rate()` window: at 60s each `rate()` query sees a single
 sample and every panel built on one renders "No data".
 
+`monitoring.alloy.verify_push: true` checks the push itself: after the stack is
+up, the run snapshots Alloy's counters on `http://<overlay-ip>:12345/metrics`
+and fails when the receiver acknowledges no new scraped sample within ~90s
+(`prometheus_remote_storage_queue_highest_sent_timestamp_seconds` does not
+advance), or when a failed/dropped sample or a dropped log entry is recorded
+while the check runs. Counters accumulated before the check are the baseline, so
+a re-run after a transient outage passes once the receiver accepts writes again.
+Keep it off where the receiver is expected to be unreachable at deploy time (a
+central peer that has not re-enrolled yet) — that case stays the non-fatal
+warning above — or use the local receiver above.
+
 The toggles converge **off** as well as on: setting `node_exporter.enabled: false`,
 `crowdsec.enabled: false` or `alloy.enabled: false` stops and disables the
 matching units (node_exporter; crowdsec + crowdsec-firewall-bouncer) and removes
-the Alloy containers (the compose project in `/opt/monitoring`) on the next run.
+the monitoring containers (the compose project in `/opt/monitoring`). Setting
+`verify_receiver.mode` back to `disabled` removes the local receiver on the next run.
 Packages, the compose file and the rendered configuration are kept, so
 re-enabling needs no reinstall. With every component disabled the playbook
 includes only the cleanup tasks, and a unit that does not exist on the host is
@@ -307,6 +350,7 @@ distro sources, restore the backups, remove that file and clear `mirrors.apt`.
 | No usable SSH login after enabling hardening | Recover from the provider console: `rm /etc/ssh/sshd_config.d/00-sshd-hardening.conf && systemctl reload ssh`, then set `sshd.hardening_enabled: false` and re-run. |
 | Readiness times out on first deploy | GeoLite2 download (§1); re-run or pre-seed the DBs. |
 | node-exporter panels show "No data" although the target is up | The push cadence is too slow for the dashboards' 60s `rate()` windows: keep `monitoring.alloy.scrape_interval` at 15s (30s works, 60s yields a single sample per window). Check with `count_over_time(node_load1{instance="<host>"}[5m])` (≈20 points at 15s) and re-run `make deploy TAGS=monitoring`. |
+| `verify_push` fails: Alloy acknowledged no sample | The receiver rejected or never answered the write. Check `docker logs alloy`, then POST `<prometheus_remote_write_url>/api/v1/write` and `<loki_push_url>/loki/api/v1/push` from the host: both must return 2xx. The knobs take base URLs; the role appends the path. On a test host with no central stack set `monitoring.alloy.verify_receiver.mode: ack` (leave both URL knobs empty) and the role runs the acknowledging receiver itself. |
 | Tenant run: token rejected | PAT expired — recreate it for the `admin` service user and update the vault (§2). |
 | Host reinstalled / reimaged | Two things: delete the stale host-returned keys from `vault.yml` (§2), then deploy with `make deploy REBUILD=1` so the new SSH host key is re-pinned and the cached facts / generated tenant render are dropped. |
 | A vault file is unreadable | It must be ansible-vault encrypted; the helpers re-encrypt a plaintext file on the next run. |
@@ -350,6 +394,13 @@ to skip.
       both CrowdSec units are active and the bouncer is loaded.
 - [ ] `monitoring.alloy.enabled: true` with a reachable `loki_push_url`: SSH
       journal events arrive; an unreachable Loki is a warning, not a failure.
+- [ ] `monitoring.alloy.verify_receiver.mode: ack` (with both URL knobs empty):
+      the run passes, the `verify-receiver` container is up, it listens only on
+      `127.0.0.1:<port>`, and
+      `prometheus_remote_storage_queue_highest_sent_timestamp_seconds` moves off
+      zero. Flipping `mode` back to `disabled` removes the container on the next run.
+- [ ] `verify_push: true` with a central receiver on a closed port (no local
+      receiver) fails the run and names the knob.
 - [ ] `firewall.enabled: true`: only 80/TCP, 443/TCP and 3478/UDP (plus SSH and
       WireGuard) are open; the rule set is identical on a re-run.
 - [ ] `sshd.hardening_enabled: true` without a keyed login: refuses before writing;
