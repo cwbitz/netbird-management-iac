@@ -118,6 +118,8 @@
     ansible_become_password: "{{ hostvars['localhost'].probe_chosen.password }}"
     ansible_ssh_private_key_file: "{{ hostvars['localhost'].probe_chosen.privkey }}"
     ansible_become: "{{ hostvars['localhost'].probe_chosen.become }}"
+    apt_mirror: "{{ ((mirrors | default({}, true)).apt | default('', true)) }}"
+    docker_registry_mirrors: "{{ ((mirrors | default({}, true)).docker_registry | default([])) }}"
     apt_security_mirror: >-
       {{ apt_mirror | default('', true) | regex_replace('/debian/?$', '') ~ '/debian-security' }}
   handlers:
@@ -169,7 +171,7 @@
           - ansible_os_family == 'Debian'
         fail_msg: >-
           apt_mirror is set, but the host is not Debian-family.
-          Example: apt_mirror: https://mirrors.tuna.tsinghua.edu.cn/debian
+          Example: mirrors.apt: https://mirrors.tuna.tsinghua.edu.cn/debian
       when: apt_mirror | default('', true) | length > 0
 
     - name: "Bootstrap | Back up the current APT sources (once)"
@@ -215,7 +217,7 @@
         that:
           - bootstrap_docker.rc | default(1) == 0
         fail_msg: >-
-          docker_registry_mirrors is set but Docker is not installed on
+          mirrors.docker_registry is set but Docker is not installed on
           {{ inventory_hostname }}; install Docker first.
       when: docker_registry_mirrors | default([]) | length > 0
 
@@ -241,7 +243,7 @@
     - name: "Bootstrap | Resolve the service account settings"
       ansible.builtin.set_fact:
         bootstrap_service_user: "iac"
-        bootstrap_use_key: "{{ host_iac_ssh_pubkey_file | default('', true) | length > 0 }}"
+        bootstrap_use_key: "{{ ((ssh_keys | default({}, true)).iac | default({}, true)).pubkey | default('', true) | length > 0 }}"
 
     - name: "Bootstrap | Provision a service-account password (no key supplied)"
       ansible.builtin.include_role:
@@ -274,7 +276,7 @@
     - name: "Bootstrap | Resolve the admin identity settings"
       ansible.builtin.set_fact:
         bootstrap_admin: "{{ ssh_identities.admin }}"
-        bootstrap_admin_defined: "{{ create_admin_account | default(false) | bool }}"
+        bootstrap_admin_defined: "{{ create_admin_user | default(false) | bool }}"
 
     - name: "Bootstrap | Provision the admin password (enabled, none supplied)"
       ansible.builtin.include_role:

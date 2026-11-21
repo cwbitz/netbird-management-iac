@@ -52,7 +52,8 @@ INTERNAL = {
 VAULT_BOUND: set[str] = set()
 DERIVED = {"apt_security_mirror", "netbird_peer_setup_key", "owner_entry", "owner_email", "owner_name"}
 EXTRA = {
-    "apt_mirror", "docker_registry_mirrors", "timezone", "allow_root_login",
+    "mirrors", "ssh_keys", "timezone", "allow_root_login",
+    "create_admin_user", "admin_username",
 }
 
 EXAMPLE_REL = "inventory/host_vars/example/main.yml"

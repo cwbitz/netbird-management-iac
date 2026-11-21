@@ -11,12 +11,12 @@
 # --- SSH connection identity -------------------------------------------------
 # host-bootstrap probes [iac, admin, root] and connects as the first that
 # works. Account names and key paths are non-secret and live in the main.yml next
-# to this file (host_admin_username, host_<id>_ssh_{pub,priv}key_file); this file
+# to this file (admin_username, ssh_keys.<id>.{pubkey,privkey}); this file
 # holds only the passwords. An identity becomes key-only once its public-key path
 # is set there (empty is ignored; keys are never generated).
 vault_host_root_password: ""
 # The optional human 'admin' operator account is created only when
-# create_admin_account is true in main.yml; it always gets a password (generated
+# create_admin_user is true in main.yml; it always gets a password (generated
 # here when left empty) plus any configured key.
 vault_host_admin_password: ""
 # The `iac` automation account name is fixed (`iac`); it uses key auth when
@@ -50,6 +50,6 @@ vault_owner_password: ""
 #   vault_host_iac_password             service account password (only when
 #                                           no public key is given)
 #   vault_host_admin_password               admin password (only when
-#                                           create_admin_account is true)
+#                                           create_admin_user is true)
 # Back up both this file and the host data; only vault_datastore_encryption_key is
 # unrecoverable if lost.
