@@ -271,6 +271,14 @@ mirrors:
     - "https://docker.1ms.run"
 ```
 
+The mirror replaces the distro sources. Every distro definition
+(`/etc/apt/sources.list`, plus the `*.list` / `*.sources` entries in
+`/etc/apt/sources.list.d` signed by the Debian or Ubuntu archive keyring — the
+deb822 layout Debian 13 ships) is backed up once as `<file>.bak.bootstrap` and
+then disabled; third-party repositories keep their own definitions. The mirror
+is rendered to `/etc/apt/sources.list.d/netbird-mirror.list`. To return to the
+distro sources, restore the backups, remove that file and clear `mirrors.apt`.
+
 ## 7. Upgrade and rollback
 
 - **Upgrade**: let Renovate bump the pinned tags (or edit
