@@ -18,6 +18,10 @@ $(if $(word 2,$(HOST)),$(error HOST must be comma-separated literal host names (
 HOST_LIST = $(strip $(subst $(comma), ,$(HOST)))
 HOST_ARG = $(if $(HOST),--limit '$(HOST):localhost',)
 HOST_SINGLE_GUARD = test "$$(printf '%s' '$(HOST_LIST)' | wc -w)" -le 1 || { echo "ERROR: this target needs exactly one HOST; got '$(HOST)'." >&2; exit 2; }
+DEPLOY_GROUP := management
+DEPLOY_HOSTS  = $(if $(HOST),$(HOST),$(shell python3 $(CURDIR)/scripts/deploy_hosts.py $(INV) $(DEPLOY_GROUP) 2>/dev/null))
+DEPLOY_ARG    = $(if $(DEPLOY_HOSTS),--limit '$(DEPLOY_HOSTS):localhost',)
+DEPLOY_LIST   = $(strip $(subst $(comma), ,$(DEPLOY_HOSTS)))
 
 IP ?=
 PORT ?=
@@ -248,7 +252,7 @@ hostkeys: vault-init
 	nh="$(HOME)/.ssh/known_hosts"; mkdir -p "$$(dirname "$$nh")"; tmp=$$(mktemp); targets=$$(mktemp); tsv=$$(mktemp); pub=$$(mktemp); failures=0; \
 	trap 'rm -f "$$tmp" "$$targets" "$$tsv" "$$pub"' EXIT; \
 	if [ -f "$$nh" ]; then cp "$$nh" "$$tmp"; else : > "$$tmp"; fi; \
-	$(ANS_PLAY) -i $(INV) playbooks/host_keys.yml -e host_keys_out="$$targets" -e host_keys_hosts='$(HOST)' >/dev/null; \
+	$(ANS_PLAY) -i $(INV) playbooks/host_keys.yml -e host_keys_out="$$targets" -e host_keys_hosts='$(DEPLOY_HOSTS)' >/dev/null; \
 	python3 -c 'import json,sys; [print("{}\t{}\t{}".format(t["name"],t["host"],t["port"])) for t in json.load(open(sys.argv[1]))]' "$$targets" > "$$tsv"; \
 	mv "$$tsv" "$$targets"; \
 	test -s "$$targets" || { echo "ERROR: no hosts resolved from the inventory."; exit 1; }; \
@@ -360,19 +364,17 @@ RETRY_RUN          ?= $(CURDIR)/scripts/retry-transient.sh
 
 .PHONY: dry-run
 dry-run: REBUILD_PRUNE_SECRETS := 0
-dry-run: vault-init rebuild-reset validate-knobs agent-fallback ## Preview the deploy with --check --diff; HOST=<hosts>, REBUILD=1 after a rebuild
-	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INV) $(PLAYBOOK) $(HOST_ARG) --check --diff $(TAGS_ARG)
+dry-run: vault-init rebuild-reset validate-knobs agent-fallback ## Preview the deploy with --check --diff; HOST=<hosts>, REBUILD=1 after a rebuild; skips is_test_host: true hosts unless HOST is given
+	@test -n "$(DEPLOY_HOSTS)" || { echo "ERROR: every host is is_test_host: true; pass HOST=<name> to target a test host deliberately." >&2; exit 1; }
+	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INV) $(PLAYBOOK) $(DEPLOY_ARG) --check --diff $(TAGS_ARG)
 
 .PHONY: deploy
-deploy: vault-init rebuild-reset hostkeys validate-knobs agent-fallback ## Bootstrap the hosts, deploy the server, apply the tenant state, then converge monitoring; HOST=<hosts>, TAGS=<tags> limits it to the server, REBUILD=1 after a rebuild
+deploy: vault-init rebuild-reset hostkeys validate-knobs agent-fallback ## Bootstrap the hosts, deploy the server, apply the tenant state, then converge monitoring; HOST=<hosts>, TAGS=<tags> limits it to the server, REBUILD=1 after a rebuild; skips is_test_host: true hosts unless HOST is given
 	@set -e; \
-	hosts="$(HOST_LIST)"; \
+	hosts="$(DEPLOY_LIST)"; \
 	if [ -z "$$hosts" ]; then \
-		hosts="$$(ansible -i $(INV) --list-hosts management 2>/dev/null \
-			| tail -n +2 | awk '$$1=$$1' | sed '/^$$/d')"; \
-	fi; \
-	if [ -z "$$hosts" ]; then \
-		echo "ERROR: no management host resolved from $(INV)." >&2; \
+		echo "ERROR: no deployable host resolved from $(INV) (every host is is_test_host: true, or the inventory is empty)." >&2; \
+		echo "       Pass HOST=<name> to deploy a test host deliberately." >&2; \
 		exit 1; \
 	fi; \
 	for host in $$hosts; do \
@@ -380,12 +382,12 @@ deploy: vault-init rebuild-reset hostkeys validate-knobs agent-fallback ## Boots
 		$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INV) playbooks/bootstrap.yml -e bootstrap_host="$$host"; \
 	done
 	@echo "==> Deploying the NetBird server (playbooks/site.yml)..."
-	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INV) $(PLAYBOOK) $(HOST_ARG) $(TAGS_ARG)
+	$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INV) $(PLAYBOOK) $(DEPLOY_ARG) $(TAGS_ARG)
 	@set -e; if [ -z "$(TAGS)" ]; then \
 		echo "==> Applying the tenant config-as-code state (playbooks/tenant.yml)..."; \
-		$(RETRY_RUN) $(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INV) playbooks/tenant.yml -e tenant_commit=true $(HOST_ARG); \
+		$(RETRY_RUN) $(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INV) playbooks/tenant.yml -e tenant_commit=true $(DEPLOY_ARG); \
 		echo "==> Converging the host monitoring (playbooks/monitoring.yml)..."; \
-		$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INV) playbooks/monitoring.yml $(HOST_ARG); \
+		$(SSH_AGENT_RUN) $(ANS_PLAY) -i $(INV) playbooks/monitoring.yml $(DEPLOY_ARG); \
 	fi
 
 .PHONY: plan
