@@ -1,5 +1,28 @@
 # Changelog
 
+## [4.0.0](https://github.com/cwbitz/netbird-management-iac/compare/v3.0.0...v4.0.0) (2026-11-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **inventory:** group SSH keys and mirrors into nested knobs ([#51](https://github.com/cwbitz/netbird-management-iac/issues/51))
+
+### Features
+
+* **bootstrap:** replace every distro APT source with the mirror ([#54](https://github.com/cwbitz/netbird-management-iac/issues/54)) ([2b34b6a](https://github.com/cwbitz/netbird-management-iac/commit/2b34b6a0fed536c26d9229a6f82352dcf52d2eb5))
+* **make:** skip test hosts unless HOST is given ([#56](https://github.com/cwbitz/netbird-management-iac/issues/56)) ([40a859b](https://github.com/cwbitz/netbird-management-iac/commit/40a859be934f8733368c3880a46ac24f8a4b0432))
+* **monitoring:** verify the Alloy push and add a local ack receiver ([#55](https://github.com/cwbitz/netbird-management-iac/issues/55)) ([6174a42](https://github.com/cwbitz/netbird-management-iac/commit/6174a42e30570c7029b5b84f2ccc7da76bc484d3))
+
+
+### Bug Fixes
+
+* **helpers:** wait up to 900s for a busy APT lock ([#53](https://github.com/cwbitz/netbird-management-iac/issues/53)) ([2fa898f](https://github.com/cwbitz/netbird-management-iac/commit/2fa898f860fa0d98b464652a65bfb6023788e651))
+
+
+### Code Refactoring
+
+* **inventory:** group SSH keys and mirrors into nested knobs ([#51](https://github.com/cwbitz/netbird-management-iac/issues/51)) ([5e8ad8a](https://github.com/cwbitz/netbird-management-iac/commit/5e8ad8aa709e1e73ca239aaf293628803ccfd7ed))
+
 ## [3.0.0](https://github.com/cwbitz/netbird-management-iac/compare/v2.4.1...v3.0.0) (2026-11-20)
 
 
